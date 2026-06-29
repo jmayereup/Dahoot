@@ -1,0 +1,228 @@
+import React, { useMemo } from 'react';
+import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+
+export function HostQuestion({
+  qIndex,
+  questions,
+  activeQuestion,
+  hostTimeLeft,
+  answeredCount,
+  hostPlayers,
+  hostShowLeaderboard
+}) {
+  const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+  // Shuffle sorting options once when question changes so they display out of order
+  const shuffledSortingOptions = useMemo(() => {
+    if (type !== 'SORTING' || !Array.isArray(activeQuestion.options)) return [];
+    return [...activeQuestion.options].sort(() => 0.5 - Math.random());
+  }, [activeQuestion.id, activeQuestion.options, type]);
+
+  // Helper to parse drag and drop sentences
+  const renderSentenceWithBlanks = (sentence) => {
+    if (!sentence) return '';
+    const parts = sentence.split(/(\[blank\d+\])/g);
+    return parts.map((part, idx) => {
+      const match = part.match(/\[blank(\d+)\]/);
+      if (match) {
+        return (
+          <span key={idx} className="host-sentence-blank">
+            ?
+          </span>
+        );
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
+  // Helper to parse dropdown sentences
+  const renderSentenceWithDropdowns = (sentence) => {
+    if (!sentence) return '';
+    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    return parts.map((part, idx) => {
+      const match = part.match(/\{\{(\d+)\}\}/);
+      if (match) {
+        return (
+          <span key={idx} className="host-sentence-dropdown-placeholder">
+            [ Select ▾ ]
+          </span>
+        );
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
+  return (
+    <div className="game-layout">
+      <div className="question-card">
+        <div className="question-number">Question {qIndex + 1} of {questions.length} ({type.replace('_', ' ')})</div>
+        <div className="question-title">{activeQuestion.text}</div>
+      </div>
+
+      <div className="game-mid-section">
+        <div className="timer-container">
+          <div className="timer-number">{hostTimeLeft}</div>
+        </div>
+        <div className="answer-stats">
+          <span className="answer-stats-num">{answeredCount}</span> 
+          out of {hostPlayers.length} answered
+        </div>
+      </div>
+
+      {/* RENDER LAYOUT BY QUESTION TYPE */}
+      <div className="question-content-area" style={{ marginTop: 24, width: '100%' }}>
+        
+        {/* 1. MULTIPLE CHOICE */}
+        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
+          <div className="options-grid">
+            {activeQuestion.options.map((opt, idx) => (
+              <div key={idx} className={`option-card ${OPTION_CLASSES[idx]}`}>
+                <div className={`option-icon ${OPTION_SHAPES[idx]}`} />
+                <span>{opt}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 2. SORTING */}
+        {type === 'SORTING' && (
+          <div>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16, textAlign: 'center', fontSize: '1rem', fontWeight: 600 }}>
+              Arrange these in the correct order on your device:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: '500px', margin: '0 auto' }}>
+              {shuffledSortingOptions.map((opt, idx) => (
+                <div 
+                  key={idx} 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    fontSize: '1.1rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <span style={{ color: 'var(--accent-light)', marginRight: 8 }}>✦</span>
+                  {opt}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. DRAG AND DROP */}
+        {type === 'DRAG_DROP' && activeQuestion.options && (
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+            <div className="host-sentence-container" style={{
+              background: 'rgba(15, 23, 42, 0.4)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '12px',
+              padding: '28px',
+              fontSize: '1.4rem',
+              lineHeight: '2rem',
+              marginBottom: 32,
+              display: 'inline-block'
+            }}>
+              {renderSentenceWithBlanks(activeQuestion.options.sentence)}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {activeQuestion.options.choices?.map((choice, idx) => (
+                <div 
+                  key={idx} 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  {choice}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. DROP DOWN */}
+        {type === 'DROP_DOWN' && activeQuestion.options && (
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+            <div className="host-sentence-container" style={{
+              background: 'rgba(15, 23, 42, 0.4)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '12px',
+              padding: '28px',
+              fontSize: '1.4rem',
+              lineHeight: '2rem',
+              display: 'inline-block'
+            }}>
+              {renderSentenceWithDropdowns(activeQuestion.options.sentence)}
+            </div>
+          </div>
+        )}
+
+        {/* 5. CATEGORIZE */}
+        {type === 'CATEGORIZE' && activeQuestion.options && (
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${Math.min(activeQuestion.options.categories?.length || 2, 4)}, 1fr)`,
+              gap: 20,
+              marginBottom: 32
+            }}>
+              {activeQuestion.options.categories?.map((cat, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.1)',
+                    border: '1px solid var(--panel-border-focus)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    color: 'var(--accent-light)'
+                  }}
+                >
+                  {cat}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {activeQuestion.options.items?.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    fontSize: '1rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {item.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <button className="btn btn-secondary" onClick={hostShowLeaderboard}>
+          Skip Question
+        </button>
+      </div>
+    </div>
+  );
+}

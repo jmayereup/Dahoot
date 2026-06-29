@@ -1,0 +1,72 @@
+export const DEFAULT_QUESTIONS = [
+  {
+    text: "Which programming language was created by Brendan Eich in 1995 in just 10 days?",
+    options: ["Java", "JavaScript", "Python", "C++"],
+    correct_option_index: 1,
+    type: "MULTIPLE_CHOICE"
+  },
+  {
+    text: "What does CSS stand for?",
+    options: ["Computer Style Sheets", "Cascading Style Sheets", "Creative Style Sheets", "Colorful Style Sheets"],
+    correct_option_index: 1,
+    type: "MULTIPLE_CHOICE"
+  },
+  {
+    text: "Sort these tech stack layers from front-end to back-end (client-side at the top, database at the bottom).",
+    options: ["UI CSS / HTML", "React Client Logic", "Express API Router", "PostgreSQL Database"],
+    correct_option_index: 0,
+    type: "SORTING"
+  },
+  {
+    text: "Drag the correct hook names to complete the sentence.",
+    options: {
+      sentence: "In React, we use the [blank0] hook to manage local component state, and [blank1] to perform side effects.",
+      choices: ["useState", "useEffect", "useContext", "useRef"],
+      correct: ["useState", "useEffect"]
+    },
+    correct_option_index: 0,
+    type: "DRAG_DROP"
+  },
+  {
+    text: "Select the correct technologies from the dropdowns to complete the statement.",
+    options: {
+      sentence: "PocketBase is written in {{0}} and uses {{1}} as its default embedded database engine.",
+      dropdowns: [
+        { choices: ["Go", "Rust", "JavaScript"], correct: "Go" },
+        { choices: ["SQLite", "PostgreSQL", "MongoDB"], correct: "SQLite" }
+      ]
+    },
+    correct_option_index: 0,
+    type: "DROP_DOWN"
+  },
+  {
+    text: "Classify these technologies into their correct category.",
+    options: {
+      categories: ["Languages", "Frameworks"],
+      items: [
+        { name: "JavaScript", category: "Languages" },
+        { name: "React", category: "Frameworks" },
+        { name: "Python", category: "Languages" },
+        { name: "Next.js", category: "Frameworks" },
+        { name: "SQL", category: "Languages" },
+        { name: "Express", category: "Frameworks" }
+      ]
+    },
+    correct_option_index: 0,
+    type: "CATEGORIZE"
+  }
+];
+
+export const OPTION_CLASSES = [
+  'option-card-red',
+  'option-card-blue',
+  'option-card-yellow',
+  'option-card-green'
+];
+
+export const OPTION_SHAPES = [
+  'shape-triangle',
+  'shape-diamond',
+  'shape-circle',
+  'shape-square'
+];
