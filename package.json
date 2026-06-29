@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "db:install": "node scripts/db-install.js",
     "db:setup": "node scripts/db-setup.js"
   },
   "dependencies": {

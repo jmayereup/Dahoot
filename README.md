@@ -1,16 +1,65 @@
-# React + Vite
+# Dahoot 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Dahoot is a premium, self-hosted educational quiz platform similar to Kahoot. It features a modern, responsive, glassmorphism-inspired UI and connects to a local **PocketBase** backend for real-time WebSocket communication and multiplayer synchronization.
 
-Currently, two official plugins are available:
+## 🌟 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Teacher View / Question Bank Manager**: Create, edit, and delete questions directly in the application.
+- **Multiple Question Types**:
+  - **Multiple Choice**: Speed-based points answering.
+  - **Sorting**: Arrange options in correct sequence.
+  - **Drag & Drop**: Tap-to-place words in blank spaces (Duolingo style).
+  - **Drop-Down**: Fill sentences by selecting options from dropdown selections.
+  - **Categorize**: Tinder-style deck categorizer where students classify elements into custom groups.
+- **Lobby Management**: Automated game codes, live student registration badges, clickable links, and scannable QR codes for seamless student entry.
+- **Projector & Leaderboards**: Real-time timer count, skip capabilities, correctness distributions, and top-5 leaderboard animations.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ First-Time Setup Instructions
 
-## Expanding the Oxlint configuration
+Follow these steps to get Dahoot up and running on your local machine:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### 1. Install Dependencies
+Clone the repository and install Node dependencies:
+```bash
+npm install
+```
+
+### 2. Download PocketBase (Local Dev Version)
+Install the correct PocketBase binary for your Operating System and CPU architecture automatically using the installation script:
+```bash
+npm run db:install
+```
+*This downloads the OS-specific ZIP of PocketBase, extracts the binary into `/pocketbase/`, and configures execution permissions.*
+
+### 3. Configure Environment Variables
+Copy the example configuration to create your local environment:
+```bash
+cp .env.example .env
+```
+Open the `.env` file and configure:
+- `VITE_POCKETBASE_URL` (Defaults to `http://127.0.0.1:8090`)
+- `POCKETBASE_ADMIN_EMAIL` (Email for backend admin, e.g. `dev@teacherjake.com`)
+- `POCKETBASE_ADMIN_PASSWORD` (Password, e.g. `localAdmin`)
+
+### 4. Setup & Seed Database Schema
+Before running the app, provision your database collections and populate default quiz questions:
+1. Make sure PocketBase is running (see next step).
+2. Run the database configuration script:
+   ```bash
+   npm run db:setup
+   ```
+*This script logs into your local PocketBase instance as a superuser, creates the required schemas for `rooms`, `players`, and `questions`, and seeds default demo questions representing all five question types.*
+
+---
+
+## 🚀 Running the App
+
+Start the PocketBase server and the Vite development server concurrently with a single command:
+```bash
+npm run dev
+```
+
+- **Open Student / Host Panel**: Navigate to `http://localhost:5173`.
+- **Open PocketBase Admin Panel**: Navigate to `http://127.0.0.1:8090/_/` and log in with your configured email and password.
