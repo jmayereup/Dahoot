@@ -246,7 +246,7 @@ export function PlayerQuestion({
                     onClick={() => submitAnswer(idx)}
                     disabled={playerTimeLeft <= 0}
                   >
-                    <div className={`option-icon ${OPTION_SHAPES[idx]}`} />
+                    <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
                     <span>{opt}</span>
                   </button>
                 ))}

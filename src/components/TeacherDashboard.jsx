@@ -231,27 +231,22 @@ export function TeacherDashboard({
     const letters = ['A', 'B', 'C', 'D'];
 
     return (
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: 16, 
-        width: '100%' 
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
         {activeQuestion.options.map((opt, idx) => {
           const isCorrect = idx === activeQuestion.correct_option_index;
           const isSelected = idx === selectedOptionIdx;
           
           let buttonStyle = {
-            padding: '20px 24px',
-            fontSize: '1.05rem',
+            padding: '14px 16px',
+            fontSize: '0.95rem',
             fontWeight: '600',
             width: '100%',
             transition: 'all 0.2s ease',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
-            gap: 16,
-            borderRadius: '10px',
+            gap: 12,
+            borderRadius: '12px',
             color: 'var(--text-primary)',
             textAlign: 'left',
             cursor: previewAnswered ? 'default' : 'pointer',
@@ -259,8 +254,8 @@ export function TeacherDashboard({
           };
 
           let badgeStyle = {
-            width: '32px',
-            height: '32px',
+            width: '28px',
+            height: '28px',
             borderRadius: '6px',
             background: 'rgba(255, 255, 255, 0.05)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -269,7 +264,7 @@ export function TeacherDashboard({
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: '700',
-            fontSize: '0.9rem',
+            fontSize: '0.8rem',
             transition: 'all 0.2s ease',
             flexShrink: 0
           };
@@ -309,18 +304,18 @@ export function TeacherDashboard({
               <div className="preview-mc-badge" style={badgeStyle}>
                 {letters[idx]}
               </div>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between' }}>
                 <span>{opt}</span>
                 {previewAnswered && isCorrect && (
                   <span style={{ 
                     background: '#10b981', 
                     borderRadius: '50%', 
-                    width: 28, 
-                    height: 28, 
+                    width: 22, 
+                    height: 22, 
                     display: 'inline-flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 
-                    fontSize: '1rem',
+                    fontSize: '0.85rem',
                     color: '#ffffff',
                     boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
                     flexShrink: 0
@@ -332,12 +327,12 @@ export function TeacherDashboard({
                   <span style={{ 
                     background: '#ff4b60', 
                     borderRadius: '50%', 
-                    width: 28, 
-                    height: 28, 
+                    width: 22, 
+                    height: 22, 
                     display: 'inline-flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 
-                    fontSize: '1rem',
+                    fontSize: '0.85rem',
                     color: '#ffffff',
                     boxShadow: '0 0 10px rgba(255, 75, 96, 0.5)',
                     flexShrink: 0
@@ -848,17 +843,16 @@ export function TeacherDashboard({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px'
+        padding: '12px'
       }}>
         <div 
-          className="panel panel-large animate-join-focus" 
+          className="panel panel-large animate-join-focus p-4 sm:p-7" 
           style={{ 
             width: '100%', 
             maxWidth: '650px', 
-            maxHeight: '90vh', 
+            maxHeight: '94vh', 
             overflowY: 'auto',
             textAlign: 'left',
-            padding: '30px',
             border: '1px solid var(--panel-border-focus)',
             position: 'relative'
           }}
@@ -1337,71 +1331,55 @@ export function TeacherDashboard({
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {startHosting && (
-                        <button 
-                          className="btn btn-primary" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startHosting(game.id);
-                          }}
-                          style={{ 
-                            flex: 1.2, 
-                            padding: '10px 8px', 
-                            fontSize: '0.85rem',
-                            background: 'linear-gradient(to right, #BFFCC6, #9BE6A3)',
-                            color: '#1e293b'
-                          }}
-                        >
-                          🚀 Host Game
-                        </button>
-                      )}
+                  <div className="flex flex-col gap-2 mt-3.5">
+                    {startHosting && (
                       <button 
-                        className="btn btn-secondary" 
-                        onClick={() => setSelectedGame(game)}
-                        style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}
+                        className="btn-card-action btn-card-action-primary py-2.5 text-sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startHosting(game.id);
+                        }}
                       >
-                        ✏ Questions
+                        🚀 Host Game
+                      </button>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        className="btn-card-action btn-card-action-secondary py-2 text-xs" 
+                        onClick={() => setSelectedGame(game)}
+                      >
+                        ✏️ Questions
                       </button>
                       <button 
-                        className="btn btn-secondary" 
+                        className="btn-card-action btn-card-action-secondary py-2 text-xs" 
                         onClick={(e) => {
                           e.stopPropagation();
                           startPreviewGame(game);
                         }}
-                        style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}
                       >
                         👁️ Preview
                       </button>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div className="grid grid-cols-[1fr_1fr_40px] gap-2">
                       <button 
-                        className="btn btn-secondary btn-sm" 
+                        className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => startEditingGame(game, e)}
-                        style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
                       >
                         Edit Details
                       </button>
                       <button 
-                        className="btn btn-secondary btn-sm" 
+                        className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => copyGame(game, e)}
-                        style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
                       >
                         Copy Game
                       </button>
                       <button 
-                        className="btn btn-secondary btn-sm" 
+                        className="btn-card-action btn-card-action-danger py-1.5 text-xs" 
                         onClick={(e) => deleteGame(game.id, e)}
-                        style={{ 
-                          padding: '8px 12px', 
-                          fontSize: '0.85rem',
-                          borderColor: 'rgba(239, 68, 68, 0.2)',
-                          color: '#ff4b60'
-                        }}
                       >
-                        🗑
+                        🗑️
                       </button>
                     </div>
                   </div>
@@ -1600,7 +1578,9 @@ Sort these numbers from lowest to highest.
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className={`option-icon ${OPTION_SHAPES[idx]}`} style={{ width: 16, height: 16, border: 'none' }} />
+                          <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {['A', 'B', 'C', 'D'][idx]}
+                          </span>
                           <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                             Choice {idx + 1}
                           </span>
@@ -1904,7 +1884,9 @@ Sort these numbers from lowest to highest.
                             const isCorrect = type === 'MULTIPLE_CHOICE' && question.correct_option_index === oIdx;
                             return (
                               <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: isCorrect ? 600 : 400, color: isCorrect ? '#10b981' : 'var(--text-secondary)' }}>
-                                <span className={`option-icon ${OPTION_SHAPES[oIdx]}`} style={{ width: 10, height: 10, border: 'none', backgroundColor: isCorrect ? '#10b981' : 'transparent', opacity: isCorrect ? 1 : 0.4 }} />
+                                <span style={{ fontWeight: 'bold', fontSize: '0.8rem', color: isCorrect ? '#10b981' : 'var(--text-muted)' }}>
+                                  {['A', 'B', 'C', 'D'][oIdx]}.
+                                </span>
                                 <span>{opt}</span>
                               </div>
                             );

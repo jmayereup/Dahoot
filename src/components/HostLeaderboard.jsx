@@ -86,7 +86,7 @@ export function HostLeaderboard({
         {/* 1. MULTIPLE CHOICE */}
         {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
           <div className={`option-card ${OPTION_CLASSES[activeQuestion.correct_option_index]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
-            <div className={`option-icon ${OPTION_SHAPES[activeQuestion.correct_option_index]}`} />
+            <div className="option-icon">{['A', 'B', 'C', 'D'][activeQuestion.correct_option_index]}</div>
             <span>{activeQuestion.options[activeQuestion.correct_option_index]}</span>
           </div>
         )}

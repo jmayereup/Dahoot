@@ -77,7 +77,7 @@ export function HostQuestion({
           <div className="options-grid">
             {activeQuestion.options.map((opt, idx) => (
               <div key={idx} className={`option-card ${OPTION_CLASSES[idx]}`}>
-                <div className={`option-icon ${OPTION_SHAPES[idx]}`} />
+                <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
                 <span>{opt}</span>
               </div>
             ))}

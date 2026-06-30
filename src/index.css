@@ -198,14 +198,14 @@ p.subtitle {
 }
 
 @utility option-card {
-  @apply flex items-center gap-4 p-6 rounded-2xl text-slate-800 text-lg font-bold shadow-md border-none text-left w-full transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply flex items-center gap-4 p-5.5 rounded-2xl bg-white border border-slate-200/80 text-slate-800 text-lg font-bold shadow-sm text-left w-full transition-all disabled:opacity-55 disabled:cursor-not-allowed;
   
   &.interactive {
-    @apply cursor-pointer hover:-translate-y-1 hover:shadow-lg active:translate-y-0;
+    @apply cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-rose-300 hover:bg-rose-50/10 active:translate-y-0;
   }
 
   &.correct {
-    @apply ring-4 ring-emerald-300 shadow-lg shadow-emerald-100;
+    @apply ring-4 ring-emerald-400 bg-emerald-50/30 border-emerald-400 shadow-lg shadow-emerald-100;
   }
 
   &.incorrect {
@@ -214,18 +214,13 @@ p.subtitle {
 }
 
 @utility option-icon {
-  @apply w-9 h-9 rounded-lg bg-black/5 flex items-center justify-center text-lg flex-shrink-0 font-extrabold text-slate-700;
+  @apply w-9 h-9 rounded-lg bg-black/5 flex items-center justify-center text-lg flex-shrink-0 font-extrabold text-slate-600;
 }
 
-@utility option-card-red { @apply bg-gradient-to-r from-pastel-red-start to-pastel-red-end; }
-@utility option-card-blue { @apply bg-gradient-to-r from-pastel-blue-start to-pastel-blue-end; }
-@utility option-card-yellow { @apply bg-gradient-to-r from-pastel-yellow-start to-pastel-yellow-end; }
-@utility option-card-green { @apply bg-gradient-to-r from-pastel-green-start to-pastel-green-end; }
-
-.shape-triangle::before { content: '▲'; }
-.shape-diamond::before { content: '◆'; }
-.shape-circle::before { content: '●'; }
-.shape-square::before { content: '■'; }
+@utility option-card-red { @apply bg-white; }
+@utility option-card-blue { @apply bg-white; }
+@utility option-card-yellow { @apply bg-white; }
+@utility option-card-green { @apply bg-white; }
 
 /* Leaderboard view utilities */
 @utility leaderboard-list {
@@ -481,5 +476,22 @@ p.subtitle {
 
 @utility game-tag {
   @apply bg-slate-100/60 border border-slate-200/50 text-slate-500 font-bold text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors hover:bg-slate-200/45;
+}
+
+/* Card Action Buttons styling for modern, premium dashboard */
+@utility btn-card-action {
+  @apply inline-flex items-center justify-center rounded-xl font-bold cursor-pointer transition-all gap-1.5 w-full border text-center select-none shadow-xs hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none;
+}
+
+@utility btn-card-action-primary {
+  @apply bg-gradient-to-r from-[#BFFCC6] to-[#9BE6A3] border-emerald-200/40 text-slate-800 hover:border-emerald-300/60 hover:shadow-md hover:shadow-emerald-50;
+}
+
+@utility btn-card-action-secondary {
+  @apply bg-white border-slate-200/80 text-slate-700 hover:bg-slate-50/50 hover:border-slate-300;
+}
+
+@utility btn-card-action-danger {
+  @apply bg-rose-50/20 border-rose-100/80 text-rose-500 hover:bg-rose-50/80 hover:border-rose-200 hover:text-rose-600 hover:shadow-rose-50;
 }
 
