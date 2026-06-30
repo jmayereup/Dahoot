@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { DEFAULT_QUESTIONS } from '../constants';
 
 export function useHostGame(view, setView) {
+  const [gamesList, setGamesList] = useState([]);
   const [hostRoom, setHostRoom] = useState(null);
   const [hostPlayers, setHostPlayers] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -12,6 +13,24 @@ export function useHostGame(view, setView) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Fetch games list
+  const fetchGames = async () => {
+    try {
+      const list = await pb.collection('games').getFullList({
+        sort: 'created'
+      });
+      setGamesList(list);
+    } catch (err) {
+      console.error("Error fetching games list for host:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (view === 'selection') {
+      fetchGames();
+    }
+  }, [view]);
 
   // Generate QR code whenever the host room code is generated
   useEffect(() => {
@@ -118,23 +137,30 @@ export function useHostGame(view, setView) {
       .catch(err => console.error("Failed to copy link:", err));
   };
 
-  const startHosting = async () => {
+  const startHosting = async (gameId) => {
     setError('');
+    if (!gameId) {
+      setError('Please select a game to host.');
+      return;
+    }
     setLoading(true);
     try {
-      let qList = await pb.collection('questions').getFullList();
+      let qList = await pb.collection('questions').getFullList({
+        filter: `game_id = "${gameId}"`,
+        sort: 'created'
+      });
+      
       if (qList.length === 0) {
-        for (const q of DEFAULT_QUESTIONS) {
-          await pb.collection('questions').create(q);
-        }
-        qList = await pb.collection('questions').getFullList();
+        throw new Error('This game has no questions. Please add questions in the Question Bank Manager first.');
       }
+      
       setQuestions(qList);
 
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
 
       const room = await pb.collection('rooms').create({
         code: pin,
+        game_id: gameId,
         current_question_index: 0,
         status: 'LOBBY',
         current_question_start_time: ''
@@ -206,17 +232,23 @@ export function useHostGame(view, setView) {
   const seedQuestions = async () => {
     try {
       setLoading(true);
-      const list = await pb.collection('questions').getList(1, 1);
+      const list = await pb.collection('games').getList(1, 1);
       if (list.totalItems === 0) {
+        const defaultGame = await pb.collection('games').create({
+          title: "General Tech Trivia",
+          description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers."
+        });
         for (const q of DEFAULT_QUESTIONS) {
-          await pb.collection('questions').create(q);
+          await pb.collection('questions').create({
+            ...q,
+            game_id: defaultGame.id
+          });
         }
-        alert("Sample questions seeded successfully!");
+        alert("Sample game and questions seeded successfully!");
       } else {
-        alert("Questions collection already has data.");
+        alert("Games database already has data.");
       }
-      const qList = await pb.collection('questions').getFullList();
-      setQuestions(qList);
+      await fetchGames();
     } catch (err) {
       alert("Failed to seed questions: " + err.message);
     } finally {
@@ -225,6 +257,7 @@ export function useHostGame(view, setView) {
   };
 
   return {
+    gamesList,
     hostRoom,
     hostPlayers,
     questions,
@@ -242,6 +275,7 @@ export function useHostGame(view, setView) {
     hostNextQuestion,
     hostEndGame,
     handleCopyLink,
-    seedQuestions
+    seedQuestions,
+    refreshGames: fetchGames
   };
 }

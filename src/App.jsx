@@ -48,6 +48,8 @@ function App() {
         seedQuestions={hostGame.seedQuestions}
         setHasPinFromUrl={playerGame.setHasPinFromUrl}
         setView={setView}
+        gamesList={hostGame.gamesList}
+        refreshGames={hostGame.refreshGames}
       />
     );
   }
@@ -93,6 +95,23 @@ function App() {
   if (view === 'teacher') {
     return (
       <TeacherDashboard
+        // Games List State
+        gamesList={teacherDashboard.gamesList}
+        selectedGame={teacherDashboard.selectedGame}
+        setSelectedGame={teacherDashboard.setSelectedGame}
+        isEditingGame={teacherDashboard.isEditingGame}
+        selectedGameForEdit={teacherDashboard.selectedGameForEdit}
+        gameTitle={teacherDashboard.gameTitle}
+        setGameTitle={teacherDashboard.setGameTitle}
+        gameDescription={teacherDashboard.gameDescription}
+        setGameDescription={teacherDashboard.setGameDescription}
+        startCreatingGame={teacherDashboard.startCreatingGame}
+        startEditingGame={teacherDashboard.startEditingGame}
+        cancelEditingGame={teacherDashboard.cancelEditingGame}
+        saveGame={teacherDashboard.saveGame}
+        deleteGame={teacherDashboard.deleteGame}
+        copyGame={teacherDashboard.copyGame}
+
         questionsList={teacherDashboard.questionsList}
         loading={teacherDashboard.loading}
         error={teacherDashboard.error}

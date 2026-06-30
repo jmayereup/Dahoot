@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-const POCKETBASE_VERSION = '0.30.2'; // Modern superuser version matching db-setup.js
+const POCKETBASE_VERSION = '0.39.5'; // Modern superuser version matching db-setup.js
 
 // Determine PocketBase binary release name based on OS & Architecture
 function getDownloadUrl() {

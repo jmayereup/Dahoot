@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PocketBaseStatusBanner } from './PocketBaseStatusBanner';
 import { LogoContainer } from './LogoContainer';
 
@@ -15,8 +15,18 @@ export function SelectionView({
   startHosting,
   seedQuestions,
   setHasPinFromUrl,
-  setView
+  setView,
+  gamesList = [],
+  refreshGames
 }) {
+  const [selectedGameId, setSelectedGameId] = useState('');
+
+  useEffect(() => {
+    if (gamesList.length > 0 && !selectedGameId) {
+      setSelectedGameId(gamesList[0].id);
+    }
+  }, [gamesList, selectedGameId]);
+
   return (
     <div className="app-container">
       <PocketBaseStatusBanner status={pocketbaseStatus} />
@@ -72,13 +82,37 @@ export function SelectionView({
           {/* Host Panel */}
           <div className="panel">
             <h2>Host a Quiz</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
               Open a new game lobby on this screen and project it for the class.
             </p>
+
+            <div className="form-group" style={{ textAlign: 'left', marginBottom: 24 }}>
+              <label className="form-label">Select Game Collection</label>
+              {gamesList.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0' }}>
+                  No games found. Click "Reset & Seed Demo Questions" to create one.
+                </p>
+              ) : (
+                <select 
+                  className="form-input" 
+                  value={selectedGameId} 
+                  onChange={(e) => setSelectedGameId(e.target.value)}
+                  disabled={loading}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="">-- Choose a Game --</option>
+                  {gamesList.map(g => (
+                    <option key={g.id} value={g.id}>{g.title}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <button 
               className="btn btn-primary" 
-              onClick={startHosting} 
-              disabled={loading || pocketbaseStatus !== 'connected'}
+              onClick={() => startHosting(selectedGameId)} 
+              disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
+              style={{ marginBottom: 16 }}
             >
               {loading ? 'Initializing...' : 'Create Game Lobby'}
             </button>
@@ -91,7 +125,7 @@ export function SelectionView({
                 onClick={() => setView('teacher')}
                 disabled={loading || pocketbaseStatus !== 'connected'}
               >
-                ⚙ Manage Question Bank
+                ⚙ Manage Games & Questions
               </button>
               
               <button 

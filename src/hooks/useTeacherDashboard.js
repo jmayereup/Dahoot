@@ -2,11 +2,20 @@ import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 
 export function useTeacherDashboard(view) {
+  const [gamesList, setGamesList] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null); // The game whose questions we are currently viewing/editing
+  
   const [questionsList, setQuestionsList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Form states
+  // Game Form states
+  const [isEditingGame, setIsEditingGame] = useState(false);
+  const [selectedGameForEdit, setSelectedGameForEdit] = useState(null); // null if creating, game object if editing
+  const [gameTitle, setGameTitle] = useState('');
+  const [gameDescription, setGameDescription] = useState('');
+
+  // Question Form states
   const [isEditing, setIsEditing] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null); // null if creating, question object if editing
   const [questionType, setQuestionType] = useState('MULTIPLE_CHOICE');
@@ -23,18 +32,56 @@ export function useTeacherDashboard(view) {
 
   // DROP_DOWN
   const [dropdownSentence, setDropdownSentence] = useState('');
-  const [dropdownOptions, setDropdownOptions] = useState(['', '', '', '']); // Comma-separated choice lines
+  const [dropdownOptions, setDropdownOptions] = useState(['', '', '', '']);
 
   // CATEGORIZE
-  const [categorizeCategories, setCategorizeCategories] = useState(''); // Comma-separated categories
-  const [categorizeItemsText, setCategorizeItemsText] = useState(''); // "Item: Category" lines
+  const [categorizeCategories, setCategorizeCategories] = useState('');
+  const [categorizeItemsText, setCategorizeItemsText] = useState('');
 
-  // Fetch questions from PocketBase
-  const fetchQuestions = async () => {
+  // Fetch games from PocketBase (including question count per game)
+  const fetchGames = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const games = await pb.collection('games').getFullList({
+        sort: 'created'
+      });
+      
+      // Fetch question counts for each game
+      const gamesWithCounts = await Promise.all(games.map(async (game) => {
+        try {
+          const questions = await pb.collection('questions').getList(1, 1, {
+            filter: `game_id = "${game.id}"`
+          });
+          return {
+            ...game,
+            questionCount: questions.totalItems
+          };
+        } catch (e) {
+          return {
+            ...game,
+            questionCount: 0
+          };
+        }
+      }));
+      
+      setGamesList(gamesWithCounts);
+    } catch (err) {
+      console.error("Error fetching games:", err);
+      setError("Failed to load games: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch questions for selected game
+  const fetchQuestions = async (gameId) => {
+    if (!gameId) return;
     setLoading(true);
     setError('');
     try {
       const list = await pb.collection('questions').getFullList({
+        filter: `game_id = "${gameId}"`,
         sort: 'created'
       });
       setQuestionsList(list);
@@ -48,10 +95,128 @@ export function useTeacherDashboard(view) {
 
   useEffect(() => {
     if (view === 'teacher') {
-      fetchQuestions();
+      if (selectedGame) {
+        fetchQuestions(selectedGame.id);
+      } else {
+        fetchGames();
+      }
     }
-  }, [view]);
+  }, [view, selectedGame]);
 
+  // Game Actions
+  const startCreatingGame = () => {
+    setSelectedGameForEdit(null);
+    setGameTitle('');
+    setGameDescription('');
+    setIsEditingGame(true);
+    setError('');
+  };
+
+  const startEditingGame = (game, e) => {
+    if (e) e.stopPropagation();
+    setSelectedGameForEdit(game);
+    setGameTitle(game.title);
+    setGameDescription(game.description || '');
+    setIsEditingGame(true);
+    setError('');
+  };
+
+  const cancelEditingGame = () => {
+    setIsEditingGame(false);
+    setSelectedGameForEdit(null);
+    setError('');
+  };
+
+  const saveGame = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!gameTitle.trim()) {
+      setError('Game title is required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (selectedGameForEdit) {
+        await pb.collection('games').update(selectedGameForEdit.id, {
+          title: gameTitle.trim(),
+          description: gameDescription.trim()
+        });
+      } else {
+        await pb.collection('games').create({
+          title: gameTitle.trim(),
+          description: gameDescription.trim()
+        });
+      }
+      setIsEditingGame(false);
+      setSelectedGameForEdit(null);
+      await fetchGames();
+    } catch (err) {
+      console.error("Error saving game:", err);
+      setError("Failed to save game: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteGame = async (id, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this game? This will also delete all its questions.")) {
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await pb.collection('games').delete(id);
+      await fetchGames();
+    } catch (err) {
+      console.error("Error deleting game:", err);
+      setError("Failed to delete game: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyGame = async (game, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to copy the game "${game.title}"?`)) {
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const copiedGame = await pb.collection('games').create({
+        title: `${game.title} (Copy)`,
+        description: game.description || ''
+      });
+
+      // Get all questions
+      const qList = await pb.collection('questions').getFullList({
+        filter: `game_id = "${game.id}"`,
+        sort: 'created'
+      });
+
+      for (const q of qList) {
+        await pb.collection('questions').create({
+          game_id: copiedGame.id,
+          text: q.text,
+          options: q.options,
+          correct_option_index: q.correct_option_index,
+          type: q.type
+        });
+      }
+
+      await fetchGames();
+    } catch (err) {
+      console.error("Error copying game:", err);
+      setError("Failed to copy game: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Question Actions
   const startCreating = () => {
     setSelectedQuestion(null);
     setQuestionType('MULTIPLE_CHOICE');
@@ -75,7 +240,6 @@ export function useTeacherDashboard(view) {
     setQuestionText(question.text);
     setError('');
 
-    // Prepopulate type-specific states
     if (type === 'MULTIPLE_CHOICE' || type === 'SORTING') {
       const opts = Array.isArray(question.options) ? [...question.options] : [];
       while (opts.length < 4) opts.push('');
@@ -136,7 +300,6 @@ export function useTeacherDashboard(view) {
       return;
     }
 
-    // Validate and build payload based on type
     let optionsPayload = null;
 
     if (questionType === 'MULTIPLE_CHOICE' || questionType === 'SORTING') {
@@ -220,40 +383,46 @@ export function useTeacherDashboard(view) {
         return;
       }
 
-      const itemsList = categorizeItemsText
-        .split('\n')
-        .map(line => {
-          const parts = line.split(':');
-          if (parts.length >= 2) {
-            const cat = parts[1].trim();
-            if (!categoriesList.includes(cat)) {
-              throw new Error(`Category "${cat}" in item "${parts[0].trim()}" does not match defined categories.`);
+      try {
+        const itemsList = categorizeItemsText
+          .split('\n')
+          .map(line => {
+            const parts = line.split(':');
+            if (parts.length >= 2) {
+              const cat = parts[1].trim();
+              if (!categoriesList.includes(cat)) {
+                throw new Error(`Category "${cat}" in item "${parts[0].trim()}" does not match defined categories.`);
+              }
+              return {
+                name: parts[0].trim(),
+                category: cat
+              };
             }
-            return {
-              name: parts[0].trim(),
-              category: cat
-            };
-          }
-          if (line.trim()) {
-            throw new Error(`Invalid line format: "${line}". Must be "ItemName: CategoryName".`);
-          }
-          return null;
-        })
-        .filter(Boolean);
+            if (line.trim()) {
+              throw new Error(`Invalid line format: "${line}". Must be "ItemName: CategoryName".`);
+            }
+            return null;
+          })
+          .filter(Boolean);
 
-      if (itemsList.length === 0) {
-        setError('Please enter at least one item mapped to a category.');
+        if (itemsList.length === 0) {
+          setError('Please enter at least one item mapped to a category.');
+          return;
+        }
+
+        optionsPayload = {
+          categories: categoriesList,
+          items: itemsList
+        };
+      } catch (err) {
+        setError(err.message);
         return;
       }
-
-      optionsPayload = {
-        categories: categoriesList,
-        items: itemsList
-      };
     }
 
     setLoading(true);
     const questionData = {
+      game_id: selectedGame.id,
       text: questionText.trim(),
       options: optionsPayload,
       correct_option_index: questionType === 'MULTIPLE_CHOICE' ? correctOptionIndex : 0,
@@ -268,7 +437,7 @@ export function useTeacherDashboard(view) {
       }
       setIsEditing(false);
       setSelectedQuestion(null);
-      await fetchQuestions();
+      await fetchQuestions(selectedGame.id);
     } catch (err) {
       console.error("Error saving question:", err);
       setError("Failed to save question: " + err.message);
@@ -286,7 +455,7 @@ export function useTeacherDashboard(view) {
     setError('');
     try {
       await pb.collection('questions').delete(id);
-      await fetchQuestions();
+      await fetchQuestions(selectedGame.id);
     } catch (err) {
       console.error("Error deleting question:", err);
       setError("Failed to delete question: " + err.message);
@@ -296,6 +465,22 @@ export function useTeacherDashboard(view) {
   };
 
   return {
+    gamesList,
+    selectedGame,
+    setSelectedGame,
+    isEditingGame,
+    selectedGameForEdit,
+    gameTitle,
+    setGameTitle,
+    gameDescription,
+    setGameDescription,
+    startCreatingGame,
+    startEditingGame,
+    cancelEditingGame,
+    saveGame,
+    deleteGame,
+    copyGame,
+
     questionsList,
     loading,
     error,
@@ -335,6 +520,6 @@ export function useTeacherDashboard(view) {
     cancelEditing,
     saveQuestion,
     deleteQuestion,
-    refreshList: fetchQuestions
+    refreshList: () => selectedGame ? fetchQuestions(selectedGame.id) : fetchGames()
   };
 }

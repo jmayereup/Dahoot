@@ -37,7 +37,10 @@ export function usePlayerGame(view, setView) {
       setLoading(true);
       const room = await pb.collection('rooms').getOne(roomId);
       const player = await pb.collection('players').getOne(playerId);
-      const qList = await pb.collection('questions').getFullList();
+      const qList = await pb.collection('questions').getFullList({
+        filter: `game_id = "${room.game_id}"`,
+        sort: 'created'
+      });
       
       setPlayerRoom(room);
       setPlayerRecord(player);
@@ -152,7 +155,10 @@ export function usePlayerGame(view, setView) {
         last_answered_index: -1
       });
 
-      const qList = await pb.collection('questions').getFullList();
+      const qList = await pb.collection('questions').getFullList({
+        filter: `game_id = "${room.game_id}"`,
+        sort: 'created'
+      });
       
       localStorage.setItem('dahoot_player_id', player.id);
       localStorage.setItem('dahoot_room_id', room.id);
