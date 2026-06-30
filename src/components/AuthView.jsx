@@ -128,11 +128,11 @@ export function AuthView({ onSuccess, onCancel }) {
         {/* Tab Selection */}
         <div style={{
           display: 'flex',
-          background: 'rgba(15, 23, 42, 0.4)',
+          background: 'rgba(93, 107, 130, 0.08)',
           borderRadius: 'var(--radius-sm)',
           padding: '4px',
           marginBottom: '24px',
-          border: '1px solid var(--panel-border)'
+          border: '1px solid rgba(93, 107, 130, 0.12)'
         }}>
           <button
             type="button"
@@ -140,7 +140,7 @@ export function AuthView({ onSuccess, onCancel }) {
             style={{
               flex: 1,
               background: isLogin ? 'var(--accent-gradient)' : 'transparent',
-              color: '#fff',
+              color: isLogin ? '#5D6B82' : 'var(--text-secondary)',
               border: 'none',
               borderRadius: '6px',
               padding: '10px',
@@ -158,7 +158,7 @@ export function AuthView({ onSuccess, onCancel }) {
             style={{
               flex: 1,
               background: !isLogin ? 'var(--accent-gradient)' : 'transparent',
-              color: '#fff',
+              color: !isLogin ? '#5D6B82' : 'var(--text-secondary)',
               border: 'none',
               borderRadius: '6px',
               padding: '10px',

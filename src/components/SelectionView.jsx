@@ -130,19 +130,9 @@ export function SelectionView({
 
             {/* Filter Pills inside Selection View */}
             {gamesList.length > 0 && (
-              <div style={{
-                background: 'rgba(15, 23, 42, 0.25)',
-                border: '1px solid var(--panel-border)',
-                borderRadius: 'var(--radius-md)',
-                padding: '16px',
-                marginBottom: '20px',
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12
-              }}>
+              <div className="filter-panel" style={{ padding: '16px', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     🔍 Filter Games List
                   </span>
                   {hasActiveFilters && (
@@ -164,7 +154,7 @@ export function SelectionView({
 
                 {/* Subject Pills */}
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
                     Subject
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -174,16 +164,8 @@ export function SelectionView({
                         <button
                           key={sub}
                           onClick={() => toggleSubjectFilter(sub)}
-                          style={{
-                            background: active ? 'linear-gradient(135deg, #3b82f6 0%, #1368ce 100%)' : 'rgba(255,255,255,0.05)',
-                            border: '1px solid ' + (active ? '#3b82f6' : 'rgba(255,255,255,0.05)'),
-                            borderRadius: '12px',
-                            padding: '2px 8px',
-                            fontSize: '0.75rem',
-                            color: active ? '#ffffff' : 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
+                          className={`filter-btn ${active ? 'active-subject' : ''}`}
+                          style={{ padding: '2px 8px', fontSize: '0.75rem' }}
                         >
                           {sub}
                         </button>
@@ -194,7 +176,7 @@ export function SelectionView({
 
                 {/* CEFR Level Pills */}
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
                     CEFR Level
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -204,16 +186,8 @@ export function SelectionView({
                         <button
                           key={level}
                           onClick={() => toggleCefrFilter(level)}
-                          style={{
-                            background: active ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
-                            border: '1px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)'),
-                            borderRadius: '12px',
-                            padding: '2px 8px',
-                            fontSize: '0.75rem',
-                            color: active ? '#ffffff' : 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
+                          className={`filter-btn ${active ? 'active-cefr' : ''}`}
+                          style={{ padding: '2px 8px', fontSize: '0.75rem' }}
                         >
                           {level}
                         </button>
@@ -252,54 +226,22 @@ export function SelectionView({
                   {selectedGameDetails && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 2px' }}>
                       {selectedGameDetails.subject && (
-                        <span style={{ 
-                          background: 'rgba(59, 130, 246, 0.1)', 
-                          border: '1px solid rgba(59, 130, 246, 0.3)', 
-                          color: '#60a5fa', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           📚 {selectedGameDetails.subject}
                         </span>
                       )}
                       {selectedGameDetails.cefr_level && (
-                        <span style={{ 
-                          background: 'rgba(168, 85, 247, 0.1)', 
-                          border: '1px solid rgba(168, 85, 247, 0.3)', 
-                          color: '#c084fc', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           🎓 {selectedGameDetails.cefr_level}
                         </span>
                       )}
                       {selectedGameDetails.language && (
-                        <span style={{ 
-                          background: 'rgba(16, 185, 129, 0.1)', 
-                          border: '1px solid rgba(16, 185, 129, 0.3)', 
-                          color: '#34d399', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           🗣️ {selectedGameDetails.language}
                         </span>
                       )}
                       {selectedGameDetails.creator && (
-                        <span style={{ 
-                          background: 'rgba(245, 158, 11, 0.1)', 
-                          border: '1px solid rgba(245, 158, 11, 0.3)', 
-                          color: '#fbbf24', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           👤 {selectedGameDetails.creator}
                         </span>
                       )}

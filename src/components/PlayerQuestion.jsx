@@ -311,11 +311,7 @@ export function PlayerQuestion({
             {type === 'DRAG_DROP' && activeQuestion.options && (
               <div style={{ width: '100%' }}>
                 {/* Sentence Container */}
-                <div className="player-sentence-container" style={{
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '10px',
-                  padding: '20px',
+                <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
                   lineHeight: '2.5rem',
                   fontSize: '1.15rem',
                   marginBottom: 20
@@ -324,17 +320,7 @@ export function PlayerQuestion({
                 </div>
 
                 {/* Choices Pool */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: 10, 
-                  flexWrap: 'wrap', 
-                  justifyContent: 'center',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  padding: '16px',
-                  borderRadius: '10px',
-                  minHeight: '80px',
-                  marginBottom: 20
-                }}>
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex gap-2 flex-wrap justify-center min-h-[80px] mb-5">
                   {activeQuestion.options.choices?.map((choice, idx) => {
                     const isPlaced = placedWords.includes(choice);
                     return (
@@ -365,11 +351,7 @@ export function PlayerQuestion({
             {type === 'DROP_DOWN' && activeQuestion.options && (
               <div style={{ width: '100%' }}>
                 {/* Sentence Container */}
-                <div className="player-sentence-container" style={{
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '10px',
-                  padding: '20px',
+                <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
                   lineHeight: '2.8rem',
                   fontSize: '1.15rem',
                   marginBottom: 20

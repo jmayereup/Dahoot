@@ -505,11 +505,7 @@ export function TeacherDashboard({
 
     return (
       <div style={{ width: '100%' }}>
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.4)',
-          border: '1px solid var(--panel-border)',
-          borderRadius: '10px',
-          padding: '20px',
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
           lineHeight: '2.5rem',
           fontSize: '1.1rem',
           marginBottom: 20
@@ -519,17 +515,7 @@ export function TeacherDashboard({
 
         {!previewAnswered && (
           <>
-            <div style={{ 
-              display: 'flex', 
-              gap: 10, 
-              flexWrap: 'wrap', 
-              justifyContent: 'center',
-              background: 'rgba(0, 0, 0, 0.2)',
-              padding: '16px',
-              borderRadius: '10px',
-              minHeight: '80px',
-              marginBottom: 20
-            }}>
+            <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex gap-2 flex-wrap justify-center min-h-[80px] mb-5">
               {activeQuestion.options.choices?.map((choice, idx) => {
                 const isPlaced = placedWords.includes(choice);
                 return (
@@ -594,16 +580,7 @@ export function TeacherDashboard({
                 setDropdownSelections(updated);
               }}
               disabled={previewAnswered}
-              style={{
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid var(--accent-light)',
-                borderRadius: '6px',
-                color: 'var(--text-primary)',
-                padding: '4px 10px',
-                fontSize: '1rem',
-                margin: '0 6px',
-                cursor: previewAnswered ? 'default' : 'pointer'
-              }}
+              className="player-sentence-select"
             >
               <option value="">-- Choose --</option>
               {config.choices.map((choice, cIdx) => (
@@ -618,11 +595,7 @@ export function TeacherDashboard({
 
     return (
       <div style={{ width: '100%' }}>
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.4)',
-          border: '1px solid var(--panel-border)',
-          borderRadius: '10px',
-          padding: '20px',
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
           lineHeight: '2.8rem',
           fontSize: '1.1rem',
           marginBottom: 20
@@ -824,13 +797,7 @@ export function TeacherDashboard({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.4)',
-          border: '1px solid var(--panel-border)',
-          borderRadius: '10px',
-          padding: '20px',
-          position: 'relative'
-        }}>
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm">
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
@@ -838,20 +805,14 @@ export function TeacherDashboard({
             marginBottom: '10px',
             fontSize: '0.85rem'
           }}>
-            <span style={{ 
-              background: 'var(--accent-glow)', 
-              color: 'var(--accent-light)', 
-              fontWeight: 700, 
-              padding: '2px 8px', 
-              borderRadius: '12px' 
-            }}>
+            <span className="game-tag text-rose-500 border-rose-100 bg-rose-50/50 font-bold px-2.5 py-0.5">
               Question {previewCurrentIdx + 1} of {previewQuestions.length}
             </span>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
               {type.replace('_', ' ')}
             </span>
           </div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: '1.6' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: '1.6' }}>
             {activeQuestion.text}
           </div>
         </div>
@@ -966,32 +927,13 @@ export function TeacherDashboard({
   const renderUserStatusBar = () => {
     if (!currentUser) return null;
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: 'rgba(15, 23, 42, 0.4)',
-        borderBottom: '1px solid var(--panel-border)',
-        padding: '12px 24px',
-        margin: '-40px -40px 24px -40px',
-        fontSize: '0.85rem',
-        color: 'var(--text-secondary)'
-      }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          👤 Logged in as: <strong style={{ color: 'var(--text-primary)' }}>{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
+      <div className="flex justify-between items-center bg-slate-50 border-b border-slate-200/80 px-6 py-3 -mx-10 -mt-10 mb-6 text-xs text-slate-505 rounded-t-2xl shadow-inner">
+        <span className="flex items-center gap-1.5">
+          👤 Logged in as: <strong className="text-slate-700 font-bold">{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
         </span>
         <button 
           onClick={onLogout} 
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#ff4b60',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            textDecoration: 'underline',
-            padding: '4px 8px'
-          }}
+          className="btn btn-link text-rose-500 font-bold hover:text-rose-600 no-underline p-0 w-auto min-h-0 h-auto"
         >
           Log Out
         </button>
@@ -1209,17 +1151,7 @@ export function TeacherDashboard({
           )}
 
           {/* Filtering Panel */}
-          <div style={{
-            background: 'rgba(15, 23, 42, 0.3)',
-            border: '1px solid var(--panel-border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '20px',
-            marginBottom: '24px',
-            textAlign: 'left',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16
-          }}>
+          <div className="filter-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 🔍 Filter Collections {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({filteredGamesList.length} matches)</span>}
@@ -1254,16 +1186,7 @@ export function TeacherDashboard({
                       <button
                         key={sub}
                         onClick={() => toggleSubjectFilter(sub)}
-                        style={{
-                          background: active ? 'var(--blue-gradient)' : 'rgba(255,255,255,0.05)',
-                          border: '1px solid ' + (active ? '#3b82f6' : 'rgba(255,255,255,0.05)'),
-                          borderRadius: '20px',
-                          padding: '4px 10px',
-                          fontSize: '0.8rem',
-                          color: active ? '#ffffff' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
+                        className={`filter-btn ${active ? 'active-subject' : ''}`}
                       >
                         {sub}
                       </button>
@@ -1284,16 +1207,7 @@ export function TeacherDashboard({
                       <button
                         key={level}
                         onClick={() => toggleCefrFilter(level)}
-                        style={{
-                          background: active ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
-                          border: '1px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)'),
-                          borderRadius: '20px',
-                          padding: '4px 10px',
-                          fontSize: '0.8rem',
-                          color: active ? '#ffffff' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
+                        className={`filter-btn ${active ? 'active-cefr' : ''}`}
                       >
                         {level}
                       </button>
@@ -1315,16 +1229,7 @@ export function TeacherDashboard({
                         <button
                           key={lang}
                           onClick={() => toggleLanguageFilter(lang)}
-                          style={{
-                            background: active ? 'var(--green-gradient)' : 'rgba(255,255,255,0.05)',
-                            border: '1px solid ' + (active ? '#4caf50' : 'rgba(255,255,255,0.05)'),
-                            borderRadius: '20px',
-                            padding: '4px 10px',
-                            fontSize: '0.8rem',
-                            color: active ? '#ffffff' : 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
+                          className={`filter-btn ${active ? 'active-language' : ''}`}
                         >
                           {lang}
                         </button>
@@ -1347,16 +1252,7 @@ export function TeacherDashboard({
                         <button
                           key={creator}
                           onClick={() => toggleCreatorFilter(creator)}
-                          style={{
-                            background: active ? 'var(--yellow-gradient)' : 'rgba(255,255,255,0.05)',
-                            border: '1px solid ' + (active ? '#fbc02d' : 'rgba(255,255,255,0.05)'),
-                            borderRadius: '20px',
-                            padding: '4px 10px',
-                            fontSize: '0.8rem',
-                            color: active ? '#ffffff' : 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
+                          className={`filter-btn ${active ? 'active-creator' : ''}`}
                         >
                           {creator}
                         </button>
@@ -1390,35 +1286,14 @@ export function TeacherDashboard({
               filteredGamesList.map((game) => (
                 <div 
                   key={game.id} 
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.4)',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '24px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: 16,
-                    position: 'relative',
-                    transition: 'transform 0.2s ease, border-color 0.2s ease'
-                  }}
-                  className="game-card"
+                  className="game-card animate-pop-in"
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                      <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 700 }}>
+                      <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 800 }}>
                         {game.title}
                       </h3>
-                      <span style={{ 
-                        background: 'var(--accent-glow)', 
-                        color: 'var(--accent-light)', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        padding: '4px 10px', 
-                        borderRadius: '20px',
-                        border: '1px solid var(--panel-border-focus)',
-                        whiteSpace: 'nowrap'
-                      }}>
+                      <span className="game-tag">
                         {game.questionCount ?? 0} Qs
                       </span>
                     </div>
@@ -1426,54 +1301,22 @@ export function TeacherDashboard({
                     {/* Metadata tags */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '8px 0 12px 0' }}>
                       {game.subject && (
-                        <span style={{ 
-                          background: 'rgba(59, 130, 246, 0.1)', 
-                          border: '1px solid rgba(59, 130, 246, 0.3)', 
-                          color: '#60a5fa', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           📚 {game.subject}
                         </span>
                       )}
                       {game.cefr_level && (
-                        <span style={{ 
-                          background: 'rgba(168, 85, 247, 0.1)', 
-                          border: '1px solid rgba(168, 85, 247, 0.3)', 
-                          color: '#c084fc', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           🎓 {game.cefr_level}
                         </span>
                       )}
                       {game.language && (
-                        <span style={{ 
-                          background: 'rgba(16, 185, 129, 0.1)', 
-                          border: '1px solid rgba(16, 185, 129, 0.3)', 
-                          color: '#34d399', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           🗣️ {game.language}
                         </span>
                       )}
                       {game.creator && (
-                        <span style={{ 
-                          background: 'rgba(245, 158, 11, 0.1)', 
-                          border: '1px solid rgba(245, 158, 11, 0.3)', 
-                          color: '#fbbf24', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 600,
-                          padding: '2px 8px', 
-                          borderRadius: '12px' 
-                        }}>
+                        <span className="game-tag">
                           👤 {game.creator}
                         </span>
                       )}
@@ -1574,7 +1417,7 @@ export function TeacherDashboard({
             <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
               Paste your Markdown-formatted questions below to load them into: <strong>{selectedGame.title}</strong>
             </p>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
               <a 
                 href="/import-instructions.html" 
                 target="_blank" 
@@ -1582,6 +1425,15 @@ export function TeacherDashboard({
                 style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
               >
                 📖 View formatting guide & AI prompt template
+              </a>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <a 
+                href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
+              >
+                💎 Use Dahoot Quiz Generator Gem
               </a>
             </p>
           </div>
@@ -1718,8 +1570,8 @@ Sort these numbers from lowest to highest.
                       key={idx} 
                       className={`teacher-option-input-card ${OPTION_CLASSES[idx]} ${correctOptionIndex === idx ? 'active' : ''}`}
                       style={{
-                        background: 'rgba(15, 23, 42, 0.4)',
-                        border: '1px solid var(--panel-border)',
+                        background: '#ffffff',
+                        border: '1px solid rgba(93, 107, 130, 0.15)',
                         borderRadius: 'var(--radius-sm)',
                         padding: '16px',
                         display: 'flex',
@@ -2010,39 +1862,14 @@ Sort these numbers from lowest to highest.
               return (
                 <div 
                   key={question.id} 
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.3)',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '20px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 20,
-                    flexWrap: 'wrap',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                  className="teacher-question-row"
+                  className="bg-white border border-slate-200/60 rounded-2xl p-5 flex justify-between items-center gap-5 flex-wrap transition-all hover:shadow-md shadow-sm mb-4"
                 >
                   <div style={{ flex: 1, minWidth: '240px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ 
-                        background: 'var(--accent-glow)', 
-                        color: 'var(--accent-light)', 
-                        fontSize: '0.8rem', 
-                        fontWeight: 700, 
-                        padding: '2px 8px', 
-                        borderRadius: '12px',
-                        border: '1px solid var(--panel-border-focus)'
-                      }}>
+                      <span className="game-tag text-rose-500 border-rose-100 bg-rose-50/50 font-bold px-2 py-0.5">
                         Q{qIdx + 1}
                       </span>
-                      <span style={{ 
-                        fontSize: '0.75rem', 
-                        color: 'var(--text-secondary)',
-                        fontWeight: 600,
-                        letterSpacing: '0.05em'
-                      }}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
                         {type.replace('_', ' ')}
                       </span>
                     </div>

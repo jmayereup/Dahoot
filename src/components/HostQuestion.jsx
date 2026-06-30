@@ -117,10 +117,7 @@ export function HostQuestion({
         {/* 3. DRAG AND DROP */}
         {type === 'DRAG_DROP' && activeQuestion.options && (
           <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-            <div className="host-sentence-container" style={{
-              background: 'rgba(15, 23, 42, 0.4)',
-              border: '1px solid var(--panel-border)',
-              borderRadius: '12px',
+            <div className="host-sentence-container bg-white border border-slate-200/60 rounded-2xl shadow-sm text-slate-800" style={{
               padding: '28px',
               fontSize: '1.4rem',
               lineHeight: '2rem',
@@ -135,8 +132,8 @@ export function HostQuestion({
                 <div 
                   key={idx} 
                   style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid var(--panel-border)',
+                    background: '#ffffff',
+                    border: '1px solid rgba(93, 107, 130, 0.15)',
                     borderRadius: '8px',
                     padding: '10px 16px',
                     fontSize: '1rem',
@@ -154,10 +151,7 @@ export function HostQuestion({
         {/* 4. DROP DOWN */}
         {type === 'DROP_DOWN' && activeQuestion.options && (
           <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-            <div className="host-sentence-container" style={{
-              background: 'rgba(15, 23, 42, 0.4)',
-              border: '1px solid var(--panel-border)',
-              borderRadius: '12px',
+            <div className="host-sentence-container bg-white border border-slate-200/60 rounded-2xl shadow-sm text-slate-800" style={{
               padding: '28px',
               fontSize: '1.4rem',
               lineHeight: '2rem',

@@ -105,9 +105,11 @@ Items:
 
 ---
 
-## AI Prompt (For ChatGPT/Gemini)
+## AI Prompt & Gemini Gem
 
-Copy and paste the prompt below into an AI tool of your choice to generate quizzes matching this format:
+You can use our pre-configured [Dahoot Quiz Generator Gem](https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing) directly on Google Gemini.
+
+Alternatively, copy and paste the prompt below into ChatGPT, Claude, or another AI tool to generate quizzes:
 
 ```text
 You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text:
