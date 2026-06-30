@@ -213,6 +213,7 @@ function App() {
         setView={setView}
         currentUser={currentUser}
         onLogout={handleLogout}
+        startHosting={hostGame.startHosting}
       />
     );
   }

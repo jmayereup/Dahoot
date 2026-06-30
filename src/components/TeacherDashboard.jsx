@@ -80,7 +80,8 @@ export function TeacherDashboard({
   availableSubjects = [],
   availableCefrLevels = [],
   currentUser = null,
-  onLogout = null
+  onLogout = null,
+  startHosting = null
 }) {
   // Client-side filtering state
   const [filterSubject, setFilterSubject] = useState([]);
@@ -1337,13 +1338,31 @@ export function TeacherDashboard({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {startHosting && (
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startHosting(game.id);
+                          }}
+                          style={{ 
+                            flex: 1.2, 
+                            padding: '10px 8px', 
+                            fontSize: '0.85rem',
+                            background: 'linear-gradient(to right, #BFFCC6, #9BE6A3)',
+                            color: '#1e293b'
+                          }}
+                        >
+                          🚀 Host Game
+                        </button>
+                      )}
                       <button 
-                        className="btn btn-primary" 
+                        className="btn btn-secondary" 
                         onClick={() => setSelectedGame(game)}
-                        style={{ flex: 1, padding: '10px 14px' }}
+                        style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}
                       >
-                        ✏ Manage Questions
+                        ✏ Questions
                       </button>
                       <button 
                         className="btn btn-secondary" 
@@ -1351,9 +1370,9 @@ export function TeacherDashboard({
                           e.stopPropagation();
                           startPreviewGame(game);
                         }}
-                        style={{ flex: 1, padding: '10px 14px' }}
+                        style={{ flex: 1, padding: '10px 8px', fontSize: '0.85rem' }}
                       >
-                        👁️ Preview Game
+                        👁️ Preview
                       </button>
                     </div>
                     

@@ -137,7 +137,7 @@ export function useHostGame(view, setView) {
       .catch(err => console.error("Failed to copy link:", err));
   };
 
-  const startHosting = async (gameId) => {
+  const startHosting = async (gameId, options = {}) => {
     setError('');
     if (!gameId) {
       setError('Please select a game to host.');
@@ -146,24 +146,42 @@ export function useHostGame(view, setView) {
     setLoading(true);
     try {
       let qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`,
-        sort: 'created'
+        filter: `game_id = "${gameId}"`
       });
       
       if (qList.length === 0) {
         throw new Error('This game has no questions. Please add questions in the Question Bank Manager first.');
       }
       
-      setQuestions(qList);
+      // Shuffle if randomize option is enabled
+      let activeQuestions = [...qList];
+      if (options.randomize) {
+        for (let i = activeQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [activeQuestions[i], activeQuestions[j]] = [activeQuestions[j], activeQuestions[i]];
+        }
+      } else {
+        // Default sort by created
+        activeQuestions.sort((a, b) => a.created.localeCompare(b.created));
+      }
+
+      // Limit question count if specified and valid
+      if (options.maxQuestions && options.maxQuestions > 0) {
+        activeQuestions = activeQuestions.slice(0, options.maxQuestions);
+      }
+      
+      setQuestions(activeQuestions);
 
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      const questionIds = activeQuestions.map(q => q.id);
 
       const room = await pb.collection('dahoot_rooms').create({
         code: pin,
         game_id: gameId,
         current_question_index: 0,
         status: 'LOBBY',
-        current_question_start_time: ''
+        current_question_start_time: '',
+        question_ids: questionIds
       });
 
       setHostRoom(room);

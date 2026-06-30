@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PocketBaseStatusBanner } from './PocketBaseStatusBanner';
 import { LogoContainer } from './LogoContainer';
+import { pb } from '../pb';
+
 
 export function SelectionView({
   hasPinFromUrl,
@@ -22,6 +24,43 @@ export function SelectionView({
   availableCefrLevels = []
 }) {
   const [selectedGameId, setSelectedGameId] = useState('');
+
+  // Custom game options
+  const [randomize, setRandomize] = useState(false);
+  const [maxQuestions, setMaxQuestions] = useState('');
+  const [totalQuestions, setTotalQuestions] = useState(0);
+
+  // Fetch total questions count when game is selected
+  useEffect(() => {
+    if (!selectedGameId) {
+      setTotalQuestions(0);
+      setMaxQuestions('');
+      return;
+    }
+
+    let isMounted = true;
+    pb.collection('dahoot_questions').getList(1, 1, {
+      filter: `game_id = "${selectedGameId}"`
+    })
+    .then(res => {
+      if (isMounted) {
+        setTotalQuestions(res.totalItems);
+        setMaxQuestions(res.totalItems.toString());
+      }
+    })
+    .catch(err => {
+      console.error("Error fetching questions count:", err);
+      if (isMounted) {
+        setTotalQuestions(0);
+        setMaxQuestions('');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedGameId]);
+
   
   // Filter states
   const [filterSubject, setFilterSubject] = useState([]);
@@ -68,6 +107,49 @@ export function SelectionView({
       setSelectedGameId('');
     }
   }, [filteredGames, selectedGameId]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Sync searchQuery when selectedGameDetails changes
+  useEffect(() => {
+    if (selectedGameDetails) {
+      setSearchQuery(selectedGameDetails.title);
+    } else {
+      setSearchQuery('');
+    }
+  }, [selectedGameDetails]);
+
+  // Handle click outside to close search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        if (selectedGameDetails) {
+          setSearchQuery(selectedGameDetails.title);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedGameDetails]);
+
+  // Filter games based on typed search query (by title, description, subject, or creator)
+  const searchedGames = useMemo(() => {
+    return filteredGames.filter(game => {
+      // If the query matches the current selection exactly, show all options on focus rather than filtering to just one
+      if (!searchQuery || (selectedGameDetails && searchQuery === selectedGameDetails.title)) {
+        return true;
+      }
+      const q = searchQuery.toLowerCase();
+      return (
+        game.title.toLowerCase().includes(q) ||
+        (game.description && game.description.toLowerCase().includes(q)) ||
+        (game.subject && game.subject.toLowerCase().includes(q)) ||
+        (game.creator && game.creator.toLowerCase().includes(q))
+      );
+    });
+  }, [filteredGames, searchQuery, selectedGameDetails]);
 
   return (
     <div className="app-container">
@@ -198,7 +280,7 @@ export function SelectionView({
               </div>
             )}
 
-            <div className="form-group" style={{ textAlign: 'left', marginBottom: 20 }}>
+            <div className="form-group" style={{ textAlign: 'left', marginBottom: 20, position: 'relative' }} ref={dropdownRef}>
               <label className="form-label">Select Game Collection</label>
               {gamesList.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0' }}>
@@ -210,17 +292,109 @@ export function SelectionView({
                 </p>
               ) : (
                 <>
-                  <select 
-                    className="form-input" 
-                    value={selectedGameId} 
-                    onChange={(e) => setSelectedGameId(e.target.value)}
-                    disabled={loading}
-                    style={{ cursor: 'pointer', marginBottom: 12 }}
-                  >
-                    {filteredGames.map(g => (
-                      <option key={g.id} value={g.id}>{g.title}</option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative', marginBottom: 12 }}>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Type to search games..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsOpen(true);
+                      }}
+                      onFocus={() => setIsOpen(true)}
+                      disabled={loading}
+                      style={{ 
+                        paddingRight: '40px',
+                        cursor: 'text'
+                      }}
+                    />
+                    <div 
+                      onClick={() => !loading && setIsOpen(prev => !prev)}
+                      style={{
+                        position: 'absolute',
+                        right: '16px',
+                        top: '50%',
+                        transform: isOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%) rotate(0deg)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        pointerEvents: loading ? 'none' : 'auto',
+                        fontSize: '0.8rem',
+                        transition: 'transform 0.2s'
+                      }}
+                    >
+                      ▼
+                    </div>
+
+                    {isOpen && !loading && (
+                      <div 
+                        className="animate-pop-in"
+                        style={{
+                          position: 'absolute',
+                          top: '105%',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                          border: '1px solid var(--panel-border)',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                          zIndex: 1000,
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          backdropFilter: 'blur(8px)'
+                        }}
+                      >
+                        {searchedGames.length === 0 ? (
+                          <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>
+                            No collections found
+                          </div>
+                        ) : (
+                          searchedGames.map(g => {
+                            const isSelected = g.id === selectedGameId;
+                            return (
+                              <div
+                                key={g.id}
+                                onClick={() => {
+                                  setSelectedGameId(g.id);
+                                  setIsOpen(false);
+                                }}
+                                style={{
+                                  padding: '12px 16px',
+                                  cursor: 'pointer',
+                                  transition: 'background-color 0.2s',
+                                  backgroundColor: isSelected ? 'rgba(255, 183, 178, 0.15)' : 'transparent',
+                                  borderLeft: isSelected ? '4px solid var(--accent-light)' : '4px solid transparent',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(93, 107, 130, 0.04)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#1e293b' }}>
+                                  {g.title}
+                                </div>
+                                {g.description && (
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {g.description}
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', marginTop: '2px', color: 'var(--text-secondary)' }}>
+                                  {g.subject && <span>📚 {g.subject}</span>}
+                                  {g.cefr_level && <span>🎓 {g.cefr_level}</span>}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Selected Game Metadata Badges */}
                   {selectedGameDetails && (
@@ -251,9 +425,83 @@ export function SelectionView({
               )}
             </div>
 
+            {selectedGameId && totalQuestions > 0 && (
+              <div 
+                className="animate-fade-in" 
+                style={{ 
+                  textAlign: 'left', 
+                  marginBottom: 20, 
+                  padding: '16px', 
+                  background: 'rgba(93, 107, 130, 0.04)', 
+                  borderRadius: '16px',
+                  border: '1px solid rgba(93, 107, 130, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                <span className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  ⚙️ Game Settings
+                </span>
+                
+                {/* Randomize Option */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={randomize} 
+                    onChange={(e) => setRandomize(e.target.checked)}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      accentColor: '#FFB7B2',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#334155' }}>
+                    Randomize question order
+                  </span>
+                </label>
+
+                {/* Limit Option */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+                    Number of questions to use:
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      min={1} 
+                      max={totalQuestions}
+                      value={maxQuestions}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setMaxQuestions('');
+                        } else {
+                          const num = Math.min(totalQuestions, Math.max(1, parseInt(val) || 1));
+                          setMaxQuestions(num.toString());
+                        }
+                      }}
+                      style={{ 
+                        maxWidth: '90px', 
+                        padding: '6px 12px', 
+                        fontSize: '1rem', 
+                        height: 'auto',
+                        textAlign: 'center'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      out of {totalQuestions} available
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button 
               className="btn btn-primary" 
-              onClick={() => startHosting(selectedGameId)} 
+              onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0 })} 
               disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
               style={{ marginBottom: 16 }}
             >

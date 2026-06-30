@@ -38,13 +38,22 @@ export function usePlayerGame(view, setView) {
       const room = await pb.collection('dahoot_rooms').getOne(roomId);
       const player = await pb.collection('dahoot_players').getOne(playerId);
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${room.game_id}"`,
-        sort: 'created'
+        filter: `game_id = "${room.game_id}"`
       });
+      
+      let finalQuestions = qList;
+      if (room.question_ids && Array.isArray(room.question_ids) && room.question_ids.length > 0) {
+        const idMap = new Map(room.question_ids.map((id, index) => [id, index]));
+        finalQuestions = qList
+          .filter(q => idMap.has(q.id))
+          .sort((a, b) => idMap.get(a.id) - idMap.get(b.id));
+      } else {
+        finalQuestions.sort((a, b) => a.created.localeCompare(b.created));
+      }
       
       setPlayerRoom(room);
       setPlayerRecord(player);
-      setPlayerQuestions(qList);
+      setPlayerQuestions(finalQuestions);
       setView('player');
     } catch (err) {
       console.warn("Could not auto-reconnect to previous session:", err);
@@ -156,16 +165,25 @@ export function usePlayerGame(view, setView) {
       });
 
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${room.game_id}"`,
-        sort: 'created'
+        filter: `game_id = "${room.game_id}"`
       });
+      
+      let finalQuestions = qList;
+      if (room.question_ids && Array.isArray(room.question_ids) && room.question_ids.length > 0) {
+        const idMap = new Map(room.question_ids.map((id, index) => [id, index]));
+        finalQuestions = qList
+          .filter(q => idMap.has(q.id))
+          .sort((a, b) => idMap.get(a.id) - idMap.get(b.id));
+      } else {
+        finalQuestions.sort((a, b) => a.created.localeCompare(b.created));
+      }
       
       localStorage.setItem('dahoot_player_id', player.id);
       localStorage.setItem('dahoot_room_id', room.id);
 
       setPlayerRoom(room);
       setPlayerRecord(player);
-      setPlayerQuestions(qList);
+      setPlayerQuestions(finalQuestions);
       setView('player');
     } catch (err) {
       setError(err.message);

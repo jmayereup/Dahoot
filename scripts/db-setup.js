@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import PocketBase from 'pocketbase';
+import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,7 +92,59 @@ if (!adminEmail || !adminPassword) {
 
 const pb = new PocketBase(pbUrl);
 
+// Helper to ask for user confirmation in terminal
+function askConfirmation(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+// Helper to check URL local status
+function isLocalUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch (err) {
+    return url.includes('localhost') || url.includes('127.0.0.1');
+  }
+}
+
+// Helper to get or create a collection
+async function getOrCreateCollection(name, config) {
+  try {
+    const col = await pb.collections.getOne(name);
+    console.log(`[Dahoot DB] Collection '${name}' already exists.`);
+    return col;
+  } catch (err) {
+    console.log(`[Dahoot DB] Collection '${name}' not found. Creating...`);
+    const col = await pb.collections.create(config);
+    console.log(`\x1b[32m[Dahoot DB] Collection '${name}' created successfully.\x1b[0m`);
+    return col;
+  }
+}
+
 async function runSetup() {
+  const env = process.env.VITE_ENV || 'development';
+  const isDev = env === 'development';
+  const isProd = env === 'production';
+
+  if (!isLocalUrl(pbUrl) && isDev) {
+    console.log(`\n\x1b[33m⚠️  WARNING: You are running the database setup script in DEVELOPMENT mode against a remote database: ${pbUrl}\x1b[0m`);
+    const answer = await askConfirmation('Are you sure you want to proceed? (yes/no): ');
+    if (answer.trim().toLowerCase() !== 'yes' && answer.trim().toLowerCase() !== 'y') {
+      console.log('\x1b[31m[Dahoot DB] Setup aborted by user.\x1b[0m');
+      process.exit(0);
+    }
+  }
+
   console.log(`\x1b[35m[Dahoot DB]\x1b[0m Connecting to PocketBase at ${pbUrl}...`);
   
   // Authenticate as Admin/Superuser
@@ -112,53 +165,56 @@ async function runSetup() {
     }
   }
 
-  // Delete existing collections first
-  console.log("[Dahoot DB] Clearing old tables (if any)...");
-  
-  // Temporarily remove dahoot_info field from users to avoid constraint conflicts during reset
-  try {
-    const usersCol = await pb.collections.getOne('users');
-    const originalLength = usersCol.fields.length;
-    usersCol.fields = usersCol.fields.filter(f => f.name !== 'dahoot_info');
-    if (usersCol.fields.length < originalLength) {
-      await pb.collections.update(usersCol.id, usersCol);
-      console.log("[Dahoot DB] Removed 'dahoot_info' relation field from 'users' collection for reset.");
-    }
-  } catch (e) {}
+  // Delete existing collections first if not in production
+  if (!isProd) {
+    console.log("[Dahoot DB] Clearing old tables (if any)...");
+    
+    // Temporarily remove dahoot_info field from users to avoid constraint conflicts during reset
+    try {
+      const usersCol = await pb.collections.getOne('users');
+      const originalLength = usersCol.fields.length;
+      usersCol.fields = usersCol.fields.filter(f => f.name !== 'dahoot_info');
+      if (usersCol.fields.length < originalLength) {
+        await pb.collections.update(usersCol.id, usersCol);
+        console.log("[Dahoot DB] Removed 'dahoot_info' relation field from 'users' collection for reset.");
+      }
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_players');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_players' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_players');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_players' collection.");
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_rooms');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_rooms' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_rooms');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_rooms' collection.");
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_questions');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_questions' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_questions');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_questions' collection.");
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_games');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_games' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_games');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_games' collection.");
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_user_info');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_user_info' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_user_info');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_user_info' collection.");
+    } catch (e) {}
 
-  try {
-    await pb.collections.delete('dahoot_options');
-    console.log("[Dahoot DB] Deleted existing 'dahoot_options' collection.");
-  } catch (e) {}
+    try {
+      await pb.collections.delete('dahoot_options');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_options' collection.");
+    } catch (e) {}
+  } else {
+    console.log("[Dahoot DB] Production mode: Skipping deletion of existing collections.");
+  }
 
   // 1. Setup 'dahoot_user_info' collection
-  console.log("[Dahoot DB] Creating 'dahoot_user_info' collection...");
-  const userInfoCol = await pb.collections.create({
+  const userInfoCol = await getOrCreateCollection('dahoot_user_info', {
     name: 'dahoot_user_info',
     type: 'base',
     fields: [
@@ -173,27 +229,30 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_user_info' created successfully.\x1b[0m");
 
   // Update 'users' collection to link to 'dahoot_user_info'
   try {
     const usersCol = await pb.collections.getOne('users');
-    usersCol.fields.push({
-      name: 'dahoot_info',
-      type: 'relation',
-      collectionId: userInfoCol.id,
-      maxSelect: 1,
-      cascadeDelete: false
-    });
-    await pb.collections.update(usersCol.id, usersCol);
-    console.log("[Dahoot DB] Added 'dahoot_info' relation field to the existing 'users' collection.");
+    const hasField = usersCol.fields.some(f => f.name === 'dahoot_info');
+    if (!hasField) {
+      usersCol.fields.push({
+        name: 'dahoot_info',
+        type: 'relation',
+        collectionId: userInfoCol.id,
+        maxSelect: 1,
+        cascadeDelete: false
+      });
+      await pb.collections.update(usersCol.id, usersCol);
+      console.log("[Dahoot DB] Added 'dahoot_info' relation field to the existing 'users' collection.");
+    } else {
+      console.log("[Dahoot DB] 'dahoot_info' relation field already exists on 'users' collection.");
+    }
   } catch (err) {
     console.error("[Dahoot DB] Error updating 'users' collection:", err.message);
   }
 
   // 2. Setup 'dahoot_options' collection
-  console.log("[Dahoot DB] Creating 'dahoot_options' collection...");
-  await pb.collections.create({
+  await getOrCreateCollection('dahoot_options', {
     name: 'dahoot_options',
     type: 'base',
     fields: [
@@ -208,11 +267,9 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_options' created successfully.\x1b[0m");
 
   // 3. Setup 'dahoot_games' collection
-  console.log("[Dahoot DB] Creating 'dahoot_games' collection...");
-  const gamesCol = await pb.collections.create({
+  const gamesCol = await getOrCreateCollection('dahoot_games', {
     name: 'dahoot_games',
     type: 'base',
     fields: [
@@ -231,11 +288,9 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_games' created successfully.\x1b[0m");
 
   // 4. Setup 'dahoot_rooms' collection
-  console.log("[Dahoot DB] Creating 'dahoot_rooms' collection...");
-  const roomsCol = await pb.collections.create({
+  const roomsCol = await getOrCreateCollection('dahoot_rooms', {
     name: 'dahoot_rooms',
     type: 'base',
     fields: [
@@ -244,6 +299,7 @@ async function runSetup() {
       { name: 'current_question_index', type: 'number', required: false, noDecimal: true },
       { name: 'status', type: 'select', required: true, maxSelect: 1, values: ['LOBBY', 'QUESTION', 'LEADERBOARD', 'FINISHED'] },
       { name: 'current_question_start_time', type: 'text', required: false },
+      { name: 'question_ids', type: 'json', required: false },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
@@ -253,11 +309,9 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_rooms' created successfully.\x1b[0m");
 
   // 5. Setup 'dahoot_players' collection
-  console.log("[Dahoot DB] Creating 'dahoot_players' collection...");
-  await pb.collections.create({
+  await getOrCreateCollection('dahoot_players', {
     name: 'dahoot_players',
     type: 'base',
     fields: [
@@ -274,11 +328,9 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_players' created successfully.\x1b[0m");
 
   // 6. Setup 'dahoot_questions' collection
-  console.log("[Dahoot DB] Creating 'dahoot_questions' collection...");
-  await pb.collections.create({
+  await getOrCreateCollection('dahoot_questions', {
     name: 'dahoot_questions',
     type: 'base',
     fields: [
@@ -296,41 +348,44 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
-  console.log("\x1b[32m[Dahoot DB] Collection 'dahoot_questions' created successfully.\x1b[0m");
 
-  // 7. Seed default game, questions, and options
-  try {
-    console.log("[Dahoot DB] Seeding default options...");
-    const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Other'];
-    const defaultCefr = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  // 7. Seed default game, questions, and options (skip in production)
+  if (!isProd) {
+    try {
+      console.log("[Dahoot DB] Seeding default options...");
+      const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Other'];
+      const defaultCefr = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-    for (const sub of defaultSubjects) {
-      await pb.collection('dahoot_options').create({ type: 'subject', value: sub });
-    }
-    for (const lvl of defaultCefr) {
-      await pb.collection('dahoot_options').create({ type: 'cefr_level', value: lvl });
-    }
+      for (const sub of defaultSubjects) {
+        await pb.collection('dahoot_options').create({ type: 'subject', value: sub });
+      }
+      for (const lvl of defaultCefr) {
+        await pb.collection('dahoot_options').create({ type: 'cefr_level', value: lvl });
+      }
 
-    console.log("[Dahoot DB] Seeding default game...");
-    const defaultGame = await pb.collection('dahoot_games').create({
-      title: "General Tech Trivia",
-      description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
-      creator: "Dahoot Team",
-      language: "English",
-      cefr_level: "B2",
-      subject: "Science"
-    });
-
-    console.log("[Dahoot DB] Seeding default questions...");
-    for (const q of DEFAULT_QUESTIONS) {
-      await pb.collection('dahoot_questions').create({
-        ...q,
-        game_id: defaultGame.id
+      console.log("[Dahoot DB] Seeding default game...");
+      const defaultGame = await pb.collection('dahoot_games').create({
+        title: "General Tech Trivia",
+        description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
+        creator: "Dahoot Team",
+        language: "English",
+        cefr_level: "B2",
+        subject: "Science"
       });
+
+      console.log("[Dahoot DB] Seeding default questions...");
+      for (const q of DEFAULT_QUESTIONS) {
+        await pb.collection('dahoot_questions').create({
+          ...q,
+          game_id: defaultGame.id
+        });
+      }
+      console.log("\x1b[32m[Dahoot DB] Default game, questions, and options seeded successfully!\x1b[0m");
+    } catch (err) {
+      console.error("[Dahoot DB] Error seeding default game/questions:", err.message);
     }
-    console.log("\x1b[32m[Dahoot DB] Default game, questions, and options seeded successfully!\x1b[0m");
-  } catch (err) {
-    console.error("[Dahoot DB] Error seeding default game/questions:", err.message);
+  } else {
+    console.log("[Dahoot DB] Production mode: Skipping database seeding.");
   }
 
   console.log('\n\x1b[32m🎉 [Dahoot DB] Programmatic database setup complete!\x1b[0m');
