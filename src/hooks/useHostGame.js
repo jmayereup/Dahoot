@@ -17,7 +17,7 @@ export function useHostGame(view, setView) {
   // Fetch games list
   const fetchGames = async () => {
     try {
-      const list = await pb.collection('games').getFullList({
+      const list = await pb.collection('dahoot_games').getFullList({
         sort: 'created'
       });
       setGamesList(list);
@@ -57,7 +57,7 @@ export function useHostGame(view, setView) {
 
     const fetchPlayers = async () => {
       try {
-        const list = await pb.collection('players').getFullList({
+        const list = await pb.collection('dahoot_players').getFullList({
           filter: `room_id = "${hostRoom.id}"`,
           sort: '-score'
         });
@@ -70,22 +70,22 @@ export function useHostGame(view, setView) {
     fetchPlayers();
 
     // Subscribe to players collection to update lobby/scores in real-time
-    pb.collection('players').subscribe('*', (e) => {
+    pb.collection('dahoot_players').subscribe('*', (e) => {
       if (e.record.room_id === hostRoom.id) {
         fetchPlayers();
       }
     });
 
     // Subscribe to room updates to keep state synced if changed elsewhere
-    pb.collection('rooms').subscribe(hostRoom.id, (e) => {
+    pb.collection('dahoot_rooms').subscribe(hostRoom.id, (e) => {
       if (e.action === 'update') {
         setHostRoom(e.record);
       }
     });
 
     return () => {
-      pb.collection('players').unsubscribe('*');
-      pb.collection('rooms').unsubscribe(hostRoom.id);
+      pb.collection('dahoot_players').unsubscribe('*');
+      pb.collection('dahoot_rooms').unsubscribe(hostRoom.id);
     };
   }, [view, hostRoom?.id]);
 
@@ -145,7 +145,7 @@ export function useHostGame(view, setView) {
     }
     setLoading(true);
     try {
-      let qList = await pb.collection('questions').getFullList({
+      let qList = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${gameId}"`,
         sort: 'created'
       });
@@ -158,7 +158,7 @@ export function useHostGame(view, setView) {
 
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
 
-      const room = await pb.collection('rooms').create({
+      const room = await pb.collection('dahoot_rooms').create({
         code: pin,
         game_id: gameId,
         current_question_index: 0,
@@ -179,7 +179,7 @@ export function useHostGame(view, setView) {
   const hostStartGame = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('rooms').update(hostRoom.id, {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: 0,
         current_question_start_time: new Date().toISOString()
@@ -192,7 +192,7 @@ export function useHostGame(view, setView) {
   const hostShowLeaderboard = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('rooms').update(hostRoom.id, {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'LEADERBOARD'
       });
     } catch (err) {
@@ -204,11 +204,11 @@ export function useHostGame(view, setView) {
     if (!hostRoom) return;
     const nextIdx = hostRoom.current_question_index + 1;
     if (nextIdx >= questions.length) {
-      await pb.collection('rooms').update(hostRoom.id, {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'FINISHED'
       });
     } else {
-      await pb.collection('rooms').update(hostRoom.id, {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: nextIdx,
         current_question_start_time: new Date().toISOString()
@@ -219,7 +219,7 @@ export function useHostGame(view, setView) {
   const hostEndGame = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('rooms').delete(hostRoom.id);
+      await pb.collection('dahoot_rooms').delete(hostRoom.id);
       setHostRoom(null);
       setHostPlayers([]);
       setView('selection');
@@ -232,14 +232,14 @@ export function useHostGame(view, setView) {
   const seedQuestions = async () => {
     try {
       setLoading(true);
-      const list = await pb.collection('games').getList(1, 1);
+      const list = await pb.collection('dahoot_games').getList(1, 1);
       if (list.totalItems === 0) {
-        const defaultGame = await pb.collection('games').create({
+        const defaultGame = await pb.collection('dahoot_games').create({
           title: "General Tech Trivia",
           description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers."
         });
         for (const q of DEFAULT_QUESTIONS) {
-          await pb.collection('questions').create({
+          await pb.collection('dahoot_questions').create({
             ...q,
             game_id: defaultGame.id
           });
@@ -264,17 +264,15 @@ export function useHostGame(view, setView) {
     hostTimeLeft,
     qrCodeUrl,
     copied,
-    joinUrl,
     loading,
     error,
-    setError,
-    setLoading,
+    joinUrl,
+    handleCopyLink,
     startHosting,
     hostStartGame,
     hostShowLeaderboard,
     hostNextQuestion,
     hostEndGame,
-    handleCopyLink,
     seedQuestions,
     refreshGames: fetchGames
   };

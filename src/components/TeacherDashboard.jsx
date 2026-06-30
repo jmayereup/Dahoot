@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { pb } from '../pb';
 
 export function TeacherDashboard({
   // Games List State & Handlers
@@ -12,6 +13,14 @@ export function TeacherDashboard({
   setGameTitle,
   gameDescription,
   setGameDescription,
+  gameCreator,
+  setGameCreator,
+  gameLanguage,
+  setGameLanguage,
+  gameCefrLevel,
+  setGameCefrLevel,
+  gameSubject,
+  setGameSubject,
   startCreatingGame,
   startEditingGame,
   cancelEditingGame,
@@ -29,6 +38,14 @@ export function TeacherDashboard({
   setQuestionType,
   questionText,
   setQuestionText,
+
+  // Import State & Handlers
+  isImporting,
+  importText,
+  setImportText,
+  startImporting,
+  cancelImporting,
+  saveImportedQuestions,
   
   // Multiple Choice & Sorting
   options,
@@ -59,18 +76,990 @@ export function TeacherDashboard({
   cancelEditing,
   saveQuestion,
   deleteQuestion,
-  setView
+  setView,
+  availableSubjects = [],
+  availableCefrLevels = [],
+  currentUser = null,
+  onLogout = null
 }) {
+  // Client-side filtering state
+  const [filterSubject, setFilterSubject] = useState([]);
+  const [filterCefr, setFilterCefr] = useState([]);
+  const [filterLanguage, setFilterLanguage] = useState([]);
+  const [filterCreator, setFilterCreator] = useState([]);
+
+  // Preview Game state
+  const [previewGame, setPreviewGame] = useState(null);
+  const [previewQuestions, setPreviewQuestions] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [previewCurrentIdx, setPreviewCurrentIdx] = useState(0);
+  
+  // Interactive preview answering states
+  const [previewAnswered, setPreviewAnswered] = useState(false);
+  const [previewIsCorrect, setPreviewIsCorrect] = useState(false);
+  const [selectedOptionIdx, setSelectedOptionIdx] = useState(null);
+  const [sortingItems, setSortingItems] = useState([]);
+  const [placedWords, setPlacedWords] = useState([]);
+  const [activeBlankIdx, setActiveBlankIdx] = useState(0);
+  const [dropdownSelections, setDropdownSelections] = useState([]);
+  const [categorizeIdx, setCategorizeIdx] = useState(0);
+  const [categoryAssignments, setCategoryAssignments] = useState({});
+
+  const initPreviewQuestionStates = (question) => {
+    setPreviewAnswered(false);
+    setPreviewIsCorrect(false);
+    setSelectedOptionIdx(null);
+    
+    const type = question.type || 'MULTIPLE_CHOICE';
+    if (type === 'SORTING' && Array.isArray(question.options)) {
+      setSortingItems([...question.options].sort(() => 0.5 - Math.random()));
+    } else {
+      setSortingItems([]);
+    }
+
+    if (type === 'DRAG_DROP') {
+      const totalBlanks = typeof question.options === 'object' && question.options.correct
+        ? question.options.correct.length
+        : 0;
+      setPlacedWords(Array(totalBlanks).fill(null));
+      setActiveBlankIdx(0);
+    } else {
+      setPlacedWords([]);
+    }
+
+    if (type === 'DROP_DOWN') {
+      const totalDropdowns = typeof question.options === 'object' && question.options.dropdowns
+        ? question.options.dropdowns.length
+        : 0;
+      setDropdownSelections(Array(totalDropdowns).fill(''));
+    } else {
+      setDropdownSelections([]);
+    }
+
+    if (type === 'CATEGORIZE') {
+      setCategorizeIdx(0);
+      setCategoryAssignments({});
+    } else {
+      setCategoryAssignments({});
+    }
+  };
+
+  const startPreviewGame = async (game) => {
+    setPreviewGame(game);
+    setPreviewLoading(true);
+    setPreviewError('');
+    setPreviewCurrentIdx(0);
+    setPreviewAnswered(false);
+    setPreviewIsCorrect(false);
+    setSelectedOptionIdx(null);
+    try {
+      const qList = await pb.collection('dahoot_questions').getFullList({
+        filter: `game_id = "${game.id}"`,
+        sort: 'created'
+      });
+      setPreviewQuestions(qList);
+      if (qList.length > 0) {
+        initPreviewQuestionStates(qList[0]);
+      }
+    } catch (err) {
+      console.error(err);
+      setPreviewError('Failed to load preview questions: ' + err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreviewGame = () => {
+    setPreviewGame(null);
+    setPreviewQuestions([]);
+    setPreviewCurrentIdx(0);
+    setPreviewAnswered(false);
+    setPreviewIsCorrect(false);
+    setSelectedOptionIdx(null);
+  };
+
+  const submitPreviewAnswer = (userAnswer) => {
+    if (previewAnswered) return;
+
+    const activeQuestion = previewQuestions[previewCurrentIdx];
+    let isCorrect = false;
+    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+    if (type === 'MULTIPLE_CHOICE') {
+      setSelectedOptionIdx(userAnswer);
+      isCorrect = userAnswer === activeQuestion.correct_option_index;
+    } else if (type === 'SORTING') {
+      isCorrect = Array.isArray(userAnswer) && 
+                  userAnswer.length === activeQuestion.options.length &&
+                  userAnswer.every((val, i) => val === activeQuestion.options[i]);
+    } else if (type === 'DRAG_DROP') {
+      const correctArr = activeQuestion.options.correct || [];
+      isCorrect = Array.isArray(userAnswer) && 
+                  userAnswer.length === correctArr.length &&
+                  userAnswer.every((val, i) => val === correctArr[i]);
+    } else if (type === 'DROP_DOWN') {
+      const dropdowns = activeQuestion.options.dropdowns || [];
+      isCorrect = Array.isArray(userAnswer) && 
+                  userAnswer.length === dropdowns.length &&
+                  userAnswer.every((val, i) => val === dropdowns[i]?.correct);
+    } else if (type === 'CATEGORIZE') {
+      const correctItems = activeQuestion.options.items || [];
+      isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&
+                  correctItems.every(item => userAnswer[item.name] === item.category);
+    }
+
+    setPreviewIsCorrect(isCorrect);
+    setPreviewAnswered(true);
+  };
+
+  const nextPreviewQuestion = () => {
+    if (previewCurrentIdx + 1 < previewQuestions.length) {
+      const nextIdx = previewCurrentIdx + 1;
+      setPreviewCurrentIdx(nextIdx);
+      initPreviewQuestionStates(previewQuestions[nextIdx]);
+    } else {
+      alert("You have previewed all questions in this collection!");
+      closePreviewGame();
+    }
+  };
+
+  const renderMcInteraction = (activeQuestion) => {
+    if (!Array.isArray(activeQuestion.options)) return null;
+
+    const letters = ['A', 'B', 'C', 'D'];
+
+    return (
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 1fr', 
+        gap: 16, 
+        width: '100%' 
+      }}>
+        {activeQuestion.options.map((opt, idx) => {
+          const isCorrect = idx === activeQuestion.correct_option_index;
+          const isSelected = idx === selectedOptionIdx;
+          
+          let buttonStyle = {
+            padding: '20px 24px',
+            fontSize: '1.05rem',
+            fontWeight: '600',
+            width: '100%',
+            transition: 'all 0.2s ease',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            borderRadius: '10px',
+            color: 'var(--text-primary)',
+            textAlign: 'left',
+            cursor: previewAnswered ? 'default' : 'pointer',
+            boxShadow: 'var(--shadow-sm)'
+          };
+
+          let badgeStyle = {
+            width: '32px',
+            height: '32px',
+            borderRadius: '6px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: '700',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s ease',
+            flexShrink: 0
+          };
+
+          if (previewAnswered) {
+            if (isCorrect) {
+              buttonStyle.background = 'rgba(16, 185, 129, 0.1)';
+              buttonStyle.borderColor = '#10b981';
+              buttonStyle.boxShadow = '0 0 20px rgba(16, 185, 129, 0.2)';
+              
+              badgeStyle.background = '#10b981';
+              badgeStyle.borderColor = '#10b981';
+              badgeStyle.color = '#ffffff';
+            } else if (isSelected) {
+              buttonStyle.background = 'rgba(239, 68, 68, 0.1)';
+              buttonStyle.borderColor = '#ff4b60';
+              buttonStyle.boxShadow = '0 0 20px rgba(255, 75, 96, 0.2)';
+              
+              badgeStyle.background = '#ff4b60';
+              badgeStyle.borderColor = '#ff4b60';
+              badgeStyle.color = '#ffffff';
+            } else {
+              buttonStyle.opacity = 0.45;
+              buttonStyle.background = 'rgba(255, 255, 255, 0.01)';
+            }
+          }
+
+          return (
+            <button
+              key={idx}
+              type="button"
+              className={previewAnswered ? '' : 'preview-mc-option'}
+              style={buttonStyle}
+              onClick={() => submitPreviewAnswer(idx)}
+              disabled={previewAnswered}
+            >
+              <div className="preview-mc-badge" style={badgeStyle}>
+                {letters[idx]}
+              </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'space-between' }}>
+                <span>{opt}</span>
+                {previewAnswered && isCorrect && (
+                  <span style={{ 
+                    background: '#10b981', 
+                    borderRadius: '50%', 
+                    width: 28, 
+                    height: 28, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '1rem',
+                    color: '#ffffff',
+                    boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
+                    flexShrink: 0
+                  }}>
+                    ✓
+                  </span>
+                )}
+                {previewAnswered && isSelected && !isCorrect && (
+                  <span style={{ 
+                    background: '#ff4b60', 
+                    borderRadius: '50%', 
+                    width: 28, 
+                    height: 28, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '1rem',
+                    color: '#ffffff',
+                    boxShadow: '0 0 10px rgba(255, 75, 96, 0.5)',
+                    flexShrink: 0
+                  }}>
+                    ✗
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSortingInteraction = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+        {sortingItems.map((item, idx) => (
+          <div 
+            key={idx} 
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ 
+                background: 'var(--accent-glow)', 
+                color: 'var(--accent-light)', 
+                fontWeight: 700, 
+                width: 24, 
+                height: 24, 
+                borderRadius: '50%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: '0.8rem' 
+              }}>
+                {idx + 1}
+              </span>
+              <span style={{ color: 'var(--text-primary)' }}>{item}</span>
+            </div>
+            {!previewAnswered && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (idx === 0) return;
+                    const updated = [...sortingItems];
+                    const temp = updated[idx];
+                    updated[idx] = updated[idx - 1];
+                    updated[idx - 1] = temp;
+                    setSortingItems(updated);
+                  }}
+                  disabled={idx === 0}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ▲
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (idx === sortingItems.length - 1) return;
+                    const updated = [...sortingItems];
+                    const temp = updated[idx];
+                    updated[idx] = updated[idx + 1];
+                    updated[idx + 1] = temp;
+                    setSortingItems(updated);
+                  }}
+                  disabled={idx === sortingItems.length - 1}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ▼
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        
+        {!previewAnswered && (
+          <button
+            onClick={() => submitPreviewAnswer(sortingItems)}
+            className="btn btn-primary"
+            style={{ marginTop: 16 }}
+          >
+            Submit Order
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderDragDropInteraction = (activeQuestion) => {
+    if (!activeQuestion.options) return null;
+
+    const renderBlanks = (sentence) => {
+      const parts = sentence.split(/(\[blank\d+\])/g);
+      return parts.map((part, idx) => {
+        const match = part.match(/\[blank(\d+)\]/);
+        if (match) {
+          const blankIdx = parseInt(match[1]);
+          const word = placedWords[blankIdx];
+          const isActive = blankIdx === activeBlankIdx;
+          
+          let blankStyle = {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '90px',
+            height: '32px',
+            borderBottom: '2px solid var(--accent-light)',
+            margin: '0 6px',
+            padding: '0 8px',
+            cursor: previewAnswered ? 'default' : 'pointer',
+            color: word ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: word ? '700' : 'normal',
+            transition: 'all 0.15s ease',
+            backgroundColor: isActive ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+            borderRadius: '4px'
+          };
+
+          return (
+            <span 
+              key={idx} 
+              onClick={() => {
+                if (previewAnswered) return;
+                if (word) {
+                  const updated = [...placedWords];
+                  updated[blankIdx] = null;
+                  setPlacedWords(updated);
+                  setActiveBlankIdx(blankIdx);
+                } else {
+                  setActiveBlankIdx(blankIdx);
+                }
+              }}
+              style={blankStyle}
+            >
+              {word || '_____'}
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    };
+
+    return (
+      <div style={{ width: '100%' }}>
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.4)',
+          border: '1px solid var(--panel-border)',
+          borderRadius: '10px',
+          padding: '20px',
+          lineHeight: '2.5rem',
+          fontSize: '1.1rem',
+          marginBottom: 20
+        }}>
+          {renderBlanks(activeQuestion.options.sentence)}
+        </div>
+
+        {!previewAnswered && (
+          <>
+            <div style={{ 
+              display: 'flex', 
+              gap: 10, 
+              flexWrap: 'wrap', 
+              justifyContent: 'center',
+              background: 'rgba(0, 0, 0, 0.2)',
+              padding: '16px',
+              borderRadius: '10px',
+              minHeight: '80px',
+              marginBottom: 20
+            }}>
+              {activeQuestion.options.choices?.map((choice, idx) => {
+                const isPlaced = placedWords.includes(choice);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (isPlaced) return;
+                      let fillIdx = activeBlankIdx;
+                      if (placedWords[fillIdx] !== null) {
+                        fillIdx = placedWords.indexOf(null);
+                      }
+                      if (fillIdx !== -1) {
+                        const updated = [...placedWords];
+                        updated[fillIdx] = choice;
+                        setPlacedWords(updated);
+                        const nextEmpty = updated.indexOf(null);
+                        if (nextEmpty !== -1) {
+                          setActiveBlankIdx(nextEmpty);
+                        }
+                      }
+                    }}
+                    className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
+                    disabled={isPlaced}
+                  >
+                    {choice}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => submitPreviewAnswer(placedWords)}
+              className="btn btn-primary"
+              disabled={placedWords.includes(null)}
+            >
+              Submit Blanks
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderDropDownInteraction = (activeQuestion) => {
+    if (!activeQuestion.options || !Array.isArray(activeQuestion.options.dropdowns)) return null;
+
+    const renderDropdowns = (sentence, dropdowns) => {
+      const parts = sentence.split(/(\{\{\d+\}\})/g);
+      return parts.map((part, idx) => {
+        const match = part.match(/\{\{(\d+)\}\}/);
+        if (match) {
+          const dropIdx = parseInt(match[1]);
+          const config = dropdowns[dropIdx];
+          return (
+            <select
+              key={idx}
+              value={dropdownSelections[dropIdx] || ''}
+              onChange={(e) => {
+                const updated = [...dropdownSelections];
+                updated[dropIdx] = e.target.value;
+                setDropdownSelections(updated);
+              }}
+              disabled={previewAnswered}
+              style={{
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid var(--accent-light)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                padding: '4px 10px',
+                fontSize: '1rem',
+                margin: '0 6px',
+                cursor: previewAnswered ? 'default' : 'pointer'
+              }}
+            >
+              <option value="">-- Choose --</option>
+              {config.choices.map((choice, cIdx) => (
+                <option key={cIdx} value={choice}>{choice}</option>
+              ))}
+            </select>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      });
+    };
+
+    return (
+      <div style={{ width: '100%' }}>
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.4)',
+          border: '1px solid var(--panel-border)',
+          borderRadius: '10px',
+          padding: '20px',
+          lineHeight: '2.8rem',
+          fontSize: '1.1rem',
+          marginBottom: 20
+        }}>
+          {renderDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
+        </div>
+
+        {!previewAnswered && (
+          <button
+            onClick={() => submitPreviewAnswer(dropdownSelections)}
+            className="btn btn-primary"
+            disabled={dropdownSelections.includes('')}
+          >
+            Submit Answers
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderCategorizeInteraction = (activeQuestion) => {
+    if (!activeQuestion.options) return null;
+    const totalItems = activeQuestion.options.items?.length || 0;
+    const allCategorized = categorizeIdx >= totalItems;
+
+    return (
+      <div style={{ width: '100%' }}>
+        {!allCategorized ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <div 
+              style={{
+                background: 'var(--accent-glow)',
+                border: '1px solid var(--panel-border-focus)',
+                boxShadow: 'var(--shadow-glow)',
+                borderRadius: '12px',
+                padding: '32px 16px',
+                width: '100%',
+                maxWidth: '340px',
+                textAlign: 'center',
+                fontSize: '1.4rem',
+                fontWeight: 700
+              }}
+            >
+              {activeQuestion.options.items[categorizeIdx]?.name}
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: activeQuestion.options.categories?.length > 2 ? '1fr 1fr' : '1fr',
+              gap: 12,
+              width: '100%',
+              maxWidth: '340px',
+              marginTop: 12
+            }}>
+              {activeQuestion.options.categories?.map((cat, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    const itemName = activeQuestion.options.items[categorizeIdx].name;
+                    const updated = { ...categoryAssignments };
+                    updated[itemName] = cat;
+                    setCategoryAssignments(updated);
+                    setCategorizeIdx(prev => prev + 1);
+                  }}
+                  style={{ padding: '12px 16px', fontSize: '0.95rem' }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
+              Review Categorizations
+            </h3>
+            <div style={{ 
+              maxHeight: '180px', 
+              overflowY: 'auto', 
+              background: 'rgba(0, 0, 0, 0.2)', 
+              borderRadius: '8px', 
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              marginBottom: 20
+            }}>
+              {Object.keys(categoryAssignments).map((item, idx) => (
+                <div 
+                  key={idx}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    fontSize: '0.9rem',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                    paddingBottom: 4
+                  }}
+                >
+                  <span style={{ color: 'var(--text-primary)' }}>{item}</span>
+                  <span style={{ color: 'var(--accent-light)', fontWeight: 600 }}>{categoryAssignments[item]}</span>
+                </div>
+              ))}
+            </div>
+
+            {!previewAnswered && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setCategorizeIdx(0);
+                    setCategoryAssignments({});
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  Reset
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => submitPreviewAnswer(categoryAssignments)}
+                  style={{ flex: 2 }}
+                >
+                  Submit
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPreviewFeedbackArea = (activeQuestion) => {
+    if (!previewAnswered) return null;
+
+    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+    let correctAnswerExplanation = '';
+    if (type === 'MULTIPLE_CHOICE') {
+      correctAnswerExplanation = `Correct option is Option ${activeQuestion.correct_option_index + 1}: "${activeQuestion.options[activeQuestion.correct_option_index]}"`;
+    } else if (type === 'SORTING') {
+      correctAnswerExplanation = `Correct sequence: ${activeQuestion.options.join(' ➔ ')}`;
+    } else if (type === 'DRAG_DROP') {
+      correctAnswerExplanation = `Correct words: ${activeQuestion.options.correct?.join(', ')}`;
+    } else if (type === 'DROP_DOWN') {
+      correctAnswerExplanation = `Correct selections: ${activeQuestion.options.dropdowns?.map((d, i) => `[${i+1}] ${d.correct}`).join(', ')}`;
+    } else if (type === 'CATEGORIZE') {
+      correctAnswerExplanation = `Correct classifications: ${activeQuestion.options.items?.map(item => `${item.name} ➔ ${item.category}`).join(', ')}`;
+    }
+
+    return (
+      <div style={{
+        marginTop: '20px',
+        borderTop: '1px solid var(--panel-border)',
+        paddingTop: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        <div style={{
+          background: previewIsCorrect ? 'rgba(76, 175, 80, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid ' + (previewIsCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(239, 68, 68, 0.3)'),
+          borderRadius: '8px',
+          padding: '16px',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ 
+            color: previewIsCorrect ? '#4caf50' : '#ff4b60', 
+            margin: '0 0 6px 0', 
+            fontSize: '1.2rem',
+            fontWeight: 700,
+            textShadow: previewIsCorrect ? '0 0 10px rgba(76, 175, 80, 0.3)' : '0 0 10px rgba(255, 75, 96, 0.3)'
+          }}>
+            {previewIsCorrect ? '🎉 Correct!' : '❌ Incorrect'}
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
+            {correctAnswerExplanation}
+          </p>
+        </div>
+
+        <button 
+          className="btn btn-primary" 
+          onClick={nextPreviewQuestion}
+          style={{ width: '100%' }}
+        >
+          {previewCurrentIdx + 1 < previewQuestions.length ? 'Next Question ➔' : 'Finish Preview'}
+        </button>
+      </div>
+    );
+  };
+
+  const renderPreviewQuestionBody = () => {
+    const activeQuestion = previewQuestions[previewCurrentIdx];
+    if (!activeQuestion) return null;
+    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.4)',
+          border: '1px solid var(--panel-border)',
+          borderRadius: '10px',
+          padding: '20px',
+          position: 'relative'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '10px',
+            fontSize: '0.85rem'
+          }}>
+            <span style={{ 
+              background: 'var(--accent-glow)', 
+              color: 'var(--accent-light)', 
+              fontWeight: 700, 
+              padding: '2px 8px', 
+              borderRadius: '12px' 
+            }}>
+              Question {previewCurrentIdx + 1} of {previewQuestions.length}
+            </span>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+              {type.replace('_', ' ')}
+            </span>
+          </div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: '1.6' }}>
+            {activeQuestion.text}
+          </div>
+        </div>
+
+        <div style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: '10px 0' }}>
+          {type === 'MULTIPLE_CHOICE' && renderMcInteraction(activeQuestion)}
+          {type === 'SORTING' && renderSortingInteraction()}
+          {type === 'DRAG_DROP' && renderDragDropInteraction(activeQuestion)}
+          {type === 'DROP_DOWN' && renderDropDownInteraction(activeQuestion)}
+          {type === 'CATEGORIZE' && renderCategorizeInteraction(activeQuestion)}
+        </div>
+
+        {renderPreviewFeedbackArea(activeQuestion)}
+      </div>
+    );
+  };
+
+  const renderPreviewModal = () => {
+    if (!previewGame) return null;
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div 
+          className="panel panel-large animate-join-focus" 
+          style={{ 
+            width: '100%', 
+            maxWidth: '650px', 
+            maxHeight: '90vh', 
+            overflowY: 'auto',
+            textAlign: 'left',
+            padding: '30px',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '20px', 
+            borderBottom: '1px solid var(--panel-border)',
+            paddingBottom: '15px'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Game Preview Mode
+              </span>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{previewGame.title}</h2>
+            </div>
+            <button 
+              onClick={closePreviewGame}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+            >
+              ✕
+            </button>
+          </div>
+
+          {previewLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+            </div>
+          ) : previewError ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: '#ff4b60' }}>
+              <p>{previewError}</p>
+              <button className="btn btn-secondary" onClick={closePreviewGame} style={{ marginTop: '16px' }}>Close</button>
+            </div>
+          ) : previewQuestions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This game collection has no questions yet.</p>
+              <button className="btn btn-secondary" onClick={closePreviewGame}>Close</button>
+            </div>
+          ) : (
+            <div>
+              {renderPreviewQuestionBody()}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderUserStatusBar = () => {
+    if (!currentUser) return null;
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'rgba(15, 23, 42, 0.4)',
+        borderBottom: '1px solid var(--panel-border)',
+        padding: '12px 24px',
+        margin: '-40px -40px 24px -40px',
+        fontSize: '0.85rem',
+        color: 'var(--text-secondary)'
+      }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          👤 Logged in as: <strong style={{ color: 'var(--text-primary)' }}>{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
+        </span>
+        <button 
+          onClick={onLogout} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#ff4b60',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            textDecoration: 'underline',
+            padding: '4px 8px'
+          }}
+        >
+          Log Out
+        </button>
+      </div>
+    );
+  };
+
+  // Extract unique languages and creators from the games list for filter pills
+  const uniqueLanguages = useMemo(() => {
+    const langs = new Set();
+    gamesList.forEach(g => {
+      if (g.language) langs.add(g.language);
+    });
+    return Array.from(langs);
+  }, [gamesList]);
+
+  const uniqueCreators = useMemo(() => {
+    const creators = new Set();
+    gamesList.forEach(g => {
+      if (g.creator) creators.add(g.creator);
+    });
+    return Array.from(creators);
+  }, [gamesList]);
+
+  // Filter handlers
+  const toggleSubjectFilter = (sub) => {
+    setFilterSubject(prev => prev.includes(sub) ? prev.filter(x => x !== sub) : [...prev, sub]);
+  };
+  const toggleCefrFilter = (level) => {
+    setFilterCefr(prev => prev.includes(level) ? prev.filter(x => x !== level) : [...prev, level]);
+  };
+  const toggleLanguageFilter = (lang) => {
+    setFilterLanguage(prev => prev.includes(lang) ? prev.filter(x => x !== lang) : [...prev, lang]);
+  };
+  const toggleCreatorFilter = (creator) => {
+    setFilterCreator(prev => prev.includes(creator) ? prev.filter(x => x !== creator) : [...prev, creator]);
+  };
+
+  const clearAllFilters = () => {
+    setFilterSubject([]);
+    setFilterCefr([]);
+    setFilterLanguage([]);
+    setFilterCreator([]);
+  };
+
+  const hasActiveFilters = filterSubject.length > 0 || filterCefr.length > 0 || filterLanguage.length > 0 || filterCreator.length > 0;
+
+  // Filtered games array
+  const filteredGamesList = useMemo(() => {
+    return gamesList.filter(game => {
+      if (filterSubject.length > 0 && !filterSubject.includes(game.subject)) return false;
+      if (filterCefr.length > 0 && !filterCefr.includes(game.cefr_level)) return false;
+      if (filterLanguage.length > 0 && !filterLanguage.includes(game.language)) return false;
+      if (filterCreator.length > 0 && !filterCreator.includes(game.creator)) return false;
+      return true;
+    });
+  }, [gamesList, filterSubject, filterCefr, filterLanguage, filterCreator]);
   
   // 1. GAME EDITING MODE
   if (!selectedGame && isEditingGame) {
     return (
       <div className="app-container">
         <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
+          {renderUserStatusBar()}
           <div style={{ marginBottom: 24 }}>
             <h2>{selectedGameForEdit ? 'Edit Game Details' : 'Create New Game Collection'}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-              Specify the title and description for your quiz game collection.
+              Specify the details and metadata tags for your quiz game collection.
             </p>
           </div>
 
@@ -113,6 +1102,66 @@ export function TeacherDashboard({
               />
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Creator / Author (Optional)</label>
+                <input 
+                  type="text"
+                  className="form-input" 
+                  placeholder="e.g. Dahoot Team"
+                  value={gameCreator}
+                  onChange={(e) => setGameCreator(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Language (Optional)</label>
+                <input 
+                  type="text"
+                  className="form-input" 
+                  placeholder="e.g. English"
+                  value={gameLanguage}
+                  onChange={(e) => setGameLanguage(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="form-label">CEFR Language Level (Optional)</label>
+                <select
+                  className="form-input"
+                  value={gameCefrLevel}
+                  onChange={(e) => setGameCefrLevel(e.target.value)}
+                  disabled={loading}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="">None / Not Applicable</option>
+                  {availableCefrLevels.map(lvl => (
+                    <option key={lvl} value={lvl}>{lvl}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Subject</label>
+                <select
+                  className="form-input"
+                  value={gameSubject}
+                  onChange={(e) => setGameSubject(e.target.value)}
+                  disabled={loading}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="">None / General</option>
+                  {availableSubjects.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button type="button" className="btn btn-secondary" onClick={cancelEditingGame} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
                 Cancel
@@ -132,6 +1181,7 @@ export function TeacherDashboard({
     return (
       <div className="app-container">
         <div className="panel panel-large animate-join-focus">
+          {renderUserStatusBar()}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
             <div style={{ textAlign: 'left' }}>
               <h2 style={{ marginBottom: 4 }}>Game Collections</h2>
@@ -158,6 +1208,166 @@ export function TeacherDashboard({
             </div>
           )}
 
+          {/* Filtering Panel */}
+          <div style={{
+            background: 'rgba(15, 23, 42, 0.3)',
+            border: '1px solid var(--panel-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '20px',
+            marginBottom: '24px',
+            textAlign: 'left',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                🔍 Filter Collections {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({filteredGamesList.length} matches)</span>}
+              </span>
+              {hasActiveFilters && (
+                <button 
+                  onClick={clearAllFilters}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ff4b60',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+              {/* Subject */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+                  Subject
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {availableSubjects.map(sub => {
+                    const active = filterSubject.includes(sub);
+                    return (
+                      <button
+                        key={sub}
+                        onClick={() => toggleSubjectFilter(sub)}
+                        style={{
+                          background: active ? 'var(--blue-gradient)' : 'rgba(255,255,255,0.05)',
+                          border: '1px solid ' + (active ? '#3b82f6' : 'rgba(255,255,255,0.05)'),
+                          borderRadius: '20px',
+                          padding: '4px 10px',
+                          fontSize: '0.8rem',
+                          color: active ? '#ffffff' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {sub}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* CEFR Level */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+                  CEFR Level
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {availableCefrLevels.map(level => {
+                    const active = filterCefr.includes(level);
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => toggleCefrFilter(level)}
+                        style={{
+                          background: active ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
+                          border: '1px solid ' + (active ? 'var(--accent)' : 'rgba(255,255,255,0.05)'),
+                          borderRadius: '20px',
+                          padding: '4px 10px',
+                          fontSize: '0.8rem',
+                          color: active ? '#ffffff' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {level}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Language */}
+              {uniqueLanguages.length > 0 && (
+                <div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+                    Language
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {uniqueLanguages.map(lang => {
+                      const active = filterLanguage.includes(lang);
+                      return (
+                        <button
+                          key={lang}
+                          onClick={() => toggleLanguageFilter(lang)}
+                          style={{
+                            background: active ? 'var(--green-gradient)' : 'rgba(255,255,255,0.05)',
+                            border: '1px solid ' + (active ? '#4caf50' : 'rgba(255,255,255,0.05)'),
+                            borderRadius: '20px',
+                            padding: '4px 10px',
+                            fontSize: '0.8rem',
+                            color: active ? '#ffffff' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {lang}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Creator */}
+              {uniqueCreators.length > 0 && (
+                <div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+                    Creator
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {uniqueCreators.map(creator => {
+                      const active = filterCreator.includes(creator);
+                      return (
+                        <button
+                          key={creator}
+                          onClick={() => toggleCreatorFilter(creator)}
+                          style={{
+                            background: active ? 'var(--yellow-gradient)' : 'rgba(255,255,255,0.05)',
+                            border: '1px solid ' + (active ? '#fbc02d' : 'rgba(255,255,255,0.05)'),
+                            borderRadius: '20px',
+                            padding: '4px 10px',
+                            fontSize: '0.8rem',
+                            color: active ? '#ffffff' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {creator}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
@@ -165,7 +1375,7 @@ export function TeacherDashboard({
             marginBottom: 32,
             textAlign: 'left'
           }}>
-            {gamesList.length === 0 ? (
+            {filteredGamesList.length === 0 ? (
               <div style={{ 
                 gridColumn: '1 / -1',
                 textAlign: 'center', 
@@ -174,10 +1384,10 @@ export function TeacherDashboard({
                 border: '1px dashed var(--panel-border)',
                 borderRadius: 'var(--radius-md)'
               }}>
-                No game collections found. Create a new collection or reset demo questions.
+                No game collections match the selected filters. Clear filters or create a new collection.
               </div>
             ) : (
-              gamesList.map((game) => (
+              filteredGamesList.map((game) => (
                 <div 
                   key={game.id} 
                   style={{
@@ -195,7 +1405,7 @@ export function TeacherDashboard({
                   className="game-card"
                 >
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                       <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 700 }}>
                         {game.title}
                       </h3>
@@ -212,6 +1422,63 @@ export function TeacherDashboard({
                         {game.questionCount ?? 0} Qs
                       </span>
                     </div>
+
+                    {/* Metadata tags */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '8px 0 12px 0' }}>
+                      {game.subject && (
+                        <span style={{ 
+                          background: 'rgba(59, 130, 246, 0.1)', 
+                          border: '1px solid rgba(59, 130, 246, 0.3)', 
+                          color: '#60a5fa', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 600,
+                          padding: '2px 8px', 
+                          borderRadius: '12px' 
+                        }}>
+                          📚 {game.subject}
+                        </span>
+                      )}
+                      {game.cefr_level && (
+                        <span style={{ 
+                          background: 'rgba(168, 85, 247, 0.1)', 
+                          border: '1px solid rgba(168, 85, 247, 0.3)', 
+                          color: '#c084fc', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 600,
+                          padding: '2px 8px', 
+                          borderRadius: '12px' 
+                        }}>
+                          🎓 {game.cefr_level}
+                        </span>
+                      )}
+                      {game.language && (
+                        <span style={{ 
+                          background: 'rgba(16, 185, 129, 0.1)', 
+                          border: '1px solid rgba(16, 185, 129, 0.3)', 
+                          color: '#34d399', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 600,
+                          padding: '2px 8px', 
+                          borderRadius: '12px' 
+                        }}>
+                          🗣️ {game.language}
+                        </span>
+                      )}
+                      {game.creator && (
+                        <span style={{ 
+                          background: 'rgba(245, 158, 11, 0.1)', 
+                          border: '1px solid rgba(245, 158, 11, 0.3)', 
+                          color: '#fbbf24', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 600,
+                          padding: '2px 8px', 
+                          borderRadius: '12px' 
+                        }}>
+                          👤 {game.creator}
+                        </span>
+                      )}
+                    </div>
+
                     <p style={{ 
                       color: 'var(--text-secondary)', 
                       fontSize: '0.9rem', 
@@ -227,13 +1494,25 @@ export function TeacherDashboard({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={() => setSelectedGame(game)}
-                      style={{ padding: '10px 14px' }}
-                    >
-                      ✏ Manage Questions
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => setSelectedGame(game)}
+                        style={{ flex: 1, padding: '10px 14px' }}
+                      >
+                        ✏ Manage Questions
+                      </button>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startPreviewGame(game);
+                        }}
+                        style={{ flex: 1, padding: '10px 14px' }}
+                      >
+                        👁️ Preview Game
+                      </button>
+                    </div>
                     
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button 
@@ -279,15 +1558,93 @@ export function TeacherDashboard({
             </button>
           </div>
         </div>
+        {renderPreviewModal()}
       </div>
     );
   }
 
-  // 3. QUESTIONS EDITING / CREATING SCREEN (Under Selected Game)
+  // 3. QUESTIONS BULK IMPORT PANEL (Under Selected Game)
+  if (isImporting) {
+    return (
+      <div className="app-container">
+        <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
+          {renderUserStatusBar()}
+          <div style={{ marginBottom: 24 }}>
+            <h2>Import Questions in Bulk</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+              Paste your Markdown-formatted questions below to load them into: <strong>{selectedGame.title}</strong>
+            </p>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+              <a 
+                href="/import-instructions.html" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
+              >
+                📖 View formatting guide & AI prompt template
+              </a>
+            </p>
+          </div>
+
+          {error && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              color: '#ff4b60', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              marginBottom: 20
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={saveImportedQuestions}>
+            <div className="form-group">
+              <label className="form-label">Markdown Text</label>
+              <textarea 
+                className="form-input" 
+                placeholder={`# MULTIPLE_CHOICE
+What is the capital of France?
+- Berlin
+- *Paris
+- London
+- Rome
+
+# SORTING
+Sort these numbers from lowest to highest.
+1. Five
+2. Ten
+3. Fifteen
+4. Twenty`}
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                disabled={loading}
+                rows={15}
+                style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.5' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
+              <button type="button" className="btn btn-secondary" onClick={cancelImporting} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={loading || !importText.trim()} style={{ width: 'auto', minWidth: 150 }}>
+                {loading ? 'Importing...' : 'Save & Import'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. QUESTIONS EDITING / CREATING SCREEN (Under Selected Game)
   if (isEditing) {
     return (
       <div className="app-container">
         <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
+          {renderUserStatusBar()}
           <div style={{ marginBottom: 24 }}>
             <h2>{selectedQuestion ? 'Edit Question' : 'Add Question'}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
@@ -579,10 +1936,11 @@ export function TeacherDashboard({
     );
   }
 
-  // 4. QUESTIONS LIST VIEW (For Selected Game)
+  // 5. QUESTIONS LIST VIEW (For Selected Game)
   return (
     <div className="app-container">
       <div className="panel panel-large animate-join-focus">
+        {renderUserStatusBar()}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
           <div style={{ textAlign: 'left' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -599,11 +1957,14 @@ export function TeacherDashboard({
               Manage questions for this game collection
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <button className="btn btn-secondary" onClick={() => setSelectedGame(null)} style={{ width: 'auto', minWidth: 100 }}>
               Back to Games
             </button>
-            <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto', minWidth: 150 }}>
+            <button className="btn btn-secondary" onClick={startImporting} style={{ width: 'auto', minWidth: 130 }}>
+              📥 Import in Bulk
+            </button>
+            <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto', minWidth: 130 }}>
               + Add Question
             </button>
           </div>
@@ -641,7 +2002,7 @@ export function TeacherDashboard({
               border: '1px dashed var(--panel-border)',
               borderRadius: 'var(--radius-md)'
             }}>
-              No questions in this collection yet. Click "+ Add Question" to create one.
+              No questions in this collection yet. Click "+ Add Question" or "📥 Import in Bulk" to get started.
             </div>
           ) : (
             questionsList.map((question, qIdx) => {

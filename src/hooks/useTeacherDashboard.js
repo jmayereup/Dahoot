@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
+import { parseMarkdownQuestions } from '../utils/markdownParser';
 
 export function useTeacherDashboard(view) {
   const [gamesList, setGamesList] = useState([]);
@@ -14,6 +15,10 @@ export function useTeacherDashboard(view) {
   const [selectedGameForEdit, setSelectedGameForEdit] = useState(null); // null if creating, game object if editing
   const [gameTitle, setGameTitle] = useState('');
   const [gameDescription, setGameDescription] = useState('');
+  const [gameCreator, setGameCreator] = useState('');
+  const [gameLanguage, setGameLanguage] = useState('English');
+  const [gameCefrLevel, setGameCefrLevel] = useState('');
+  const [gameSubject, setGameSubject] = useState('');
 
   // Question Form states
   const [isEditing, setIsEditing] = useState(false);
@@ -21,6 +26,10 @@ export function useTeacherDashboard(view) {
   const [questionType, setQuestionType] = useState('MULTIPLE_CHOICE');
   const [questionText, setQuestionText] = useState('');
   
+  // Bulk Import state
+  const [isImporting, setIsImporting] = useState(false);
+  const [importText, setImportText] = useState('');
+
   // Type-specific helper states
   // MULTIPLE_CHOICE & SORTING
   const [options, setOptions] = useState(['', '', '', '']);
@@ -43,14 +52,14 @@ export function useTeacherDashboard(view) {
     setLoading(true);
     setError('');
     try {
-      const games = await pb.collection('games').getFullList({
+      const games = await pb.collection('dahoot_games').getFullList({
         sort: 'created'
       });
       
       // Fetch question counts for each game
       const gamesWithCounts = await Promise.all(games.map(async (game) => {
         try {
-          const questions = await pb.collection('questions').getList(1, 1, {
+          const questions = await pb.collection('dahoot_questions').getList(1, 1, {
             filter: `game_id = "${game.id}"`
           });
           return {
@@ -80,7 +89,7 @@ export function useTeacherDashboard(view) {
     setLoading(true);
     setError('');
     try {
-      const list = await pb.collection('questions').getFullList({
+      const list = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${gameId}"`,
         sort: 'created'
       });
@@ -108,6 +117,10 @@ export function useTeacherDashboard(view) {
     setSelectedGameForEdit(null);
     setGameTitle('');
     setGameDescription('');
+    setGameCreator('');
+    setGameLanguage('English');
+    setGameCefrLevel('');
+    setGameSubject('');
     setIsEditingGame(true);
     setError('');
   };
@@ -117,6 +130,10 @@ export function useTeacherDashboard(view) {
     setSelectedGameForEdit(game);
     setGameTitle(game.title);
     setGameDescription(game.description || '');
+    setGameCreator(game.creator || '');
+    setGameLanguage(game.language || 'English');
+    setGameCefrLevel(game.cefr_level || '');
+    setGameSubject(game.subject || '');
     setIsEditingGame(true);
     setError('');
   };
@@ -138,16 +155,19 @@ export function useTeacherDashboard(view) {
 
     setLoading(true);
     try {
+      const gameData = {
+        title: gameTitle.trim(),
+        description: gameDescription.trim(),
+        creator: gameCreator.trim(),
+        language: gameLanguage.trim(),
+        cefr_level: gameCefrLevel || null,
+        subject: gameSubject || null
+      };
+
       if (selectedGameForEdit) {
-        await pb.collection('games').update(selectedGameForEdit.id, {
-          title: gameTitle.trim(),
-          description: gameDescription.trim()
-        });
+        await pb.collection('dahoot_games').update(selectedGameForEdit.id, gameData);
       } else {
-        await pb.collection('games').create({
-          title: gameTitle.trim(),
-          description: gameDescription.trim()
-        });
+        await pb.collection('dahoot_games').create(gameData);
       }
       setIsEditingGame(false);
       setSelectedGameForEdit(null);
@@ -168,7 +188,7 @@ export function useTeacherDashboard(view) {
     setLoading(true);
     setError('');
     try {
-      await pb.collection('games').delete(id);
+      await pb.collection('dahoot_games').delete(id);
       await fetchGames();
     } catch (err) {
       console.error("Error deleting game:", err);
@@ -186,19 +206,23 @@ export function useTeacherDashboard(view) {
     setLoading(true);
     setError('');
     try {
-      const copiedGame = await pb.collection('games').create({
+      const copiedGame = await pb.collection('dahoot_games').create({
         title: `${game.title} (Copy)`,
-        description: game.description || ''
+        description: game.description || '',
+        creator: game.creator || '',
+        language: game.language || '',
+        cefr_level: game.cefr_level || null,
+        subject: game.subject || null
       });
 
       // Get all questions
-      const qList = await pb.collection('questions').getFullList({
+      const qList = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${game.id}"`,
         sort: 'created'
       });
 
       for (const q of qList) {
-        await pb.collection('questions').create({
+        await pb.collection('dahoot_questions').create({
           game_id: copiedGame.id,
           text: q.text,
           options: q.options,
@@ -431,9 +455,9 @@ export function useTeacherDashboard(view) {
 
     try {
       if (selectedQuestion) {
-        await pb.collection('questions').update(selectedQuestion.id, questionData);
+        await pb.collection('dahoot_questions').update(selectedQuestion.id, questionData);
       } else {
-        await pb.collection('questions').create(questionData);
+        await pb.collection('dahoot_questions').create(questionData);
       }
       setIsEditing(false);
       setSelectedQuestion(null);
@@ -454,11 +478,61 @@ export function useTeacherDashboard(view) {
     setLoading(true);
     setError('');
     try {
-      await pb.collection('questions').delete(id);
+      await pb.collection('dahoot_questions').delete(id);
       await fetchQuestions(selectedGame.id);
     } catch (err) {
       console.error("Error deleting question:", err);
       setError("Failed to delete question: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Bulk Import Actions
+  const startImporting = () => {
+    setIsImporting(true);
+    setImportText('');
+    setError('');
+  };
+
+  const cancelImporting = () => {
+    setIsImporting(false);
+    setImportText('');
+    setError('');
+  };
+
+  const saveImportedQuestions = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!importText.trim()) {
+      setError('Please provide questions in the text area.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const parsed = parseMarkdownQuestions(importText);
+      if (parsed.length === 0) {
+        throw new Error('Could not parse any valid questions. Check formatting.');
+      }
+
+      for (const q of parsed) {
+        await pb.collection('dahoot_questions').create({
+          game_id: selectedGame.id,
+          text: q.text,
+          options: q.options,
+          correct_option_index: q.correct_option_index,
+          type: q.type
+        });
+      }
+
+      setIsImporting(false);
+      setImportText('');
+      await fetchQuestions(selectedGame.id);
+    } catch (err) {
+      console.error("Error saving imported questions:", err);
+      setError("Import failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -474,6 +548,14 @@ export function useTeacherDashboard(view) {
     setGameTitle,
     gameDescription,
     setGameDescription,
+    gameCreator,
+    setGameCreator,
+    gameLanguage,
+    setGameLanguage,
+    gameCefrLevel,
+    setGameCefrLevel,
+    gameSubject,
+    setGameSubject,
     startCreatingGame,
     startEditingGame,
     cancelEditingGame,
@@ -490,6 +572,13 @@ export function useTeacherDashboard(view) {
     setQuestionType,
     questionText,
     setQuestionText,
+
+    isImporting,
+    importText,
+    setImportText,
+    startImporting,
+    cancelImporting,
+    saveImportedQuestions,
     
     // Multiple Choice & Sorting
     options,

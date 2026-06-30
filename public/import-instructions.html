@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dahoot Bulk Import Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #090a0f 0%, #111424 50%, #1e112a 100%);
+      --panel-bg: rgba(22, 28, 45, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.06);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #a855f7;
+      --accent-light: #c084fc;
+      --accent-glow: rgba(168, 85, 247, 0.15);
+      --radius-md: 16px;
+      --radius-lg: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 32px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 8px;
+    }
+
+    h2:first-of-type {
+      margin-top: 0;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 16px;
+      color: var(--text-secondary);
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    code {
+      font-family: 'Fira Code', monospace;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.9em;
+    }
+
+    pre {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: #e2e8f0;
+      font-size: 0.95em;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .format-card {
+      background: rgba(15, 23, 42, 0.3);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .alert {
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      color: var(--text-primary);
+    }
+
+    .alert strong {
+      color: var(--accent-light);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Dahoot Bulk Import Guide</h1>
+      <p class="subtitle">Quick reference formatting rules for bulk quiz question generation</p>
+    </header>
+
+    <main class="panel">
+      <div class="alert">
+        <strong>💡 Pro-Tip:</strong> Copy the system instructions at the bottom of this page and paste them directly into ChatGPT, Claude, or Google Gemini to generate flawless custom quiz questions instantly!
+      </div>
+
+      <h2>Question Formats</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">
+        Each question block must begin with its corresponding type header (e.g. <code># MULTIPLE_CHOICE</code>), followed by the question text prompt, then configuration options/lines.
+      </p>
+
+      <!-- 1. MC -->
+      <div class="format-card">
+        <h3>1. Multiple Choice (<code># MULTIPLE_CHOICE</code>)</h3>
+        <ul>
+          <li>Provide a question prompt.</li>
+          <li>List 4 answer choices using bullet points (starting with <code>-</code>).</li>
+          <li>Prefix the correct option with an asterisk: <code>- *Correct Option</code>.</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># MULTIPLE_CHOICE
+Which programming language was created by Brendan Eich in 1995?
+- Java
+- *JavaScript
+- Python
+- C++</code></pre>
+      </div>
+
+      <!-- 2. SORTING -->
+      <div class="format-card">
+        <h3>2. Sorting Order (<code># SORTING</code>)</h3>
+        <ul>
+          <li>Provide a sorting prompt.</li>
+          <li>List 4 items in their <strong>correct sorted order</strong> using numbered points: <code>1.</code>, <code>2.</code>, etc.</li>
+          <li>Dahoot shuffles the elements automatically during the game.</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># SORTING
+Sort these tech stack layers from front-end to back-end.
+1. HTML / CSS UI Layout
+2. React State Management
+3. Express Server Router
+4. Database Storage</code></pre>
+      </div>
+
+      <!-- 3. DRAG_DROP -->
+      <div class="format-card">
+        <h3>3. Drag & Drop Blanks (<code># DRAG_DROP</code>)</h3>
+        <ul>
+          <li>Provide a prompt.</li>
+          <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>[blank0]</code> and <code>[blank1]</code>.</li>
+          <li>List 4 bullet point choices. Prefixes correct choices in correct blank order with <code>*</code>. Other choices act as distractors.</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DRAG_DROP
+Complete the sentence about React hooks.
+Sentence: In React, we use the [blank0] hook to manage state, and [blank1] to perform side effects.
+- *useState
+- *useEffect
+- useContext
+- useRef</code></pre>
+      </div>
+
+      <!-- 4. DROP_DOWN -->
+      <div class="format-card">
+        <h3>4. Drop-Down Choices (<code># DROP_DOWN</code>)</h3>
+        <ul>
+          <li>Provide a prompt.</li>
+          <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>{{0}}</code> and <code>{{1}}</code>.</li>
+          <li>List dropdown options under a <code>Dropdown N:</code> header. Correct answer must be prefixed with <code>*</code>.</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DROP_DOWN
+Fill in the blanks regarding PocketBase architecture.
+Sentence: PocketBase is written in {{0}} and uses {{1}} as its default database engine.
+Dropdown 0:
+- *Go
+- Rust
+- JavaScript
+Dropdown 1:
+- *SQLite
+- PostgreSQL
+- MongoDB</code></pre>
+      </div>
+
+      <!-- 5. CATEGORIZE -->
+      <div class="format-card">
+        <h3>5. Categorize Items (<code># CATEGORIZE</code>)</h3>
+        <ul>
+          <li>Provide a classification prompt.</li>
+          <li>Provide category names with <code>Categories: CategoryA, CategoryB</code>.</li>
+          <li>List mapped items under <code>Items:</code> with the format <code>- Item Name: Category Name</code>.</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># CATEGORIZE
+Classify the following tech elements.
+Categories: Languages, Frameworks
+Items:
+- JavaScript: Languages
+- React: Frameworks
+- Python: Languages
+- Next.js: Frameworks</code></pre>
+      </div>
+
+      <h2>Gemini Gem / Custom GPT System Instructions</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 16px;">
+        Paste the following prompt instructions into your Custom AI chatbot settings to configure it:
+      </p>
+      <pre style="max-height: 350px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text:
+
+# MULTIPLE_CHOICE
+Question prompt here
+- Incorrect Option 1
+- *Correct Option (starts with - *)
+- Incorrect Option 2
+- Incorrect Option 3
+
+# SORTING
+Question prompt here
+1. First Item (Correct Order)
+2. Second Item (Correct Order)
+3. Third Item (Correct Order)
+4. Fourth Item (Correct Order)
+
+# DRAG_DROP
+Question prompt here
+Sentence: Sentence goes here with placeholders like [blank0] and [blank1].
+- *Correct Choice for [blank0] (starts with - *)
+- *Correct Choice for [blank1] (starts with - *)
+- Distractor Choice 1
+- Distractor Choice 2
+
+# DROP_DOWN
+Question prompt here
+Sentence: Sentence goes here with dropdown slots like {{0}} and {{1}}.
+Dropdown 0:
+- *Correct Choice (starts with - *)
+- Option 2
+- Option 3
+Dropdown 1:
+- *Correct Choice (starts with - *)
+- Option 2
+- Option 3
+
+# CATEGORIZE
+Question prompt here
+Categories: CategoryA, CategoryB
+Items:
+- Item 1: CategoryA
+- Item 2: CategoryB
+- Item 3: CategoryA
+- Item 4: CategoryB</code></pre>
+    </main>
+  </div>
+
+  <script>
+    function copyText(button) {
+      const code = button.nextElementSibling.innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const originalText = button.innerText;
+        button.innerText = 'Copied!';
+        button.style.background = '#10b981';
+        button.style.color = '#ffffff';
+        setTimeout(() => {
+          button.innerText = originalText;
+          button.style.background = '';
+          button.style.color = '';
+        }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>

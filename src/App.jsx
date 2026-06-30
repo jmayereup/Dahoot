@@ -7,15 +7,46 @@ import { SelectionView } from './components/SelectionView';
 import { HostView } from './components/HostView';
 import { PlayerView } from './components/PlayerView';
 import { TeacherDashboard } from './components/TeacherDashboard';
+import { AuthView } from './components/AuthView';
 
 function App() {
   const [view, setView] = useState('selection'); // 'selection' | 'host' | 'player' | 'teacher'
   const [pocketbaseStatus, setPocketbaseStatus] = useState('checking');
+  const [availableSubjects, setAvailableSubjects] = useState(['Math', 'Science', 'English', 'History', 'Geography', 'Other']);
+  const [availableCefrLevels, setAvailableCefrLevels] = useState(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+  
+  const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid);
+  const [currentUser, setCurrentUser] = useState(pb.authStore.record);
 
-  // Check PocketBase connection on mount
+  // Sync auth state and listen to auth changes
   useEffect(() => {
-    pb.collection('rooms').getList(1, 1)
-      .then(() => setPocketbaseStatus('connected'))
+    return pb.authStore.onChange((token, record) => {
+      setIsAuthenticated(pb.authStore.isValid);
+      setCurrentUser(record);
+    });
+  }, []);
+
+  const handleLogout = () => {
+    pb.authStore.clear();
+    setView('selection');
+  };
+
+  // Check PocketBase connection and fetch options on mount
+  useEffect(() => {
+    pb.collection('dahoot_rooms').getList(1, 1)
+      .then(() => {
+        setPocketbaseStatus('connected');
+        pb.collection('dahoot_options').getFullList()
+          .then((records) => {
+            const subjects = records.filter(r => r.type === 'subject').map(r => r.value);
+            const cefr = records.filter(r => r.type === 'cefr_level').map(r => r.value);
+            if (subjects.length > 0) setAvailableSubjects(subjects);
+            if (cefr.length > 0) setAvailableCefrLevels(cefr);
+          })
+          .catch((err) => {
+            console.error("Failed to load options from dahoot_options collection:", err);
+          });
+      })
       .catch((err) => {
         console.error("PocketBase connection check failed:", err);
         setPocketbaseStatus('disconnected');
@@ -50,6 +81,8 @@ function App() {
         setView={setView}
         gamesList={hostGame.gamesList}
         refreshGames={hostGame.refreshGames}
+        availableSubjects={availableSubjects}
+        availableCefrLevels={availableCefrLevels}
       />
     );
   }
@@ -93,6 +126,15 @@ function App() {
 
   // 4. TEACHER/ADMIN VIEW
   if (view === 'teacher') {
+    if (!isAuthenticated) {
+      return (
+        <AuthView 
+          onSuccess={() => setView('teacher')}
+          onCancel={() => setView('selection')}
+        />
+      );
+    }
+
     return (
       <TeacherDashboard
         // Games List State
@@ -105,6 +147,14 @@ function App() {
         setGameTitle={teacherDashboard.setGameTitle}
         gameDescription={teacherDashboard.gameDescription}
         setGameDescription={teacherDashboard.setGameDescription}
+        gameCreator={teacherDashboard.gameCreator}
+        setGameCreator={teacherDashboard.setGameCreator}
+        gameLanguage={teacherDashboard.gameLanguage}
+        setGameLanguage={teacherDashboard.setGameLanguage}
+        gameCefrLevel={teacherDashboard.gameCefrLevel}
+        setGameCefrLevel={teacherDashboard.setGameCefrLevel}
+        gameSubject={teacherDashboard.gameSubject}
+        setGameSubject={teacherDashboard.setGameSubject}
         startCreatingGame={teacherDashboard.startCreatingGame}
         startEditingGame={teacherDashboard.startEditingGame}
         cancelEditingGame={teacherDashboard.cancelEditingGame}
@@ -151,7 +201,18 @@ function App() {
         cancelEditing={teacherDashboard.cancelEditing}
         saveQuestion={teacherDashboard.saveQuestion}
         deleteQuestion={teacherDashboard.deleteQuestion}
+        
+        isImporting={teacherDashboard.isImporting}
+        importText={teacherDashboard.importText}
+        setImportText={teacherDashboard.setImportText}
+        startImporting={teacherDashboard.startImporting}
+        cancelImporting={teacherDashboard.cancelImporting}
+        saveImportedQuestions={teacherDashboard.saveImportedQuestions}
+        availableSubjects={availableSubjects}
+        availableCefrLevels={availableCefrLevels}
         setView={setView}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
     );
   }

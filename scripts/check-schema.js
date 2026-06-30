@@ -40,20 +40,20 @@ async function check() {
       await pb.admins.authWithPassword(adminEmail, adminPassword);
     }
 
-    console.log("\n=== rooms Collection Schema ===");
+    console.log("\n=== dahoot_rooms Collection Schema ===");
     try {
-      const col = await pb.collections.getOne('rooms');
+      const col = await pb.collections.getOne('dahoot_rooms');
       console.log(JSON.stringify(col, null, 2));
     } catch (e) {
-      console.log("Error loading rooms collection:", e.message);
+      console.log("Error loading dahoot_rooms collection:", e.message);
     }
 
-    console.log("\n=== players Collection Schema ===");
+    console.log("\n=== dahoot_players Collection Schema ===");
     try {
-      const col = await pb.collections.getOne('players');
+      const col = await pb.collections.getOne('dahoot_players');
       console.log(JSON.stringify(col, null, 2));
     } catch (e) {
-      console.log("Error loading players collection:", e.message);
+      console.log("Error loading dahoot_players collection:", e.message);
     }
   } catch (err) {
     console.error("Authentication failed:", err.message);

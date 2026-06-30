@@ -1,27 +1,16 @@
 import React from 'react';
 
 export function PocketBaseStatusBanner({ status }) {
+  const statusColorClass = status === 'connected' 
+    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+    : status === 'checking' 
+      ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' 
+      : 'bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]';
+
   return (
-    <div style={{
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      fontSize: '0.85rem',
-      background: 'rgba(255, 255, 255, 0.05)',
-      padding: '6px 12px',
-      borderRadius: '20px',
-      border: '1px solid rgba(255, 255, 255, 0.08)'
-    }}>
-      <span style={{
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        backgroundColor: status === 'connected' ? '#10b981' : status === 'checking' ? '#f59e0b' : '#ef4444'
-      }} />
-      <span style={{ color: 'var(--text-secondary)' }}>
+    <div className="absolute top-4 right-4 flex items-center gap-2 text-xs bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/50 shadow-sm z-50 transition-all duration-300">
+      <span className={`w-2 h-2 rounded-full ${statusColorClass}`} />
+      <span className="text-slate-600 font-semibold tracking-wide">
         PocketBase: {status === 'connected' ? 'Connected' : status === 'checking' ? 'Checking...' : 'Disconnected'}
       </span>
     </div>

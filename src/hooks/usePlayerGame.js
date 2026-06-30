@@ -35,9 +35,9 @@ export function usePlayerGame(view, setView) {
   const attemptReconnect = async (playerId, roomId) => {
     try {
       setLoading(true);
-      const room = await pb.collection('rooms').getOne(roomId);
-      const player = await pb.collection('players').getOne(playerId);
-      const qList = await pb.collection('questions').getFullList({
+      const room = await pb.collection('dahoot_rooms').getOne(roomId);
+      const player = await pb.collection('dahoot_players').getOne(playerId);
+      const qList = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${room.game_id}"`,
         sort: 'created'
       });
@@ -66,7 +66,7 @@ export function usePlayerGame(view, setView) {
     if (view !== 'player' || !playerRoom || !playerRecord) return;
 
     // Listen to Room updates
-    pb.collection('rooms').subscribe(playerRoom.id, async (e) => {
+    pb.collection('dahoot_rooms').subscribe(playerRoom.id, async (e) => {
       if (e.action === 'update') {
         const updatedRoom = e.record;
         
@@ -84,7 +84,7 @@ export function usePlayerGame(view, setView) {
     });
 
     // Listen to Player updates (e.g. self score updates or kick events)
-    pb.collection('players').subscribe(playerRecord.id, (e) => {
+    pb.collection('dahoot_players').subscribe(playerRecord.id, (e) => {
       if (e.action === 'update') {
         setPlayerRecord(e.record);
       } else if (e.action === 'delete') {
@@ -94,8 +94,8 @@ export function usePlayerGame(view, setView) {
     });
 
     return () => {
-      pb.collection('rooms').unsubscribe(playerRoom.id);
-      pb.collection('players').unsubscribe(playerRecord.id);
+      pb.collection('dahoot_rooms').unsubscribe(playerRoom.id);
+      pb.collection('dahoot_players').unsubscribe(playerRecord.id);
     };
   }, [view, playerRoom?.id, playerRecord?.id]);
 
@@ -132,7 +132,7 @@ export function usePlayerGame(view, setView) {
     try {
       let room;
       try {
-        room = await pb.collection('rooms').getFirstListItem(`code = "${joinPin.trim()}"`);
+        room = await pb.collection('dahoot_rooms').getFirstListItem(`code = "${joinPin.trim()}"`);
       } catch (err) {
         throw new Error('Room not found. Check the code.');
       }
@@ -141,21 +141,21 @@ export function usePlayerGame(view, setView) {
         throw new Error('Game already started or finished.');
       }
 
-      const existing = await pb.collection('players').getList(1, 1, {
+      const existing = await pb.collection('dahoot_players').getList(1, 1, {
         filter: `room_id = "${room.id}" && name = "${playerName.trim()}"`
       });
       if (existing.totalItems > 0) {
         throw new Error('Name taken in this room. Choose another.');
       }
 
-      const player = await pb.collection('players').create({
+      const player = await pb.collection('dahoot_players').create({
         room_id: room.id,
         name: playerName.trim().substring(0, 15),
         score: 0,
         last_answered_index: -1
       });
 
-      const qList = await pb.collection('questions').getFullList({
+      const qList = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${room.game_id}"`,
         sort: 'created'
       });
@@ -221,7 +221,7 @@ export function usePlayerGame(view, setView) {
     }
 
     try {
-      const updatedPlayer = await pb.collection('players').update(playerRecord.id, {
+      const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
         score: playerRecord.score + points,
         last_answered_index: qIndex
       });
