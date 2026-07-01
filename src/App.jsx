@@ -210,6 +210,11 @@ function App() {
         startImporting={teacherDashboard.startImporting}
         cancelImporting={teacherDashboard.cancelImporting}
         saveImportedQuestions={teacherDashboard.saveImportedQuestions}
+        pendingQuestions={teacherDashboard.pendingQuestions}
+        creationQuestionsTab={teacherDashboard.creationQuestionsTab}
+        setCreationQuestionsTab={teacherDashboard.setCreationQuestionsTab}
+        addPendingQuestion={teacherDashboard.addPendingQuestion}
+        removePendingQuestion={teacherDashboard.removePendingQuestion}
         availableSubjects={availableSubjects}
         availableCefrLevels={availableCefrLevels}
         setView={setView}

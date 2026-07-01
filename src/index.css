@@ -47,6 +47,7 @@
   --text-secondary: #5D6B82;
   --panel-border: rgba(93, 107, 130, 0.12);
   --panel-border-focus: rgba(255, 183, 178, 0.4);
+  --accent-gradient: linear-gradient(to right, #FFB7B2, #FFDAC1);
 }
 
 /* Base resets with Tailwind directives */

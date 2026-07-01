@@ -39,6 +39,13 @@ export function TeacherDashboard({
   questionText,
   setQuestionText,
 
+  // Game Creation Questions State & Handlers
+  pendingQuestions = [],
+  creationQuestionsTab = 'individual',
+  setCreationQuestionsTab,
+  addPendingQuestion,
+  removePendingQuestion,
+
   // Import State & Handlers
   isImporting,
   importText,
@@ -936,6 +943,430 @@ export function TeacherDashboard({
     );
   };
 
+  const preventSubmitOnEnter = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  };
+
+  const renderQuestionFormFields = () => {
+    return (
+      <>
+        {/* Question Type Selector */}
+        <div className="form-group" style={{ maxWidth: '300px' }}>
+          <label className="form-label">Question Type</label>
+          <select 
+            className="form-input" 
+            value={questionType}
+            onChange={(e) => setQuestionType(e.target.value)}
+            disabled={loading}
+            style={{ cursor: 'pointer' }}
+          >
+            <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+            <option value="SORTING">Sorting Order</option>
+            <option value="DRAG_DROP">Drag & Drop (Blanks)</option>
+            <option value="DROP_DOWN">Drop-Down (Select Blanks)</option>
+            <option value="CATEGORIZE">Categorization Groups</option>
+          </select>
+        </div>
+
+        {/* Common Question Text Prompt */}
+        <div className="form-group">
+          <label className="form-label">Question Prompt / Title</label>
+          <input 
+            type="text"
+            className="form-input" 
+            placeholder="e.g. Test your knowledge of React hooks!"
+            value={questionText}
+            onChange={(e) => setQuestionText(e.target.value)}
+            disabled={loading}
+            onKeyDown={preventSubmitOnEnter}
+          />
+        </div>
+
+        {/* 1. MULTIPLE CHOICE */}
+        {questionType === 'MULTIPLE_CHOICE' && (
+          <div>
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Answer Choices & Correct Option</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
+                Fill out the 4 choices and select the option representing the correct answer.
+              </p>
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+              gap: 16,
+              marginBottom: 28
+            }}>
+              {options.map((opt, idx) => (
+                <div 
+                  key={idx} 
+                  className={`teacher-option-input-card ${OPTION_CLASSES[idx]} ${correctOptionIndex === idx ? 'active' : ''}`}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(93, 107, 130, 0.15)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {['A', 'B', 'C', 'D'][idx]}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                        Choice {idx + 1}
+                      </span>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', color: correctOptionIndex === idx ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      <input 
+                        type="radio" 
+                        name="correct-option" 
+                        checked={correctOptionIndex === idx}
+                        onChange={() => setCorrectOptionIndex(idx)}
+                        disabled={loading}
+                        style={{ accentColor: 'var(--accent)' }}
+                      />
+                      Correct
+                    </label>
+                  </div>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder={`Option ${idx + 1}`}
+                    value={opt}
+                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                    disabled={loading}
+                    style={{ padding: '10px 14px', fontSize: '0.95rem' }}
+                    onKeyDown={preventSubmitOnEnter}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 2. SORTING */}
+        {questionType === 'SORTING' && (
+          <div>
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Sorting Elements (Correct Order)</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
+                Enter items in their **correct sorted order** (top to bottom). The game will shuffle them automatically for players.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28, maxWidth: '600px' }}>
+              {options.map((opt, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ width: 30, fontWeight: 700, color: 'var(--accent-light)' }}>#{idx + 1}</span>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder={`Sorted Item ${idx + 1}`}
+                    value={opt}
+                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                    disabled={loading}
+                    onKeyDown={preventSubmitOnEnter}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. DRAG & DROP */}
+        {questionType === 'DRAG_DROP' && (
+          <div>
+            <div className="form-group">
+              <label className="form-label">Sentence with Blanks</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Write a sentence using placeholders like <code>[blank0]</code>, <code>[blank1]</code>, etc. for blank spaces.
+              </p>
+              <textarea 
+                className="form-input" 
+                placeholder="e.g. In React, we use [blank0] to manage state and [blank1] for side effects."
+                rows={2}
+                value={dragSentence}
+                onChange={(e) => setDragSentence(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Blank Words & Distractors</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
+                Define the correct words matching the blanks, followed by incorrect distractor words.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
+              {dragChoices.map((choice, idx) => {
+                const isBlankValue = dragSentence.includes(`[blank${idx}]`);
+                return (
+                  <div key={idx} className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankValue ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isBlankValue ? `Choice ${idx + 1} (Fills [blank${idx}])` : `Choice ${idx + 1} (Distractor Word)`}
+                    </label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder={isBlankValue ? `Correct word for [blank${idx}]` : `Distractor word`}
+                      value={choice}
+                      onChange={(e) => updateDragChoice(idx, e.target.value)}
+                      disabled={loading}
+                      onKeyDown={preventSubmitOnEnter}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. DROP DOWN */}
+        {questionType === 'DROP_DOWN' && (
+          <div>
+            <div className="form-group">
+              <label className="form-label">Sentence with Dropdown slots</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Write a sentence using placeholders like <code>{"{{0}}"}</code>, <code>{"{{1}}"}</code> for the dropdowns.
+              </p>
+              <textarea 
+                className="form-input" 
+                placeholder="e.g. PocketBase is written in {{0}} and uses {{1}} database."
+                rows={2}
+                value={dropdownSentence}
+                onChange={(e) => setDropdownSentence(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Dropdown Selections Config</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
+                Define comma-separated options. **The first option in the list is the correct answer**.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
+              {dropdownOptions.map((choiceLine, idx) => {
+                const isDropdownUsed = dropdownSentence.includes(`{{${idx}}}`);
+                if (!isDropdownUsed && idx > 0) return null; // Show at least one config input
+                return (
+                  <div key={idx} className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isDropdownUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isDropdownUsed ? `Dropdown {{${idx}}} Options (Correct, Option2, Option3...)` : `Unused Dropdown Config`}
+                    </label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. Go, Rust, JavaScript, Python"
+                      value={choiceLine}
+                      onChange={(e) => updateDropdownOption(idx, e.target.value)}
+                      disabled={loading}
+                      onKeyDown={preventSubmitOnEnter}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 5. CATEGORIZE */}
+        {questionType === 'CATEGORIZE' && (
+          <div>
+            <div className="form-group">
+              <label className="form-label">Categories (Separated by Commas)</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Enter up to 4 category names, separated by commas.
+              </p>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="e.g. Languages, Frameworks, Databases"
+                value={categorizeCategories}
+                onChange={(e) => setCategorizeCategories(e.target.value)}
+                disabled={loading}
+                onKeyDown={preventSubmitOnEnter}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Items and Category Mapping</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Write one item per line, with the format <code>Item: CategoryName</code>. Max 20 items.
+              </p>
+              <textarea 
+                className="form-input" 
+                placeholder="e.g.&#10;React: Frameworks&#10;JavaScript: Languages&#10;MongoDB: Databases"
+                rows={6}
+                value={categorizeItemsText}
+                onChange={(e) => setCategorizeItemsText(e.target.value)}
+                disabled={loading}
+                style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderPendingQuestionsList = () => {
+    if (pendingQuestions.length === 0) {
+      return (
+        <div style={{
+          textAlign: 'center',
+          padding: '24px',
+          background: 'rgba(93, 107, 130, 0.02)',
+          border: '1px dashed rgba(93, 107, 130, 0.15)',
+          borderRadius: 'var(--radius-sm)',
+          color: 'var(--text-muted)',
+          marginTop: '20px'
+        }}>
+          No questions added to this collection yet. Fill out the form above and click "+ Add Question to Collection".
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginTop: '24px' }}>
+        <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>
+          Added Questions ({pendingQuestions.length})
+        </h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {pendingQuestions.map((q, idx) => (
+            <div 
+              key={idx} 
+              className="pending-question-card animate-fade-in"
+              style={{
+                background: '#ffffff',
+                border: '1px solid rgba(93, 107, 130, 0.12)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontWeight: 700,
+                    color: 'var(--accent-light)',
+                    fontSize: '0.9rem'
+                  }}>
+                    #{idx + 1}
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    background: 'rgba(93, 107, 130, 0.08)',
+                    color: 'var(--text-secondary)',
+                    padding: '2px 8px',
+                    borderRadius: '4px'
+                  }}>
+                    {q.type.replace('_', ' ')}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+                  {q.text}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {q.type === 'MULTIPLE_CHOICE' && `Options: ${q.options.join(', ')}`}
+                  {q.type === 'SORTING' && `Items: ${q.options.join(' → ')}`}
+                  {q.type === 'DRAG_DROP' && `Sentence: ${q.options.sentence}`}
+                  {q.type === 'DROP_DOWN' && `Sentence: ${q.options.sentence}`}
+                  {q.type === 'CATEGORIZE' && `Categories: ${q.options.categories.join(', ')}`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => removePendingQuestion(idx)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ff4b60',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  fontSize: '1.1rem',
+                  transition: 'transform 0.1s'
+                }}
+                title="Remove question"
+              >
+                🗑️
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBulkImportBuilder = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ marginBottom: 4 }}>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+            Paste your Markdown-formatted questions below to import them in bulk when the collection is created.
+          </p>
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <a 
+              href="/import-instructions.html" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
+            >
+              📖 View formatting guide & AI prompt template
+            </a>
+            <span style={{ color: 'var(--text-muted)' }}>•</span>
+            <a 
+              href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
+            >
+              💎 Use Dahoot Quiz Generator Gem
+            </a>
+          </p>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Markdown Text</label>
+          <textarea 
+            className="form-input" 
+            placeholder={`# MULTIPLE_CHOICE
+What is the capital of France?
+- Berlin
+- *Paris
+- London
+- Rome
+
+# SORTING
+Sort these numbers from lowest to highest.
+1. Five
+2. Ten
+3. Fifteen
+4. Twenty`}
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            disabled={loading}
+            rows={12}
+            style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.5' }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   // Extract unique languages and creators from the games list for filter pills
   const uniqueLanguages = useMemo(() => {
     const langs = new Set();
@@ -1098,6 +1529,130 @@ export function TeacherDashboard({
                 </select>
               </div>
             </div>
+
+            {!selectedGameForEdit && (
+              <div style={{ 
+                marginTop: '32px', 
+                borderTop: '1px dashed rgba(93, 107, 130, 0.2)', 
+                paddingTop: '24px',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Add Questions (Optional)
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
+                  Create questions now or skip and add them later. Use the tabs below to choose between adding questions individually or bulk importing via Markdown.
+                </p>
+
+                {/* Tabs selector */}
+                <div style={{
+                  display: 'flex',
+                  background: 'rgba(93, 107, 130, 0.06)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '4px',
+                  marginBottom: '24px',
+                  border: '1px solid rgba(93, 107, 130, 0.1)'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setCreationQuestionsTab('individual')}
+                    style={{
+                      flex: 1,
+                      background: creationQuestionsTab === 'individual' ? 'var(--accent-gradient)' : 'transparent',
+                      color: creationQuestionsTab === 'individual' ? '#5D6B82' : 'var(--text-secondary)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>✍️ Individual Questions</span>
+                    {pendingQuestions.length > 0 && (
+                      <span style={{
+                        background: 'var(--accent-light)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        padding: '2px 8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700
+                      }}>
+                        {pendingQuestions.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreationQuestionsTab('bulk')}
+                    style={{
+                      flex: 1,
+                      background: creationQuestionsTab === 'bulk' ? 'var(--accent-gradient)' : 'transparent',
+                      color: creationQuestionsTab === 'bulk' ? '#5D6B82' : 'var(--text-secondary)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>📥 Bulk Import (Markdown)</span>
+                  </button>
+                </div>
+
+                {creationQuestionsTab === 'individual' ? (
+                  <div>
+                    {/* Render the Individual Question Fields */}
+                    <div style={{
+                      background: 'rgba(93, 107, 130, 0.02)',
+                      border: '1px solid rgba(93, 107, 130, 0.08)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '20px',
+                      marginBottom: '20px'
+                    }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                        Create Question
+                      </h4>
+                      {renderQuestionFormFields()}
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={addPendingQuestion}
+                        style={{
+                          marginTop: '16px',
+                          backgroundColor: 'rgba(93, 107, 130, 0.05)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid rgba(93, 107, 130, 0.12)',
+                          width: 'auto',
+                          minWidth: '200px'
+                        }}
+                      >
+                        ➕ Add Question to Collection
+                      </button>
+                    </div>
+                    
+                    {/* Render Pending Questions List */}
+                    {renderPendingQuestionsList()}
+                  </div>
+                ) : (
+                  <div>
+                    {/* Render Bulk Import Textarea */}
+                    {renderBulkImportBuilder()}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button type="button" className="btn btn-secondary" onClick={cancelEditingGame} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
@@ -1515,264 +2070,7 @@ Sort these numbers from lowest to highest.
           )}
 
           <form onSubmit={saveQuestion}>
-            {/* Question Type Selector */}
-            <div className="form-group" style={{ maxWidth: '300px' }}>
-              <label className="form-label">Question Type</label>
-              <select 
-                className="form-input" 
-                value={questionType}
-                onChange={(e) => setQuestionType(e.target.value)}
-                disabled={loading}
-                style={{ cursor: 'pointer' }}
-              >
-                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-                <option value="SORTING">Sorting Order</option>
-                <option value="DRAG_DROP">Drag & Drop (Blanks)</option>
-                <option value="DROP_DOWN">Drop-Down (Select Blanks)</option>
-                <option value="CATEGORIZE">Categorization Groups</option>
-              </select>
-            </div>
-
-            {/* Common Question Text Prompt */}
-            <div className="form-group">
-              <label className="form-label">Question Prompt / Title</label>
-              <input 
-                type="text"
-                className="form-input" 
-                placeholder="e.g. Test your knowledge of React hooks!"
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            {/* 1. MULTIPLE CHOICE */}
-            {questionType === 'MULTIPLE_CHOICE' && (
-              <div>
-                <div className="form-group" style={{ marginBottom: 12 }}>
-                  <label className="form-label">Answer Choices & Correct Option</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                    Fill out the 4 choices and select the option representing the correct answer.
-                  </p>
-                </div>
-
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-                  gap: 16,
-                  marginBottom: 28
-                }}>
-                  {options.map((opt, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`teacher-option-input-card ${OPTION_CLASSES[idx]} ${correctOptionIndex === idx ? 'active' : ''}`}
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid rgba(93, 107, 130, 0.15)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 12
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {['A', 'B', 'C', 'D'][idx]}
-                          </span>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                            Choice {idx + 1}
-                          </span>
-                        </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', color: correctOptionIndex === idx ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                          <input 
-                            type="radio" 
-                            name="correct-option" 
-                            checked={correctOptionIndex === idx}
-                            onChange={() => setCorrectOptionIndex(idx)}
-                            disabled={loading}
-                            style={{ accentColor: 'var(--accent)' }}
-                          />
-                          Correct
-                        </label>
-                      </div>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder={`Option ${idx + 1}`}
-                        value={opt}
-                        onChange={(e) => updateOptionValue(idx, e.target.value)}
-                        disabled={loading}
-                        style={{ padding: '10px 14px', fontSize: '0.95rem' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 2. SORTING */}
-            {questionType === 'SORTING' && (
-              <div>
-                <div className="form-group" style={{ marginBottom: 12 }}>
-                  <label className="form-label">Sorting Elements (Correct Order)</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                    Enter items in their **correct sorted order** (top to bottom). The game will shuffle them automatically for players.
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28, maxWidth: '600px' }}>
-                  {options.map((opt, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ width: 30, fontWeight: 700, color: 'var(--accent-light)' }}>#{idx + 1}</span>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder={`Sorted Item ${idx + 1}`}
-                        value={opt}
-                        onChange={(e) => updateOptionValue(idx, e.target.value)}
-                        disabled={loading}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 3. DRAG & DROP */}
-            {questionType === 'DRAG_DROP' && (
-              <div>
-                <div className="form-group">
-                  <label className="form-label">Sentence with Blanks</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
-                    Write a sentence using placeholders like <code>[blank0]</code>, <code>[blank1]</code>, etc. for blank spaces.
-                  </p>
-                  <textarea 
-                    className="form-input" 
-                    placeholder="e.g. In React, we use [blank0] to manage state and [blank1] for side effects."
-                    rows={2}
-                    value={dragSentence}
-                    onChange={(e) => setDragSentence(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 12 }}>
-                  <label className="form-label">Blank Words & Distractors</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                    Define the correct words matching the blanks, followed by incorrect distractor words.
-                  </p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
-                  {dragChoices.map((choice, idx) => {
-                    const isBlankValue = dragSentence.includes(`[blank${idx}]`);
-                    return (
-                      <div key={idx} className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankValue ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                          {isBlankValue ? `Choice ${idx + 1} (Fills [blank${idx}])` : `Choice ${idx + 1} (Distractor Word)`}
-                        </label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder={isBlankValue ? `Correct word for [blank${idx}]` : `Distractor word`}
-                          value={choice}
-                          onChange={(e) => updateDragChoice(idx, e.target.value)}
-                          disabled={loading}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 4. DROP DOWN */}
-            {questionType === 'DROP_DOWN' && (
-              <div>
-                <div className="form-group">
-                  <label className="form-label">Sentence with Dropdown slots</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
-                    Write a sentence using placeholders like <code>{"{{0}}"}</code>, <code>{"{{1}}"}</code> for the dropdowns.
-                  </p>
-                  <textarea 
-                    className="form-input" 
-                    placeholder="e.g. PocketBase is written in {{0}} and uses {{1}} database."
-                    rows={2}
-                    value={dropdownSentence}
-                    onChange={(e) => setDropdownSentence(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 12 }}>
-                  <label className="form-label">Dropdown Selections Config</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                    Define comma-separated options. **The first option in the list is the correct answer**.
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
-                  {dropdownOptions.map((choiceLine, idx) => {
-                    const isDropdownUsed = dropdownSentence.includes(`{{${idx}}}`);
-                    if (!isDropdownUsed && idx > 0) return null; // Show at least one config input
-                    return (
-                      <div key={idx} className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.8rem', color: isDropdownUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                          {isDropdownUsed ? `Dropdown {{${idx}}} Options (Correct, Option2, Option3...)` : `Unused Dropdown Config`}
-                        </label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. Go, Rust, JavaScript, Python"
-                          value={choiceLine}
-                          onChange={(e) => updateDropdownOption(idx, e.target.value)}
-                          disabled={loading}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 5. CATEGORIZE */}
-            {questionType === 'CATEGORIZE' && (
-              <div>
-                <div className="form-group">
-                  <label className="form-label">Categories (Separated by Commas)</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
-                    Enter up to 4 category names, separated by commas.
-                  </p>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. Languages, Frameworks, Databases"
-                    value={categorizeCategories}
-                    onChange={(e) => setCategorizeCategories(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Items and Category Mapping</label>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
-                    Write one item per line, with the format <code>Item: CategoryName</code>. Max 20 items.
-                  </p>
-                  <textarea 
-                    className="form-input" 
-                    placeholder="e.g.&#10;React: Frameworks&#10;JavaScript: Languages&#10;MongoDB: Databases"
-                    rows={6}
-                    value={categorizeItemsText}
-                    onChange={(e) => setCategorizeItemsText(e.target.value)}
-                    disabled={loading}
-                    style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
-                  />
-                </div>
-              </div>
-            )}
-
+            {renderQuestionFormFields()}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
               <button type="button" className="btn btn-secondary" onClick={cancelEditing} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
                 Cancel
