@@ -26,10 +26,11 @@ function loadEnv() {
 
 loadEnv();
 
-const isDev = (process.env.VITE_ENV || 'development') === 'development';
+const isLive = process.argv.includes('--live') || process.argv.includes('--prod');
+const isDev = !isLive;
 const pbUrl = isDev
-  ? (process.env.VITE_POCKETBASE_DEV_URL || 'http://127.0.0.1:8090')
-  : (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090');
+  ? (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090')
+  : (process.env.VITE_POCKETBASE_LIVE_URL || 'http://127.0.0.1:8090');
 const adminEmail = isDev
   ? (process.env.POCKETBASE_DEV_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL)
   : process.env.POCKETBASE_ADMIN_EMAIL;

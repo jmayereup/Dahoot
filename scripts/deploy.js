@@ -95,7 +95,7 @@ async function ensureDevDbRunning(devUrl) {
 }
 
 async function compareSchemas(env) {
-  const devUrl = env.VITE_POCKETBASE_DEV_URL || 'http://127.0.0.1:8090';
+  const devUrl = env.VITE_POCKETBASE_DEV_URL || env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
   
   // Ensure the dev database is running if it is local
   await ensureDevDbRunning(devUrl);
@@ -103,12 +103,12 @@ async function compareSchemas(env) {
   const devEmail = env.POCKETBASE_DEV_ADMIN_EMAIL || env.POCKETBASE_ADMIN_EMAIL;
   const devPassword = env.POCKETBASE_DEV_ADMIN_PASSWORD || env.POCKETBASE_ADMIN_PASSWORD;
 
-  const liveUrl = env.VITE_POCKETBASE_URL;
+  const liveUrl = env.VITE_POCKETBASE_LIVE_URL;
   const liveEmail = env.POCKETBASE_ADMIN_EMAIL;
   const livePassword = env.POCKETBASE_ADMIN_PASSWORD;
 
   if (!liveUrl) {
-    console.error('\x1b[31m[Dahoot Deploy] Error: VITE_POCKETBASE_URL is not set in .env.\x1b[0m');
+    console.error('\x1b[31m[Dahoot Deploy] Error: VITE_POCKETBASE_LIVE_URL is not set in .env.\x1b[0m');
     process.exit(1);
   }
 
@@ -252,14 +252,16 @@ async function deploy() {
   const user = env.DEPLOY_SERVER_USER;
   const targetPath = env.DEPLOY_SERVER_PATH;
   const serviceName = env.DEPLOY_SERVICE_NAME;
+  const liveUrl = env.VITE_POCKETBASE_LIVE_URL;
 
-  if (!ip || !user || !targetPath || !serviceName) {
+  if (!ip || !user || !targetPath || !serviceName || !liveUrl) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Missing deployment configuration in .env file.\x1b[0m');
     console.error('Make sure the following environment variables are set in your .env file:');
     console.error(`- DEPLOY_SERVER_IP (current: ${ip || 'undefined'})`);
     console.error(`- DEPLOY_SERVER_USER (current: ${user || 'undefined'})`);
     console.error(`- DEPLOY_SERVER_PATH (current: ${targetPath || 'undefined'})`);
     console.error(`- DEPLOY_SERVICE_NAME (current: ${serviceName || 'undefined'})`);
+    console.error(`- VITE_POCKETBASE_LIVE_URL (current: ${liveUrl || 'undefined'})`);
     process.exit(1);
   }
 
@@ -275,10 +277,10 @@ async function deploy() {
   try {
     execSync('npm run build', { 
       cwd: rootDir, 
-      env: { ...process.env, VITE_ENV: 'development' }, 
+      env: { ...process.env, VITE_POCKETBASE_URL: liveUrl }, 
       stdio: 'inherit' 
     });
-    console.log('\x1b[32m[Dahoot Deploy] Frontend built successfully using development/non-live url.\x1b[0m');
+    console.log('\x1b[32m[Dahoot Deploy] Frontend built successfully using production/live url.\x1b[0m');
   } catch (err) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Local build failed.\x1b[0m', err.message);
     process.exit(1);

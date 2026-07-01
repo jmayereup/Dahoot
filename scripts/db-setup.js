@@ -28,10 +28,11 @@ function loadEnv() {
 
 loadEnv();
 
-const isDev = (process.env.VITE_ENV || 'development') === 'development';
+const isLive = process.argv.includes('--live') || process.argv.includes('--prod');
+const isDev = !isLive;
 const pbUrl = isDev
-  ? (process.env.VITE_POCKETBASE_DEV_URL || 'http://127.0.0.1:8090')
-  : (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090');
+  ? (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090')
+  : (process.env.VITE_POCKETBASE_LIVE_URL || 'http://127.0.0.1:8090');
 const adminEmail = isDev
   ? (process.env.POCKETBASE_DEV_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL)
   : process.env.POCKETBASE_ADMIN_EMAIL;
@@ -159,9 +160,8 @@ async function getOrCreateCollection(name, config) {
 }
 
 async function runSetup() {
-  const env = process.env.VITE_ENV || 'development';
-  const isDev = env === 'development';
-  const isProd = env === 'production';
+  const isProd = process.argv.includes('--live') || process.argv.includes('--prod');
+  const isDev = !isProd;
 
   if (!isLocalUrl(pbUrl) && isDev) {
     console.log(`\n\x1b[33m⚠️  WARNING: You are running the database setup script in DEVELOPMENT mode against a remote database: ${pbUrl}\x1b[0m`);
