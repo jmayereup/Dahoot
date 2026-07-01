@@ -28,9 +28,16 @@ function loadEnv() {
 
 loadEnv();
 
-const pbUrl = process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
-const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
-const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
+const isDev = (process.env.VITE_ENV || 'development') === 'development';
+const pbUrl = isDev
+  ? (process.env.VITE_POCKETBASE_DEV_URL || 'http://127.0.0.1:8090')
+  : (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090');
+const adminEmail = isDev
+  ? (process.env.POCKETBASE_DEV_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL)
+  : process.env.POCKETBASE_ADMIN_EMAIL;
+const adminPassword = isDev
+  ? (process.env.POCKETBASE_DEV_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD)
+  : process.env.POCKETBASE_ADMIN_PASSWORD;
 
 const DEFAULT_QUESTIONS = [
   {
@@ -117,11 +124,31 @@ function isLocalUrl(url) {
   }
 }
 
-// Helper to get or create a collection
+// Helper to get or create a collection, only adding missing fields
 async function getOrCreateCollection(name, config) {
   try {
     const col = await pb.collections.getOne(name);
     console.log(`[Dahoot DB] Collection '${name}' already exists.`);
+    
+    // Non-destructive update: check for any new fields and append them.
+    // We never delete fields.
+    let updated = false;
+    if (config.fields) {
+      for (const field of config.fields) {
+        const hasField = col.fields.some(f => f.name === field.name);
+        if (!hasField) {
+          console.log(`[Dahoot DB] Collection '${name}': Adding missing field '${field.name}'...`);
+          col.fields.push(field);
+          updated = true;
+        }
+      }
+    }
+    
+    if (updated) {
+      await pb.collections.update(col.id, col);
+      console.log(`\x1b[32m[Dahoot DB] Collection '${name}' updated with new fields.\x1b[0m`);
+    }
+    
     return col;
   } catch (err) {
     console.log(`[Dahoot DB] Collection '${name}' not found. Creating...`);
@@ -165,8 +192,8 @@ async function runSetup() {
     }
   }
 
-  // Delete existing collections first if not in production
-  if (!isProd) {
+  // Delete existing collections first if it is local/development and not in production mode
+  if (isLocalUrl(pbUrl) && !isProd) {
     console.log("[Dahoot DB] Clearing old tables (if any)...");
     
     // Temporarily remove dahoot_info field from users to avoid constraint conflicts during reset
@@ -210,7 +237,7 @@ async function runSetup() {
       console.log("[Dahoot DB] Deleted existing 'dahoot_options' collection.");
     } catch (e) {}
   } else {
-    console.log("[Dahoot DB] Production mode: Skipping deletion of existing collections.");
+    console.log("[Dahoot DB] Non-local or Production target: Skipping deletion of existing collections.");
   }
 
   // 1. Setup 'dahoot_user_info' collection
@@ -351,8 +378,8 @@ async function runSetup() {
     deleteRule: ''
   });
 
-  // 7. Seed default game, questions, and options (skip in production)
-  if (!isProd) {
+  // 7. Seed default game, questions, and options (skip in production or non-local)
+  if (isLocalUrl(pbUrl) && !isProd) {
     try {
       console.log("[Dahoot DB] Seeding default options...");
       const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Other'];
@@ -387,7 +414,7 @@ async function runSetup() {
       console.error("[Dahoot DB] Error seeding default game/questions:", err.message);
     }
   } else {
-    console.log("[Dahoot DB] Production mode: Skipping database seeding.");
+    console.log("[Dahoot DB] Non-local or Production target: Skipping database seeding.");
   }
 
   console.log('\n\x1b[32m🎉 [Dahoot DB] Programmatic database setup complete!\x1b[0m');

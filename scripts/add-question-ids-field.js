@@ -26,9 +26,16 @@ function loadEnv() {
 
 loadEnv();
 
-const pbUrl = process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
-const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
-const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
+const isDev = (process.env.VITE_ENV || 'development') === 'development';
+const pbUrl = isDev
+  ? (process.env.VITE_POCKETBASE_DEV_URL || 'http://127.0.0.1:8090')
+  : (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090');
+const adminEmail = isDev
+  ? (process.env.POCKETBASE_DEV_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL)
+  : process.env.POCKETBASE_ADMIN_EMAIL;
+const adminPassword = isDev
+  ? (process.env.POCKETBASE_DEV_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD)
+  : process.env.POCKETBASE_ADMIN_PASSWORD;
 
 const pb = new PocketBase(pbUrl);
 
