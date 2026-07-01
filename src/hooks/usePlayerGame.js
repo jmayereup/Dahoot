@@ -170,7 +170,8 @@ export function usePlayerGame(view, setView) {
         room_id: room.id,
         name: playerName.trim().substring(0, 15),
         score: 0,
-        last_answered_index: -1
+        last_answered_index: -1,
+        answers: {}
       });
 
       const qList = await pb.collection('dahoot_questions').getFullList({
@@ -255,9 +256,16 @@ export function usePlayerGame(view, setView) {
     }
 
     try {
+      const currentAnswers = playerRecord.answers || {};
+      const newAnswers = {
+        ...currentAnswers,
+        [activeQuestion.id]: isCorrect
+      };
+
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
         score: playerRecord.score + points,
-        last_answered_index: qIndex
+        last_answered_index: qIndex,
+        answers: newAnswers
       });
       setPlayerRecord(updatedPlayer);
       setPlayerFeedback({ correct: isCorrect, points });

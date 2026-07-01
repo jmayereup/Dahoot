@@ -72,6 +72,7 @@ export function HostView({
           <HostFinished
             hostPlayers={hostPlayers}
             hostEndGame={hostEndGame}
+            questions={questions}
           />
         )}
 

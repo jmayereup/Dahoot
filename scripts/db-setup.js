@@ -348,6 +348,7 @@ async function runSetup() {
       { name: 'name', type: 'text', required: true, min: 1, max: 15 },
       { name: 'score', type: 'number', required: false, noDecimal: true },
       { name: 'last_answered_index', type: 'number', required: false, noDecimal: true },
+      { name: 'answers', type: 'json', required: false },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
