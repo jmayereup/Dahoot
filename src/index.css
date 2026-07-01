@@ -456,10 +456,10 @@ p.subtitle {
 
 /* Pool chips */
 @utility player-pool-chip {
-  @apply bg-white border border-slate-200 px-4 py-2.5 rounded-full font-bold text-sm cursor-pointer shadow-sm transition-all hover:bg-slate-50 hover:translate-y-px;
+  @apply bg-white border border-[#BFFCC6] px-4.5 py-2 rounded-xl font-bold text-sm text-[#2E6930] cursor-pointer shadow-xs transition-all hover:bg-[#BFFCC6]/10 hover:border-[#81C784] hover:scale-105 active:scale-95;
   
   &.placed {
-    @apply opacity-25 cursor-not-allowed scale-95 bg-slate-50;
+    @apply opacity-25 cursor-not-allowed scale-95 bg-slate-50 border-slate-200 text-slate-400;
   }
 }
 

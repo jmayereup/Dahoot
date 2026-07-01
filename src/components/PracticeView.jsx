@@ -28,20 +28,22 @@ export function PracticeView({
   // ----------------------------------------------------
   // LOCAL STATES FOR VARIOUS QUESTION TYPES
   // ----------------------------------------------------
-  const [sortingItems, setSortingItems] = useState([]);
+  const [sortingPool, setSortingPool] = useState([]);
+  const [sortedItems, setSortedItems] = useState([]);
   const [placedWords, setPlacedWords] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
   const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
   const [localNickname, setLocalNickname] = useState(nickname || 'Student');
-
+ 
   // Reset inputs when active question changes
   useEffect(() => {
     if (!activeQuestion) return;
-
+ 
     if (type === 'SORTING' && Array.isArray(activeQuestion.options)) {
-      setSortingItems([...activeQuestion.options].sort(() => 0.5 - Math.random()));
+      setSortingPool([...activeQuestion.options].sort(() => 0.5 - Math.random()));
+      setSortedItems([]);
     } else if (type === 'DRAG_DROP' && activeQuestion.options) {
       const correctLen = activeQuestion.options.correct ? activeQuestion.options.correct.length : 0;
       setPlacedWords(Array(correctLen).fill(null));
@@ -54,20 +56,17 @@ export function PracticeView({
       setCategoryAssignments({});
     }
   }, [activeQuestion, type]);
-
+ 
   // ----------------------------------------------------
   // SORTING HANDLERS
   // ----------------------------------------------------
-  const moveSortingItem = (idx, direction) => {
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === sortingItems.length - 1) return;
-
-    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const updated = [...sortingItems];
-    const temp = updated[idx];
-    updated[idx] = updated[newIdx];
-    updated[newIdx] = temp;
-    setSortingItems(updated);
+  const handlePoolItemClick = (item) => {
+    if (sortedItems.includes(item)) return;
+    setSortedItems([...sortedItems, item]);
+  };
+ 
+  const handleSortedItemClick = (item) => {
+    setSortedItems(sortedItems.filter(i => i !== item));
   };
 
   // ----------------------------------------------------
@@ -615,41 +614,63 @@ export function PracticeView({
 
                 {/* 2. SORTING */}
                 {type === 'SORTING' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-                    {sortingItems.map((item, idx) => (
-                      <div 
-                        key={idx} 
-                        className="player-sorting-card bg-slate-50/50 border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm"
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span className="sorting-number bg-slate-200 text-slate-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-                          <span style={{ fontWeight: 600 }}>{item}</span>
+                  <div className="w-full flex flex-col">
+                    {/* Sorted items container */}
+                    <div className="player-sorting-container bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-5 flex flex-col gap-3 min-h-[120px] transition-all justify-center">
+                      {sortedItems.length === 0 ? (
+                        <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none">
+                          Tap items below to rank them in order...
                         </div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button 
+                      ) : (
+                        sortedItems.map((item, idx) => (
+                          <button
+                            key={idx}
                             type="button"
-                            className="btn-sorting-arrow"
-                            onClick={() => moveSortingItem(idx, 'up')}
-                            disabled={idx === 0}
+                            onClick={() => handleSortedItemClick(item)}
+                            className="flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] cursor-pointer"
                           >
-                            ▲
+                            <div className="flex items-center gap-3">
+                              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                                {idx + 1}
+                              </span>
+                              <span className="font-bold text-slate-700">{item}</span>
+                            </div>
+                            <span className="text-slate-400 font-bold text-sm">✕</span>
                           </button>
-                          <button 
+                        ))
+                      )}
+                    </div>
+
+                    {/* Pool of unsorted options */}
+                    <div className="text-left mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Options to rank:</span>
+                    </div>
+                    <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
+                      {sortingPool.map((item, idx) => {
+                        const isPlaced = sortedItems.includes(item);
+                        return (
+                          <button
+                            key={idx}
                             type="button"
-                            className="btn-sorting-arrow"
-                            onClick={() => moveSortingItem(idx, 'down')}
-                            disabled={idx === sortingItems.length - 1}
+                            onClick={() => handlePoolItemClick(item)}
+                            className={`px-4.5 py-2.5 rounded-xl border text-sm font-bold shadow-xs transition-all ${
+                              isPlaced 
+                                ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95' 
+                                : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50/50 hover:border-blue-300 hover:scale-105 active:scale-95 cursor-pointer'
+                            }`}
+                            disabled={isPlaced}
                           >
-                            ▼
+                            {item}
                           </button>
-                        </div>
-                      </div>
-                    ))}
-                    
+                        );
+                      })}
+                    </div>
+
                     <button
-                      onClick={() => submitAnswer(sortingItems)}
+                      onClick={() => submitAnswer(sortedItems)}
                       className="btn btn-primary"
-                      style={{ marginTop: 20 }}
+                      disabled={sortedItems.length < sortingPool.length}
+                      style={{ marginTop: 16 }}
                     >
                       Submit Order
                     </button>
@@ -657,42 +678,77 @@ export function PracticeView({
                 )}
 
                 {/* 3. DRAG & DROP */}
-                {type === 'DRAG_DROP' && activeQuestion.options && (
-                  <div style={{ width: '100%' }}>
-                    <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-slate-800" style={{
-                      lineHeight: '2.8rem',
-                      fontSize: '1.2rem',
-                      marginBottom: 20
-                    }}>
-                      {renderPlayerSentenceBlanks(activeQuestion.options.sentence)}
-                    </div>
+                {type === 'DRAG_DROP' && activeQuestion.options && (() => {
+                  const isScramble = typeof activeQuestion.options === 'object' && 
+                    activeQuestion.options.sentence && 
+                    !activeQuestion.options.sentence.replace(/\[blank\d+\]/g, '').trim();
+                  return (
+                    <div style={{ width: '100%' }}>
+                      {/* Sentence Container */}
+                      <div 
+                        className={isScramble 
+                          ? "player-sentence-container bg-white border-2 border-dashed border-[#BFFCC6] rounded-2xl p-6 relative shadow-xs text-slate-800 flex flex-wrap items-center justify-center gap-2 min-h-[90px] mb-6 transition-all"
+                          : "player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-slate-800"
+                        }
+                        style={!isScramble ? {
+                          lineHeight: '2.8rem',
+                          fontSize: '1.2rem',
+                          marginBottom: 20
+                        } : undefined}
+                      >
+                        {isScramble ? (
+                          placedWords.every(w => w === null) ? (
+                            <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none py-1.5">
+                              Click words below to form the sentence...
+                            </div>
+                          ) : (
+                            placedWords.map((word, blankIdx) => {
+                              if (word === null) return null;
+                              return (
+                                <button
+                                  key={blankIdx}
+                                  type="button"
+                                  onClick={() => handleBlankTap(blankIdx)}
+                                  className="inline-flex items-center justify-center bg-white border border-[#BFFCC6] text-[#2E6930] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-4 py-2 rounded-xl font-bold shadow-xs cursor-pointer transition-all"
+                                >
+                                  {word}
+                                </button>
+                              );
+                            })
+                          )
+                        ) : (
+                          renderPlayerSentenceBlanks(activeQuestion.options.sentence)
+                        )}
+                      </div>
 
-                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex gap-2.5 flex-wrap justify-center min-h-[80px] mb-6 shadow-inner">
-                      {activeQuestion.options.choices?.map((choice, idx) => {
-                        const isPlaced = placedWords.includes(choice);
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handlePoolWordTap(choice)}
-                            className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                            disabled={isPlaced}
-                          >
-                            {choice}
-                          </button>
-                        );
-                      })}
-                    </div>
+                      {/* Choices Pool */}
+                      <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
+                        {activeQuestion.options.choices?.map((choice, idx) => {
+                          const isPlaced = placedWords.includes(choice);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handlePoolWordTap(choice)}
+                              className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
+                              disabled={isPlaced}
+                            >
+                              {choice}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                    <button
-                      onClick={() => submitAnswer(placedWords)}
-                      className="btn btn-primary"
-                      disabled={placedWords.includes(null)}
-                    >
-                      Submit Blanks
-                    </button>
-                  </div>
-                )}
+                      <button
+                        onClick={() => submitAnswer(placedWords)}
+                        className="btn btn-primary"
+                        disabled={placedWords.includes(null)}
+                      >
+                        {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* 4. DROP DOWN */}
                 {type === 'DROP_DOWN' && activeQuestion.options && (

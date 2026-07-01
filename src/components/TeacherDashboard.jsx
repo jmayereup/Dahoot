@@ -935,7 +935,7 @@ export function TeacherDashboard({
         </span>
         <button 
           onClick={onLogout} 
-          className="btn btn-link text-rose-500 font-bold hover:text-rose-600 no-underline p-0 w-auto min-h-0 h-auto"
+          className="px-3 py-1 bg-white hover:bg-rose-50 border border-slate-200/80 text-rose-500 hover:text-rose-600 font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center outline-none"
         >
           Log Out
         </button>

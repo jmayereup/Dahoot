@@ -64,19 +64,35 @@ export function HostQuestion({
   };
 
   return (
-    <div className="game-layout">
-      <div className="question-card">
-        <div className="question-number">Question {qIndex + 1} of {questions.length} ({type.replace('_', ' ')})</div>
-        <div className="question-title">{activeQuestion.text}</div>
+    <div className="game-layout flex flex-col items-center w-full animate-fade-in">
+      <div className="question-card w-full text-center mb-6">
+        <div className="question-number inline-flex items-center gap-1.5 px-4 py-1.5 bg-rose-50 border border-rose-100/85 text-rose-500 font-extrabold text-xs tracking-widest uppercase rounded-full mb-4 shadow-xs">
+          Question {qIndex + 1} of {questions.length} • {type.replace('_', ' ')}
+        </div>
+        <div className="question-title text-3xl md:text-5xl font-black text-slate-800 tracking-tight leading-relaxed max-w-4xl mx-auto px-4">
+          {activeQuestion.text}
+        </div>
       </div>
 
-      <div className="game-mid-section">
-        <div className="timer-container">
-          <div className="timer-number">{timerDuration === 0 || hostTimeLeft === null ? '∞' : hostTimeLeft}</div>
+      <div className="game-mid-section flex flex-row items-center justify-center gap-12 md:gap-20 my-8 bg-slate-50/50 border border-slate-100 rounded-3xl p-6 max-w-xl w-full mx-auto shadow-xs">
+        <div className="timer-container flex flex-col items-center">
+          <div className="timer-number relative w-24 h-24 md:w-28 md:h-28 flex items-center justify-center rounded-full bg-rose-50 border-[6px] border-rose-200/60 shadow-inner animate-pulse-glow transition-all">
+            <span className="text-4xl md:text-5xl font-black text-rose-500 font-mono tracking-tighter">
+              {timerDuration === 0 || hostTimeLeft === null ? '∞' : hostTimeLeft}
+            </span>
+          </div>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-2">Seconds Left</span>
         </div>
-        <div className="answer-stats">
-          <span className="answer-stats-num">{answeredCount}</span> 
-          out of {hostPlayers.length} answered
+        <div className="answer-stats flex flex-col items-center">
+          <div className="w-24 h-24 md:w-28 md:h-28 flex flex-col items-center justify-center rounded-full bg-emerald-50 border-[6px] border-emerald-200/60 shadow-inner transition-all">
+            <span className="answer-stats-num text-3xl md:text-4xl font-black text-emerald-600 font-mono">
+              {answeredCount}
+            </span>
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mt-0.5">
+              / {hostPlayers.length}
+            </span>
+          </div>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-2">Responses</span>
         </div>
       </div>
 

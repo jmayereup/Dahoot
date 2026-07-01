@@ -23,32 +23,29 @@ export function PlayerQuestion({
   }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   // ----------------------------------------------------
-  // SORTING STATE & HANDLERS
+  // SORTING (Tap to Order) STATE & HANDLERS
   // ----------------------------------------------------
-  const [sortingItems, setSortingItems] = useState([]);
+  const [sortingPool, setSortingPool] = useState([]);
+  const [sortedItems, setSortedItems] = useState([]);
 
   useEffect(() => {
     if (type === 'SORTING' && Array.isArray(activeQuestion.options)) {
-      // Initialize with a shuffled list
-      setSortingItems([...activeQuestion.options].sort(() => 0.5 - Math.random()));
+      setSortingPool([...activeQuestion.options].sort(() => 0.5 - Math.random()));
+      setSortedItems([]);
     }
   }, [activeQuestion.id, activeQuestion.options, type]);
 
-  const moveSortingItem = (idx, direction) => {
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === sortingItems.length - 1) return;
+  const handlePoolItemClick = (item) => {
+    if (sortedItems.includes(item)) return;
+    setSortedItems([...sortedItems, item]);
+  };
 
-    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const updated = [...sortingItems];
-    // Swap
-    const temp = updated[idx];
-    updated[idx] = updated[newIdx];
-    updated[newIdx] = temp;
-    setSortingItems(updated);
+  const handleSortedItemClick = (item) => {
+    setSortedItems(sortedItems.filter(i => i !== item));
   };
 
   const handleSortingSubmit = () => {
-    submitAnswer(sortingItems);
+    submitAnswer(sortedItems);
   };
 
   // ----------------------------------------------------
@@ -266,51 +263,63 @@ export function PlayerQuestion({
 
             {/* 2. SORTING */}
             {type === 'SORTING' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-                {sortingItems.map((item, idx) => (
-                  <div 
-                    key={idx} 
-                    className="player-sorting-card"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '8px',
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="sorting-number">{idx + 1}</span>
-                      <span>{item}</span>
+              <div className="w-full flex flex-col">
+                {/* Sorted items container */}
+                <div className="player-sorting-container bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-5 flex flex-col gap-3 min-h-[120px] transition-all justify-center">
+                  {sortedItems.length === 0 ? (
+                    <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none">
+                      Tap items below to rank them in order...
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button 
+                  ) : (
+                    sortedItems.map((item, idx) => (
+                      <button
+                        key={idx}
                         type="button"
-                        className="btn-sorting-arrow"
-                        onClick={() => moveSortingItem(idx, 'up')}
-                        disabled={idx === 0 || isTimeUp}
+                        onClick={() => handleSortedItemClick(item)}
+                        className="flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] cursor-pointer"
+                        disabled={isTimeUp}
                       >
-                        ▲
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                            {idx + 1}
+                          </span>
+                          <span className="font-bold text-slate-700">{item}</span>
+                        </div>
+                        <span className="text-slate-400 font-bold text-sm">✕</span>
                       </button>
-                      <button 
+                    ))
+                  )}
+                </div>
+
+                {/* Pool of unsorted options */}
+                <div className="text-left mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Options to rank:</span>
+                </div>
+                <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
+                  {sortingPool.map((item, idx) => {
+                    const isPlaced = sortedItems.includes(item);
+                    return (
+                      <button
+                        key={idx}
                         type="button"
-                        className="btn-sorting-arrow"
-                        onClick={() => moveSortingItem(idx, 'down')}
-                        disabled={idx === sortingItems.length - 1 || isTimeUp}
+                        onClick={() => handlePoolItemClick(item)}
+                        className={`px-4.5 py-2.5 rounded-xl border text-sm font-bold shadow-xs transition-all ${
+                          isPlaced 
+                            ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95' 
+                            : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50/50 hover:border-blue-300 hover:scale-105 active:scale-95 cursor-pointer'
+                        }`}
+                        disabled={isPlaced || isTimeUp}
                       >
-                        ▼
+                        {item}
                       </button>
-                    </div>
-                  </div>
-                ))}
-                
+                    );
+                  })}
+                </div>
+
                 <button
                   onClick={handleSortingSubmit}
                   className="btn btn-primary"
-                  disabled={isTimeUp}
+                  disabled={sortedItems.length < sortingPool.length || isTimeUp}
                   style={{ marginTop: 16 }}
                 >
                   Submit Order
@@ -319,44 +328,77 @@ export function PlayerQuestion({
             )}
 
             {/* 3. DRAG & DROP */}
-            {type === 'DRAG_DROP' && activeQuestion.options && (
-              <div style={{ width: '100%' }}>
-                {/* Sentence Container */}
-                <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-                  lineHeight: '2.5rem',
-                  fontSize: '1.15rem',
-                  marginBottom: 20
-                }}>
-                  {renderPlayerSentenceBlanks(activeQuestion.options.sentence)}
-                </div>
+            {type === 'DRAG_DROP' && activeQuestion.options && (() => {
+              const isScramble = typeof activeQuestion.options === 'object' && 
+                activeQuestion.options.sentence && 
+                !activeQuestion.options.sentence.replace(/\[blank\d+\]/g, '').trim();
+              return (
+                <div style={{ width: '100%' }}>
+                  {/* Sentence Container */}
+                  <div 
+                    className={isScramble 
+                      ? "player-sentence-container bg-white border-2 border-dashed border-[#BFFCC6] rounded-2xl p-6 relative shadow-xs text-slate-800 flex flex-wrap items-center justify-center gap-2 min-h-[90px] mb-6 transition-all"
+                      : "player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800"
+                    }
+                    style={!isScramble ? {
+                      lineHeight: '2.5rem',
+                      fontSize: '1.15rem',
+                      marginBottom: 20
+                    } : undefined}
+                  >
+                    {isScramble ? (
+                      placedWords.every(w => w === null) ? (
+                        <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none py-1.5">
+                          Click words below to form the sentence...
+                        </div>
+                      ) : (
+                        placedWords.map((word, blankIdx) => {
+                          if (word === null) return null;
+                          return (
+                            <button
+                              key={blankIdx}
+                              type="button"
+                              onClick={() => handleBlankTap(blankIdx)}
+                              className="inline-flex items-center justify-center bg-white border border-[#BFFCC6] text-[#2E6930] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-4 py-2 rounded-xl font-bold shadow-xs cursor-pointer transition-all"
+                            >
+                              {word}
+                            </button>
+                          );
+                        })
+                      )
+                    ) : (
+                      renderPlayerSentenceBlanks(activeQuestion.options.sentence)
+                    )}
+                  </div>
 
-                {/* Choices Pool */}
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex gap-2 flex-wrap justify-center min-h-[80px] mb-5">
-                  {activeQuestion.options.choices?.map((choice, idx) => {
-                    const isPlaced = placedWords.includes(choice);
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handlePoolWordTap(choice)}
-                        className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                        disabled={isPlaced || isTimeUp}
-                      >
-                        {choice}
-                      </button>
-                    );
-                  })}
-                </div>
+                  {/* Choices Pool */}
+                  <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
+                    {activeQuestion.options.choices?.map((choice, idx) => {
+                      const isPlaced = placedWords.includes(choice);
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handlePoolWordTap(choice)}
+                          className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
+                          disabled={isPlaced || isTimeUp}
+                        >
+                          {choice}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                <button
-                  onClick={handleDragDropSubmit}
-                  className="btn btn-primary"
-                  disabled={placedWords.includes(null) || isTimeUp}
-                >
-                  Submit Blanks
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={handleDragDropSubmit}
+                    className="btn btn-primary"
+                    disabled={placedWords.includes(null) || isTimeUp}
+                  >
+                    {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* 4. DROP DOWN */}
             {type === 'DROP_DOWN' && activeQuestion.options && (
