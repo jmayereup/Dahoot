@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { deterministicShuffle } from '../utils/shuffle';
 
-export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, playerSelectedIdx }) {
+export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, playerSelectedIdx, roomCode }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+  // Shuffle multiple choice options deterministically based on roomCode and question ID
+  const shuffledMultipleChoiceOptions = useMemo(() => {
+    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
+    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   const renderFeedbackSentenceBlanks = (sentence, correct, playerAnswer) => {
     if (!sentence) return '';
@@ -81,9 +88,9 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         {/* 1. MULTIPLE CHOICE */}
         {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
           <div className="options-grid">
-            {activeQuestion.options.map((opt, idx) => {
-              const isCorrectAnswer = idx === activeQuestion.correct_option_index;
-              const isPlayerChoice = idx === playerSelectedIdx;
+            {shuffledMultipleChoiceOptions.map((item, idx) => {
+              const isCorrectAnswer = item.originalIdx === activeQuestion.correct_option_index;
+              const isPlayerChoice = item.originalIdx === playerSelectedIdx;
               
               let cardClass = "";
               if (isCorrectAnswer) {
@@ -96,13 +103,13 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
 
               return (
                 <div 
-                  key={idx} 
+                  key={item.originalIdx} 
                   className={`option-card ${cardClass}`}
                 >
                   <div className="option-icon">
                     {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : ['A', 'B', 'C', 'D'][idx])}
                   </div>
-                  <span>{opt}</span>
+                  <span>{item.item}</span>
                 </div>
               );
             })}

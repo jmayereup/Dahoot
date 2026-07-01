@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function PlayerLobby({ playerRecord, disconnectSession }) {
+export function PlayerLobby({ playerRecord, exitGame }) {
   return (
     <div>
       <div className="spinner" />
@@ -8,7 +8,15 @@ export function PlayerLobby({ playerRecord, disconnectSession }) {
       <p className="waiting-message">See your nickname <strong>{playerRecord.name}</strong> on the projector.</p>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Waiting for the host to start the game...</p>
       
-      <button className="btn btn-secondary btn-sm" onClick={disconnectSession} style={{ marginTop: 32 }}>
+      <button 
+        className="btn btn-secondary btn-sm" 
+        onClick={() => {
+          if (window.confirm("Are you sure you want to leave the game?")) {
+            exitGame();
+          }
+        }} 
+        style={{ marginTop: 32 }}
+      >
         Leave Game
       </button>
     </div>

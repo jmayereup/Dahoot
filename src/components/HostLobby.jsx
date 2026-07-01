@@ -93,7 +93,14 @@ export function HostLobby({
         >
           Start Game
         </button>
-        <button className="btn btn-secondary btn-lg" onClick={hostEndGame}>
+        <button 
+          className="btn btn-secondary btn-lg" 
+          onClick={() => {
+            if (window.confirm("Are you sure you want to cancel and exit the game?")) {
+              hostEndGame();
+            }
+          }}
+        >
           Cancel Game
         </button>
       </div>

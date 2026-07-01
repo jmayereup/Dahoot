@@ -51,6 +51,8 @@ export function HostView({
             hostShowLeaderboard={hostShowLeaderboard}
             hostCancelTimer={hostCancelTimer}
             timerDuration={hostRoom.timer_duration}
+            roomCode={hostRoom.code}
+            hostEndGame={hostEndGame}
           />
         )}
 
@@ -62,6 +64,7 @@ export function HostView({
             hostNextQuestion={hostNextQuestion}
             hostEndGame={hostEndGame}
             questions={questions}
+            roomCode={hostRoom.code}
           />
         )}
 

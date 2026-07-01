@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { deterministicShuffle } from '../utils/shuffle';
 
 export function HostLeaderboard({
   qIndex,
@@ -7,10 +8,21 @@ export function HostLeaderboard({
   hostPlayers,
   hostNextQuestion,
   hostEndGame,
-  questions
+  questions,
+  roomCode
 }) {
   const isLastQuestion = qIndex + 1 >= questions.length;
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+  // Shuffle multiple choice options deterministically based on roomCode and question ID
+  const shuffledMultipleChoiceOptions = useMemo(() => {
+    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
+    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
+
+  const correctShuffledIdx = useMemo(() => {
+    return shuffledMultipleChoiceOptions.findIndex(item => item.originalIdx === activeQuestion.correct_option_index);
+  }, [shuffledMultipleChoiceOptions, activeQuestion.correct_option_index]);
 
   // Helper to fill blanks in Drag & Drop sentence
   const fillSentenceBlanks = (sentence, correctAnswers) => {
@@ -84,10 +96,10 @@ export function HostLeaderboard({
         </div>
 
         {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
-          <div className={`option-card ${OPTION_CLASSES[activeQuestion.correct_option_index]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
-            <div className="option-icon">{['A', 'B', 'C', 'D'][activeQuestion.correct_option_index]}</div>
-            <span>{activeQuestion.options[activeQuestion.correct_option_index]}</span>
+        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && correctShuffledIdx !== -1 && (
+          <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
+            <div className="option-icon">{['A', 'B', 'C', 'D'][correctShuffledIdx]}</div>
+            <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
           </div>
         )}
 
@@ -186,7 +198,15 @@ export function HostLeaderboard({
         <button className="btn btn-primary" onClick={hostNextQuestion} style={{ minWidth: 160 }}>
           {isLastQuestion ? 'Show Standings' : 'Next Question'}
         </button>
-        <button className="btn btn-secondary" onClick={hostEndGame}>
+        <button 
+          className="btn btn-secondary" 
+          onClick={() => {
+            if (window.confirm("Are you sure you want to stop and exit the game? This will end the session for all players.")) {
+              hostEndGame();
+            }
+          }}
+          style={{ minWidth: 160 }}
+        >
           Cancel Game
         </button>
       </div>

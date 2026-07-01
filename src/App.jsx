@@ -121,6 +121,7 @@ function App() {
         error={playerGame.error}
         submitAnswer={playerGame.submitAnswer}
         disconnectSession={playerGame.disconnectSession}
+        exitGame={playerGame.exitGame}
       />
     );
   }

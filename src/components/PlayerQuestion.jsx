@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { deterministicShuffle } from '../utils/shuffle';
 
 export function PlayerQuestion({
   qIndex,
@@ -8,11 +9,18 @@ export function PlayerQuestion({
   playerTimeLeft,
   error,
   submitAnswer,
-  timerDuration
+  timerDuration,
+  roomCode
 }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
   const isTimerActive = timerDuration !== 0;
   const isTimeUp = isTimerActive && playerTimeLeft !== null && playerTimeLeft <= 0;
+
+  // Shuffle multiple choice options deterministically based on roomCode and question ID
+  const shuffledMultipleChoiceOptions = useMemo(() => {
+    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
+    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   // ----------------------------------------------------
   // SORTING STATE & HANDLERS
@@ -242,15 +250,15 @@ export function PlayerQuestion({
             {/* 1. MULTIPLE CHOICE */}
             {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
               <div className="options-grid">
-                {activeQuestion.options.map((opt, idx) => (
+                {shuffledMultipleChoiceOptions.map((item, idx) => (
                   <button 
-                    key={idx} 
+                    key={item.originalIdx} 
                     className={`option-card interactive ${OPTION_CLASSES[idx]} ${isTimeUp ? 'disabled' : ''}`}
-                    onClick={() => submitAnswer(idx)}
+                    onClick={() => submitAnswer(item.originalIdx)}
                     disabled={isTimeUp}
                   >
                     <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
-                    <span>{opt}</span>
+                    <span>{item.item}</span>
                   </button>
                 ))}
               </div>

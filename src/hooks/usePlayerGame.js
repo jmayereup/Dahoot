@@ -264,6 +264,17 @@ export function usePlayerGame(view, setView) {
     }
   };
 
+  const exitGame = async () => {
+    if (playerRecord?.id) {
+      try {
+        await pb.collection('dahoot_players').delete(playerRecord.id);
+      } catch (err) {
+        console.error("Error deleting player record on exit:", err);
+      }
+    }
+    disconnectSession();
+  };
+
   return {
     joinPin,
     setJoinPin,
@@ -282,6 +293,7 @@ export function usePlayerGame(view, setView) {
     setError,
     joinGame,
     submitAnswer,
-    disconnectSession
+    disconnectSession,
+    exitGame
   };
 }

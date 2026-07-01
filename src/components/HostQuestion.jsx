@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { deterministicShuffle } from '../utils/shuffle';
 
 export function HostQuestion({
   qIndex,
@@ -10,9 +11,17 @@ export function HostQuestion({
   hostPlayers,
   hostShowLeaderboard,
   hostCancelTimer,
-  timerDuration
+  timerDuration,
+  roomCode,
+  hostEndGame
 }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+
+  // Shuffle multiple choice options deterministically based on roomCode and question ID
+  const shuffledMultipleChoiceOptions = useMemo(() => {
+    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
+    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   // Shuffle sorting options once when question changes so they display out of order
   const shuffledSortingOptions = useMemo(() => {
@@ -77,10 +86,10 @@ export function HostQuestion({
         {/* 1. MULTIPLE CHOICE */}
         {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
           <div className="options-grid">
-            {activeQuestion.options.map((opt, idx) => (
-              <div key={idx} className={`option-card ${OPTION_CLASSES[idx]}`}>
+            {shuffledMultipleChoiceOptions.map((item, idx) => (
+              <div key={item.originalIdx} className={`option-card ${OPTION_CLASSES[idx]}`}>
                 <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
-                <span>{opt}</span>
+                <span>{item.item}</span>
               </div>
             ))}
           </div>
@@ -222,6 +231,17 @@ export function HostQuestion({
         )}
         <button className="btn btn-secondary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
           Skip Question
+        </button>
+        <button 
+          className="btn btn-danger btn-sm" 
+          onClick={() => {
+            if (window.confirm("Are you sure you want to stop and exit the game? This will end the session for all players.")) {
+              hostEndGame();
+            }
+          }}
+          style={{ width: 'auto' }}
+        >
+          🛑 Stop Game
         </button>
       </div>
     </div>
