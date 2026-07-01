@@ -16,6 +16,7 @@ export function SelectionView({
   error,
   joinGame,
   startHosting,
+  startSoloPractice,
   seedQuestions,
   setHasPinFromUrl,
   setView,
@@ -520,14 +521,36 @@ export function SelectionView({
               </div>
             )}
 
-            <button 
-              className="btn btn-primary" 
-              onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, timerDuration })} 
-              disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
-              style={{ marginBottom: 16 }}
-            >
-              {loading ? 'Initializing...' : 'Create Game Lobby'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginBottom: 16 }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, timerDuration })} 
+                disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
+                style={{ width: '100%' }}
+              >
+                {loading ? 'Initializing...' : 'Host Live Room'}
+              </button>
+              
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => startSoloPractice(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0 })} 
+                disabled={loading || !selectedGameId}
+                style={{ 
+                  width: '100%',
+                  background: 'rgba(255, 183, 178, 0.1)', 
+                  border: '1.5px solid var(--color-school-primary)',
+                  color: 'var(--text-secondary)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 183, 178, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 183, 178, 0.1)';
+                }}
+              >
+                Practice Solo (Self-Paced)
+              </button>
+            </div>
             
             <div className="divider">OR ADMIN</div>
             

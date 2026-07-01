@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 
 export function PlayerQuestion({
@@ -413,18 +413,31 @@ export function PlayerQuestion({
                       maxWidth: '340px',
                       marginTop: 12
                     }}>
-                      {activeQuestion.options.categories?.map((cat, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          className={`btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'}`}
-                          onClick={() => handleCategorizeChoice(activeQuestion.options.items[categorizeIdx].name, cat)}
-                          disabled={isTimeUp}
-                          style={{ padding: '12px 16px', fontSize: '0.95rem' }}
-                        >
-                          {cat}
-                        </button>
-                      ))}
+                      {activeQuestion.options.categories?.map((cat, idx) => {
+                        const colorSet = BUCKET_COLORS[idx % BUCKET_COLORS.length];
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="btn"
+                            onClick={() => handleCategorizeChoice(activeQuestion.options.items[categorizeIdx].name, cat)}
+                            disabled={isTimeUp}
+                            style={{
+                              background: colorSet.background,
+                              border: colorSet.border,
+                              color: colorSet.color,
+                              boxShadow: colorSet.shadow,
+                              padding: '16px 20px',
+                              fontSize: '1rem',
+                              borderRadius: '16px',
+                              fontWeight: '700',
+                              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                            }}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (

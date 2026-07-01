@@ -314,7 +314,7 @@ p.subtitle {
 }
 
 @utility score-display {
-  @apply text-slate-500 text-lg mt-4 font-semibold;
+  @apply text-slate-700 text-lg mt-4 font-semibold;
 }
 
 /* Spinner indicator loader utility */
@@ -323,7 +323,7 @@ p.subtitle {
 }
 
 @utility waiting-message {
-  @apply text-slate-500 text-lg my-6 font-semibold;
+  @apply text-slate-700 text-lg my-6 font-semibold;
 }
 
 /* Lobby layout components utilities */
@@ -446,7 +446,7 @@ p.subtitle {
 }
 
 @utility muted-feedback {
-  @apply opacity-45 border-slate-200 bg-white/50;
+  @apply opacity-70 border-slate-200 bg-white/50;
 }
 
 /* Start game button styling */
@@ -469,7 +469,7 @@ p.subtitle {
 }
 
 @utility sorting-number {
-  @apply bg-slate-100 text-slate-500 rounded-full w-5 h-5 inline-flex items-center justify-center text-xs font-extrabold;
+  @apply bg-slate-100 text-slate-700 rounded-full w-5 h-5 inline-flex items-center justify-center text-xs font-extrabold;
 }
 
 /* Validation */

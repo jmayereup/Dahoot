@@ -102,7 +102,9 @@ export function useHostGame(view, setView) {
     }
 
     const startTime = new Date(hostRoom.current_question_start_time).getTime();
-    const limit = duration !== undefined ? duration : 20;
+    const activeQuestion = questions[hostRoom.current_question_index];
+    const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
+    const limit = (duration !== undefined ? duration : 20) * (isCategorize ? 2 : 1);
     
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -116,7 +118,7 @@ export function useHostGame(view, setView) {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [view, hostRoom?.status, hostRoom?.current_question_start_time, hostRoom?.current_question_index, hostRoom?.timer_duration]);
+  }, [view, hostRoom?.status, hostRoom?.current_question_start_time, hostRoom?.current_question_index, hostRoom?.timer_duration, questions]);
 
   // Host Auto-skip: If all players have answered, trigger leaderboard
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 
 export function HostLeaderboard({
@@ -151,33 +151,38 @@ export function HostLeaderboard({
             gridTemplateColumns: `repeat(${Math.min(activeQuestion.options.categories?.length || 2, 4)}, 1fr)`,
             gap: 16 
           }}>
-            {Object.keys(categorizedMap).map((cat, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '8px',
-                  padding: '16px'
-                }}
-              >
-                <div style={{ fontWeight: 700, color: 'var(--accent-light)', marginBottom: 12, borderBottom: '1px solid var(--panel-border)', paddingBottom: 6 }}>
-                  {cat}
+            {Object.keys(categorizedMap).map((cat, idx) => {
+              const catIdx = activeQuestion.options.categories?.indexOf(cat);
+              const colorSet = BUCKET_COLORS[catIdx !== -1 ? catIdx % BUCKET_COLORS.length : idx % BUCKET_COLORS.length];
+              return (
+                <div 
+                  key={idx}
+                  style={{
+                    background: colorSet.background,
+                    border: colorSet.border,
+                    borderRadius: '16px',
+                    padding: '20px 16px',
+                    boxShadow: colorSet.shadow
+                  }}
+                >
+                  <div style={{ fontWeight: 800, color: colorSet.color, marginBottom: 12, borderBottom: `1.5px solid ${colorSet.color}33`, paddingBottom: 6 }}>
+                    {cat}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {categorizedMap[cat].map((item, iIdx) => (
+                      <div key={iIdx} style={{ fontSize: '0.95rem', color: colorSet.color, fontWeight: 500 }}>
+                        • {item.name}
+                      </div>
+                    ))}
+                    {categorizedMap[cat].length === 0 && (
+                      <div style={{ fontSize: '0.85rem', color: colorSet.color, opacity: 0.6, fontStyle: 'italic' }}>
+                        No items
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {categorizedMap[cat].map((item, iIdx) => (
-                    <div key={iIdx} style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      • {item.name}
-                    </div>
-                  ))}
-                  {categorizedMap[cat].length === 0 && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                      No items
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

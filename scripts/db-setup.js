@@ -301,6 +301,7 @@ async function runSetup() {
       { name: 'current_question_start_time', type: 'text', required: false },
       { name: 'question_ids', type: 'json', required: false },
       { name: 'timer_duration', type: 'number', required: false, noDecimal: true },
+      { name: 'pacing_mode', type: 'select', required: false, values: ['teacher', 'student'], maxSelect: 1 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],

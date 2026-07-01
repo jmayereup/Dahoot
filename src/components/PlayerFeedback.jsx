@@ -75,7 +75,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
   const renderQuestionReview = () => {
     return (
       <div style={{ marginTop: 24, textAlign: 'left' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+        <h3 style={{ fontSize: '1rem', color: '#334155', marginBottom: 12 }}>
           Question Review:
         </h3>
         
@@ -266,7 +266,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
           <div className="feedback-icon feedback-incorrect">✗</div>
           <h2>No Answer</h2>
           <div className="points-text feedback-incorrect">+0 pts</div>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
+          <p style={{ color: '#334155', marginBottom: 12 }}>
             You did not submit an answer in time!
           </p>
         </div>
@@ -277,7 +277,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
       <div className="score-display" style={{ marginTop: 24 }}>
         Current Score: <strong>{playerRecord.score} points</strong>
       </div>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 32 }}>
+      <p style={{ color: '#475569', fontSize: '0.85rem', marginTop: 32 }}>
         Look at the screen to see current rankings.
       </p>
     </div>

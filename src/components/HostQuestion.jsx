@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 
 export function HostQuestion({
@@ -182,23 +182,27 @@ export function HostQuestion({
               gap: 20,
               marginBottom: 32
             }}>
-              {activeQuestion.options.categories?.map((cat, idx) => (
-                <div 
-                  key={idx}
-                  style={{
-                    background: 'rgba(168, 85, 247, 0.1)',
-                    border: '1px solid var(--panel-border-focus)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    textAlign: 'center',
-                    fontWeight: 700,
-                    fontSize: '1.1rem',
-                    color: 'var(--accent-light)'
-                  }}
-                >
-                  {cat}
-                </div>
-              ))}
+              {activeQuestion.options.categories?.map((cat, idx) => {
+                const colorSet = BUCKET_COLORS[idx % BUCKET_COLORS.length];
+                return (
+                  <div 
+                    key={idx}
+                    style={{
+                      background: colorSet.background,
+                      border: colorSet.border,
+                      borderRadius: '16px',
+                      padding: '20px 16px',
+                      textAlign: 'center',
+                      fontWeight: 700,
+                      fontSize: '1.2rem',
+                      color: colorSet.color,
+                      boxShadow: colorSet.shadow
+                    }}
+                  >
+                    {cat}
+                  </div>
+                );
+              })}
             </div>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>

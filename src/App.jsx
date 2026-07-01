@@ -8,6 +8,8 @@ import { HostView } from './components/HostView';
 import { PlayerView } from './components/PlayerView';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AuthView } from './components/AuthView';
+import { usePracticeGame } from './hooks/usePracticeGame';
+import { PracticeView } from './components/PracticeView';
 
 function App() {
   const [view, setView] = useState('selection'); // 'selection' | 'host' | 'player' | 'teacher'
@@ -57,6 +59,7 @@ function App() {
   const hostGame = useHostGame(view, setView);
   const playerGame = usePlayerGame(view, setView);
   const teacherDashboard = useTeacherDashboard(view);
+  const practiceGame = usePracticeGame(view, setView);
 
   // 1. SELECTION VIEW
   if (view === 'selection') {
@@ -76,6 +79,7 @@ function App() {
         error={error}
         joinGame={playerGame.joinGame}
         startHosting={hostGame.startHosting}
+        startSoloPractice={practiceGame.startSoloPractice}
         seedQuestions={hostGame.seedQuestions}
         setHasPinFromUrl={playerGame.setHasPinFromUrl}
         setView={setView}
@@ -221,6 +225,35 @@ function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         startHosting={hostGame.startHosting}
+      />
+    );
+  }
+
+  // 5. PRACTICE VIEW (SOLO SELF-PACED MASTERY)
+  if (view === 'practice') {
+    return (
+      <PracticeView
+        practiceState={practiceGame.practiceState}
+        selectedGame={practiceGame.selectedGame}
+        nickname={practiceGame.nickname}
+        setNickname={practiceGame.setNickname}
+        questionsQueue={practiceGame.questionsQueue}
+        currentQuestionIdx={practiceGame.currentQuestionIdx}
+        failedQuestions={practiceGame.failedQuestions}
+        masteredCount={practiceGame.masteredCount}
+        totalCount={practiceGame.totalCount}
+        roundNumber={practiceGame.roundNumber}
+        score={practiceGame.score}
+        playerSelectedIdx={practiceGame.playerSelectedIdx}
+        playerFeedback={practiceGame.playerFeedback}
+        error={practiceGame.error}
+        loading={practiceGame.loading}
+        firstTryCorrectCount={practiceGame.firstTryCorrectCount}
+        startPractice={practiceGame.startPractice}
+        submitAnswer={practiceGame.submitAnswer}
+        nextQuestion={practiceGame.nextQuestion}
+        startNextRound={practiceGame.startNextRound}
+        exitPractice={practiceGame.exitPractice}
       />
     );
   }

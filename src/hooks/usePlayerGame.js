@@ -121,7 +121,9 @@ export function usePlayerGame(view, setView) {
     }
 
     const startTime = new Date(playerRoom.current_question_start_time).getTime();
-    const limit = duration !== undefined ? duration : 20;
+    const activeQuestion = playerQuestions[playerRoom.current_question_index];
+    const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
+    const limit = (duration !== undefined ? duration : 20) * (isCategorize ? 2 : 1);
     
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -134,7 +136,7 @@ export function usePlayerGame(view, setView) {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [view, playerRoom?.status, playerRoom?.current_question_start_time, playerRoom?.current_question_index, playerRoom?.timer_duration]);
+  }, [view, playerRoom?.status, playerRoom?.current_question_start_time, playerRoom?.current_question_index, playerRoom?.timer_duration, playerQuestions]);
 
   const joinGame = async (e) => {
     e.preventDefault();
@@ -244,7 +246,8 @@ export function usePlayerGame(view, setView) {
       if (duration === 0) {
         points = 1000;
       } else {
-        const limit = duration || 20;
+        const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
+        const limit = (duration || 20) * (isCategorize ? 2 : 1);
         const startTime = new Date(playerRoom.current_question_start_time).getTime();
         const elapsedSeconds = Math.max(0, (Date.now() - startTime) / 1000);
         points = Math.max(500, Math.round(1000 - (elapsedSeconds / limit) * 500));
