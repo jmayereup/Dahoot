@@ -114,11 +114,18 @@ export function usePlayerGame(view, setView) {
       return;
     }
 
+    const duration = playerRoom.timer_duration;
+    if (duration === 0) {
+      setPlayerTimeLeft(null);
+      return;
+    }
+
     const startTime = new Date(playerRoom.current_question_start_time).getTime();
+    const limit = duration !== undefined ? duration : 20;
     
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, 20 - elapsed);
+      const remaining = Math.max(0, limit - elapsed);
       setPlayerTimeLeft(remaining);
 
       if (remaining <= 0) {
@@ -127,7 +134,7 @@ export function usePlayerGame(view, setView) {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [view, playerRoom?.status, playerRoom?.current_question_start_time, playerRoom?.current_question_index]);
+  }, [view, playerRoom?.status, playerRoom?.current_question_start_time, playerRoom?.current_question_index, playerRoom?.timer_duration]);
 
   const joinGame = async (e) => {
     e.preventDefault();
@@ -233,9 +240,15 @@ export function usePlayerGame(view, setView) {
 
     let points = 0;
     if (isCorrect) {
-      const startTime = new Date(playerRoom.current_question_start_time).getTime();
-      const elapsedSeconds = Math.max(0, (Date.now() - startTime) / 1000);
-      points = Math.max(500, Math.round(1000 - (elapsedSeconds / 20) * 500));
+      const duration = playerRoom.timer_duration;
+      if (duration === 0) {
+        points = 1000;
+      } else {
+        const limit = duration || 20;
+        const startTime = new Date(playerRoom.current_question_start_time).getTime();
+        const elapsedSeconds = Math.max(0, (Date.now() - startTime) / 1000);
+        points = Math.max(500, Math.round(1000 - (elapsedSeconds / limit) * 500));
+      }
     }
 
     try {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { pb } from '../pb';
+import { SchoolFooter } from './SchoolFooter';
 
 export function AuthView({ onSuccess, onCancel }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -346,6 +347,7 @@ export function AuthView({ onSuccess, onCancel }) {
           </div>
         </form>
       </div>
+      <SchoolFooter />
     </div>
   );
 }

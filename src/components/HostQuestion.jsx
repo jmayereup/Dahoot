@@ -8,7 +8,9 @@ export function HostQuestion({
   hostTimeLeft,
   answeredCount,
   hostPlayers,
-  hostShowLeaderboard
+  hostShowLeaderboard,
+  hostCancelTimer,
+  timerDuration
 }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
 
@@ -61,7 +63,7 @@ export function HostQuestion({
 
       <div className="game-mid-section">
         <div className="timer-container">
-          <div className="timer-number">{hostTimeLeft}</div>
+          <div className="timer-number">{timerDuration === 0 || hostTimeLeft === null ? '∞' : hostTimeLeft}</div>
         </div>
         <div className="answer-stats">
           <span className="answer-stats-num">{answeredCount}</span> 
@@ -212,8 +214,13 @@ export function HostQuestion({
 
       </div>
 
-      <div style={{ marginTop: 32 }}>
-        <button className="btn btn-secondary" onClick={hostShowLeaderboard}>
+      <div style={{ marginTop: 32, display: 'flex', gap: 16, justifyContent: 'center' }}>
+        {timerDuration > 0 && hostTimeLeft > 0 && (
+          <button className="btn btn-warning btn-sm" onClick={hostCancelTimer} style={{ width: 'auto' }}>
+            ⏱ Stop Timer
+          </button>
+        )}
+        <button className="btn btn-secondary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
           Skip Question
         </button>
       </div>

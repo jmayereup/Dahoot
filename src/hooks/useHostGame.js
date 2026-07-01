@@ -95,11 +95,18 @@ export function useHostGame(view, setView) {
       return;
     }
 
+    const duration = hostRoom.timer_duration;
+    if (duration === 0) {
+      setHostTimeLeft(null);
+      return;
+    }
+
     const startTime = new Date(hostRoom.current_question_start_time).getTime();
+    const limit = duration !== undefined ? duration : 20;
     
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, 20 - elapsed);
+      const remaining = Math.max(0, limit - elapsed);
       setHostTimeLeft(remaining);
 
       if (remaining <= 0) {
@@ -109,7 +116,7 @@ export function useHostGame(view, setView) {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [view, hostRoom?.status, hostRoom?.current_question_start_time, hostRoom?.current_question_index]);
+  }, [view, hostRoom?.status, hostRoom?.current_question_start_time, hostRoom?.current_question_index, hostRoom?.timer_duration]);
 
   // Host Auto-skip: If all players have answered, trigger leaderboard
   useEffect(() => {
@@ -181,7 +188,8 @@ export function useHostGame(view, setView) {
         current_question_index: 0,
         status: 'LOBBY',
         current_question_start_time: '',
-        question_ids: questionIds
+        question_ids: questionIds,
+        timer_duration: options.timerDuration !== undefined ? options.timerDuration : 20
       });
 
       setHostRoom(room);
@@ -274,6 +282,17 @@ export function useHostGame(view, setView) {
     }
   };
 
+  const hostCancelTimer = async () => {
+    if (!hostRoom) return;
+    try {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+        timer_duration: 0
+      });
+    } catch (err) {
+      console.error("Error cancelling timer:", err);
+    }
+  };
+
   return {
     gamesList,
     hostRoom,
@@ -291,6 +310,7 @@ export function useHostGame(view, setView) {
     hostShowLeaderboard,
     hostNextQuestion,
     hostEndGame,
+    hostCancelTimer,
     seedQuestions,
     refreshGames: fetchGames
   };

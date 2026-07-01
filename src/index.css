@@ -78,7 +78,11 @@ h1 {
 }
 
 @utility logo-container {
-  @apply flex items-center justify-center gap-2 mb-6 animate-bounce-slow;
+  @apply flex items-center justify-center gap-4 mb-6 animate-bounce-slow;
+}
+
+@utility logo-img {
+  @apply w-16 h-16 object-contain drop-shadow-md hover:rotate-6 hover:scale-105 transition-all duration-300;
 }
 
 @utility logo-rocket {
@@ -125,6 +129,10 @@ p.subtitle {
 
 @utility btn-danger {
   @apply bg-gradient-to-r from-pastel-red-start to-pastel-red-end text-white hover:shadow-md hover:shadow-rose-100;
+}
+
+@utility btn-warning {
+  @apply bg-gradient-to-r from-pastel-yellow-start to-pastel-yellow-end text-slate-800 hover:shadow-md hover:shadow-yellow-100;
 }
 
 @utility btn-sm {
@@ -403,16 +411,46 @@ p.subtitle {
   @apply inline-block bg-white border-2 border-dashed border-slate-200 text-slate-500 px-3 py-1 mx-1.5 my-1 rounded-lg min-w-24 text-center font-bold cursor-pointer transition-all hover:bg-slate-50;
   
   &.active {
-    @apply border-rose-300 bg-rose-50/40 shadow-sm text-slate-700;
+    @apply border-slate-300 bg-slate-50 shadow-sm text-slate-700;
   }
 
   &.filled {
-    @apply border-solid border-rose-300 bg-rose-50 text-rose-700;
+    @apply border-solid border-slate-400 bg-slate-100 text-slate-800;
   }
 }
 
 @utility player-sentence-select {
-  @apply bg-white border-2 border-dashed border-rose-200 text-slate-700 py-1.5 px-3 rounded-lg mx-1.5 my-1 font-bold outline-none cursor-pointer transition-all focus:border-rose-400 focus:ring-4 focus:ring-rose-50;
+  @apply bg-white border-2 border-dashed border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg mx-1.5 my-1 font-bold outline-none cursor-pointer transition-all focus:border-slate-400 focus:ring-4 focus:ring-slate-50;
+}
+
+/* Feedback highlighting classes */
+@utility feedback-blank {
+  &.correct {
+    @apply border-solid border-emerald-400 bg-emerald-50 text-emerald-800;
+  }
+  &.incorrect {
+    @apply border-solid border-rose-400 bg-rose-50 text-rose-800;
+  }
+  &.unanswered {
+    @apply border-dashed border-amber-300 bg-amber-50/50 text-amber-800;
+  }
+}
+
+@utility correct-feedback {
+  @apply ring-4 ring-emerald-400 bg-emerald-50/40 border-emerald-400 shadow-md text-emerald-800;
+}
+
+@utility incorrect-feedback {
+  @apply ring-4 ring-rose-400 bg-rose-50/40 border-rose-400 shadow-md text-rose-800;
+}
+
+@utility muted-feedback {
+  @apply opacity-45 border-slate-200 bg-white/50;
+}
+
+/* Start game button styling */
+@utility btn-start-game {
+  @apply bg-emerald-100 border border-emerald-300 text-emerald-800 hover:bg-emerald-200 hover:border-emerald-400 hover:text-emerald-900 hover:shadow-md hover:shadow-emerald-100;
 }
 
 /* Pool chips */

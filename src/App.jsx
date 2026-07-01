@@ -103,6 +103,7 @@ function App() {
         hostShowLeaderboard={hostGame.hostShowLeaderboard}
         hostNextQuestion={hostGame.hostNextQuestion}
         hostEndGame={hostGame.hostEndGame}
+        hostCancelTimer={hostGame.hostCancelTimer}
       />
     );
   }

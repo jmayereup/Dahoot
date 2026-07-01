@@ -86,7 +86,7 @@ export function HostLobby({
 
       <div style={{ display: 'flex', gap: 16, marginTop: 32, justifyContent: 'center' }}>
         <button 
-          className="btn btn-primary btn-lg" 
+          className="btn btn-start-game btn-lg" 
           onClick={hostStartGame}
           disabled={hostPlayers.length === 0}
           style={{ minWidth: 200 }}

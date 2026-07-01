@@ -45,6 +45,7 @@ export function PlayerView({
             playerTimeLeft={playerTimeLeft}
             error={error}
             submitAnswer={submitAnswer}
+            timerDuration={playerRoom.timer_duration}
           />
         )}
 
@@ -53,6 +54,7 @@ export function PlayerView({
             playerFeedback={playerFeedback}
             activeQuestion={activeQuestion}
             playerRecord={playerRecord}
+            playerSelectedIdx={playerSelectedIdx}
           />
         )}
 

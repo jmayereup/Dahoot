@@ -300,6 +300,7 @@ async function runSetup() {
       { name: 'status', type: 'select', required: true, maxSelect: 1, values: ['LOBBY', 'QUESTION', 'LEADERBOARD', 'FINISHED'] },
       { name: 'current_question_start_time', type: 'text', required: false },
       { name: 'question_ids', type: 'json', required: false },
+      { name: 'timer_duration', type: 'number', required: false, noDecimal: true },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],

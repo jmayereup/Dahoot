@@ -7,9 +7,12 @@ export function PlayerQuestion({
   hasAnswered,
   playerTimeLeft,
   error,
-  submitAnswer
+  submitAnswer,
+  timerDuration
 }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+  const isTimerActive = timerDuration !== 0;
+  const isTimeUp = isTimerActive && playerTimeLeft !== null && playerTimeLeft <= 0;
 
   // ----------------------------------------------------
   // SORTING STATE & HANDLERS
@@ -190,7 +193,7 @@ export function PlayerQuestion({
             className="player-sentence-select"
             value={dropdownSelections[dropIdx] || ''}
             onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-            disabled={playerTimeLeft <= 0}
+            disabled={isTimeUp}
           >
             <option value="">-- Choose --</option>
             {config.choices.map((choice, cIdx) => (
@@ -220,7 +223,7 @@ export function PlayerQuestion({
           {/* Timer Display */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-light)' }}>
-              Timer: {playerTimeLeft}s
+              {timerDuration === 0 || playerTimeLeft === null ? 'Timer: ∞' : `Timer: ${playerTimeLeft}s`}
             </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               {type === 'MULTIPLE_CHOICE' && 'Select the correct option:'}
@@ -242,9 +245,9 @@ export function PlayerQuestion({
                 {activeQuestion.options.map((opt, idx) => (
                   <button 
                     key={idx} 
-                    className={`option-card interactive ${OPTION_CLASSES[idx]} ${playerTimeLeft <= 0 ? 'disabled' : ''}`}
+                    className={`option-card interactive ${OPTION_CLASSES[idx]} ${isTimeUp ? 'disabled' : ''}`}
                     onClick={() => submitAnswer(idx)}
-                    disabled={playerTimeLeft <= 0}
+                    disabled={isTimeUp}
                   >
                     <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
                     <span>{opt}</span>
@@ -280,7 +283,7 @@ export function PlayerQuestion({
                         type="button"
                         className="btn-sorting-arrow"
                         onClick={() => moveSortingItem(idx, 'up')}
-                        disabled={idx === 0 || playerTimeLeft <= 0}
+                        disabled={idx === 0 || isTimeUp}
                       >
                         ▲
                       </button>
@@ -288,7 +291,7 @@ export function PlayerQuestion({
                         type="button"
                         className="btn-sorting-arrow"
                         onClick={() => moveSortingItem(idx, 'down')}
-                        disabled={idx === sortingItems.length - 1 || playerTimeLeft <= 0}
+                        disabled={idx === sortingItems.length - 1 || isTimeUp}
                       >
                         ▼
                       </button>
@@ -299,7 +302,7 @@ export function PlayerQuestion({
                 <button
                   onClick={handleSortingSubmit}
                   className="btn btn-primary"
-                  disabled={playerTimeLeft <= 0}
+                  disabled={isTimeUp}
                   style={{ marginTop: 16 }}
                 >
                   Submit Order
@@ -329,7 +332,7 @@ export function PlayerQuestion({
                         type="button"
                         onClick={() => handlePoolWordTap(choice)}
                         className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                        disabled={isPlaced || playerTimeLeft <= 0}
+                        disabled={isPlaced || isTimeUp}
                       >
                         {choice}
                       </button>
@@ -340,7 +343,7 @@ export function PlayerQuestion({
                 <button
                   onClick={handleDragDropSubmit}
                   className="btn btn-primary"
-                  disabled={placedWords.includes(null) || playerTimeLeft <= 0}
+                  disabled={placedWords.includes(null) || isTimeUp}
                 >
                   Submit Blanks
                 </button>
@@ -362,7 +365,7 @@ export function PlayerQuestion({
                 <button
                   onClick={handleDropdownSubmit}
                   className="btn btn-primary"
-                  disabled={dropdownSelections.includes('') || playerTimeLeft <= 0}
+                  disabled={dropdownSelections.includes('') || isTimeUp}
                 >
                   Submit Answers
                 </button>
@@ -408,7 +411,7 @@ export function PlayerQuestion({
                           type="button"
                           className={`btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'}`}
                           onClick={() => handleCategorizeChoice(activeQuestion.options.items[categorizeIdx].name, cat)}
-                          disabled={playerTimeLeft <= 0}
+                          disabled={isTimeUp}
                           style={{ padding: '12px 16px', fontSize: '0.95rem' }}
                         >
                           {cat}
@@ -455,7 +458,7 @@ export function PlayerQuestion({
                         type="button" 
                         className="btn btn-secondary" 
                         onClick={handleCategorizeReset}
-                        disabled={playerTimeLeft <= 0}
+                        disabled={isTimeUp}
                         style={{ flex: 1 }}
                       >
                         Reset
@@ -464,7 +467,7 @@ export function PlayerQuestion({
                         type="button" 
                         className="btn btn-primary" 
                         onClick={handleCategorizeSubmit}
-                        disabled={playerTimeLeft <= 0}
+                        disabled={isTimeUp}
                         style={{ flex: 2 }}
                       >
                         Submit

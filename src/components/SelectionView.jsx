@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PocketBaseStatusBanner } from './PocketBaseStatusBanner';
 import { LogoContainer } from './LogoContainer';
+import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
 
 
@@ -29,6 +30,7 @@ export function SelectionView({
   const [randomize, setRandomize] = useState(false);
   const [maxQuestions, setMaxQuestions] = useState('');
   const [totalQuestions, setTotalQuestions] = useState(0);
+  const [timerDuration, setTimerDuration] = useState(20);
 
   // Fetch total questions count when game is selected
   useEffect(() => {
@@ -496,12 +498,31 @@ export function SelectionView({
                     </span>
                   </div>
                 </div>
+
+                {/* Timer Duration Option */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+                    Question Timer Limit:
+                  </span>
+                  <select
+                    value={timerDuration}
+                    onChange={(e) => setTimerDuration(parseInt(e.target.value))}
+                    className="form-input"
+                    style={{ width: '230px', maxWidth: '230px', cursor: 'pointer', height: 'auto', padding: '8px 12px', fontSize: '0.95rem' }}
+                  >
+                    <option value={10}>10 Seconds</option>
+                    <option value={20}>20 Seconds (Default)</option>
+                    <option value={30}>30 Seconds</option>
+                    <option value={60}>60 Seconds</option>
+                    <option value={0}>No Timer (Unlimited)</option>
+                  </select>
+                </div>
               </div>
             )}
 
             <button 
               className="btn btn-primary" 
-              onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0 })} 
+              onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, timerDuration })} 
               disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
               style={{ marginBottom: 16 }}
             >
@@ -576,6 +597,7 @@ export function SelectionView({
           </div>
         </div>
       )}
+      <SchoolFooter />
     </div>
   );
 }
