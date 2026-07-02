@@ -320,6 +320,19 @@ async function deploy() {
     }
   }
 
+  // Step 4b: Deploy PocketBase JS VM hooks (if exists)
+  const localHooksDir = path.join(rootDir, 'pocketbase', 'pb_hooks');
+  if (fs.existsSync(localHooksDir)) {
+    console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks...\x1b[0m');
+    try {
+      execSync(`rsync -avz --delete -e ssh "${localHooksDir}/" "${connectionString}:${targetPath}/pocketbase/pb_hooks/"`, { stdio: 'inherit' });
+      console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
+    } catch (err) {
+      console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
+      process.exit(1);
+    }
+  }
+
   // Step 5: Restart the systemd service on remote server
   console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 5: Restarting systemd service (${serviceName})...\x1b[0m`);
   try {

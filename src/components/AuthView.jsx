@@ -9,6 +9,7 @@ export function AuthView({ onSuccess, onCancel }) {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -48,7 +49,8 @@ export function AuthView({ onSuccess, onCancel }) {
       password: true,
       passwordConfirm: true,
       name: true,
-      school: true
+      school: true,
+      inviteCode: true
     });
 
     try {
@@ -64,6 +66,9 @@ export function AuthView({ onSuccess, onCancel }) {
         onSuccess?.();
       } else {
         // Registration Mode
+        if (!inviteCode.trim()) {
+          throw new Error("Invite code is required.");
+        }
         if (!validateEmail(email)) {
           throw new Error("Please enter a valid email address.");
         }
@@ -72,6 +77,18 @@ export function AuthView({ onSuccess, onCancel }) {
         }
         if (password !== passwordConfirm) {
           throw new Error("Passwords do not match.");
+        }
+
+        // Verify invite code
+        let inviteSetting;
+        try {
+          inviteSetting = await pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"');
+        } catch (err) {
+          throw new Error("Could not verify invite code. Please make sure PocketBase is running.");
+        }
+        
+        if (inviteCode.trim() !== inviteSetting.value.trim()) {
+          throw new Error("Invalid invite code. Please contact an administrator.");
         }
 
         // 1. Create the dahoot_user_info record
@@ -258,6 +275,28 @@ export function AuthView({ onSuccess, onCancel }) {
                 onChange={(e) => setSchool(e.target.value)}
                 disabled={loading}
               />
+            </div>
+          )}
+
+          {!isLogin && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="inviteCode">Invite Code</label>
+              <input
+                type="text"
+                id="inviteCode"
+                className={`form-input ${isFieldInvalid('inviteCode', inviteCode, val => !!val.trim()) ? 'user-invalid-fallback' : ''}`}
+                placeholder="Required invite code"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                onBlur={() => handleBlur('inviteCode')}
+                disabled={loading}
+                required
+              />
+              {isFieldInvalid('inviteCode', inviteCode, val => !!val.trim()) && (
+                <div style={{ color: '#ff4b60', fontSize: '0.8rem', marginTop: '6px' }}>
+                  ❌ Invite code is required to register.
+                </div>
+              )}
             </div>
           )}
 

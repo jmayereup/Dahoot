@@ -278,6 +278,37 @@ async function runSetup() {
     console.error("[Dahoot DB] Error updating 'users' collection:", err.message);
   }
 
+  // 1b. Setup 'dahoot_settings' collection
+  await getOrCreateCollection('dahoot_settings', {
+    name: 'dahoot_settings',
+    type: 'base',
+    fields: [
+      { name: 'key', type: 'text', required: true, min: 1, max: 100 },
+      { name: 'value', type: 'text', required: true }
+    ],
+    listRule: '',
+    viewRule: '',
+    createRule: '',
+    updateRule: '',
+    deleteRule: ''
+  });
+
+  // Seed default 'invite_code' if not exists
+  try {
+    const inviteSetting = await pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"');
+    console.log("[Dahoot DB] Existing 'invite_code' found:", inviteSetting.value);
+  } catch (err) {
+    try {
+      await pb.collection('dahoot_settings').create({
+        key: 'invite_code',
+        value: 'DAHOOT123'
+      });
+      console.log("[Dahoot DB] Created default 'invite_code' setting: DAHOOT123");
+    } catch (createErr) {
+      console.error("[Dahoot DB] Error creating default invite_code:", createErr.message);
+    }
+  }
+
   // 2. Setup 'dahoot_options' collection
   await getOrCreateCollection('dahoot_options', {
     name: 'dahoot_options',

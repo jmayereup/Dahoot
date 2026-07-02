@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
 import { pb } from '../pb';
 
@@ -113,6 +113,532 @@ export function TeacherDashboard({
   const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
+
+  // Admin Panel states
+  const [userRole, setUserRole] = useState('TEACHER');
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [adminPanelTab, setAdminPanelTab] = useState('invite'); // 'invite' | 'teachers'
+  const [teachers, setTeachers] = useState([]);
+  const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
+  const [teachersError, setTeachersError] = useState('');
+  
+  const [inviteCodeSettingRecord, setInviteCodeSettingRecord] = useState(null);
+  const [inviteCodeValue, setInviteCodeValue] = useState('');
+  const [isSavingInvite, setIsSavingInvite] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+
+  // Create teacher form states
+  const [isCreatingTeacher, setIsCreatingTeacher] = useState(false);
+  const [newTeacherName, setNewTeacherName] = useState('');
+  const [newTeacherEmail, setNewTeacherEmail] = useState('');
+  const [newTeacherPassword, setNewTeacherPassword] = useState('');
+  const [newTeacherSchool, setNewTeacherSchool] = useState('');
+  const [newTeacherRole, setNewTeacherRole] = useState('TEACHER');
+  const [createTeacherLoading, setCreateTeacherLoading] = useState(false);
+  const [createTeacherError, setCreateTeacherError] = useState('');
+  const [createTeacherSuccess, setCreateTeacherSuccess] = useState('');
+
+  // Fetch current user's role from dahoot_user_info
+  useEffect(() => {
+    if (currentUser && currentUser.dahoot_info) {
+      pb.collection('dahoot_user_info').getOne(currentUser.dahoot_info)
+        .then(record => {
+          if (record && record.role) {
+            setUserRole(record.role);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching user role:", err);
+        });
+    }
+  }, [currentUser]);
+
+  // Load Admin Data when Admin Panel opens or tab changes
+  useEffect(() => {
+    if (isAdminPanelOpen) {
+      if (adminPanelTab === 'invite') {
+        pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"')
+          .then(record => {
+            setInviteCodeSettingRecord(record);
+            setInviteCodeValue(record.value);
+            setInviteError('');
+          })
+          .catch(err => {
+            console.error("Error fetching invite code:", err);
+            setInviteError("Failed to load invite code.");
+          });
+      } else if (adminPanelTab === 'teachers') {
+        setIsLoadingTeachers(true);
+        setTeachersError('');
+        pb.collection('users').getFullList({
+          expand: 'dahoot_info',
+          sort: 'created'
+        })
+          .then(list => {
+            setTeachers(list);
+            setIsLoadingTeachers(false);
+          })
+          .catch(err => {
+            console.error("Error fetching users:", err);
+            setTeachersError("Failed to load teachers list.");
+            setIsLoadingTeachers(false);
+          });
+      }
+    }
+  }, [isAdminPanelOpen, adminPanelTab]);
+
+  const saveInviteCode = async () => {
+    setInviteSuccess('');
+    setInviteError('');
+    setIsSavingInvite(true);
+    try {
+      if (!inviteCodeValue.trim()) {
+        throw new Error("Invite code cannot be empty.");
+      }
+      
+      let record = inviteCodeSettingRecord;
+      if (!record) {
+        record = await pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"');
+      }
+
+      const updated = await pb.collection('dahoot_settings').update(record.id, {
+        value: inviteCodeValue.trim()
+      });
+      
+      setInviteCodeSettingRecord(updated);
+      setInviteCodeValue(updated.value);
+      setInviteSuccess("Invite code updated successfully!");
+    } catch (err) {
+      console.error("Error saving invite code:", err);
+      setInviteError(err.message || "Failed to update invite code.");
+    } finally {
+      setIsSavingInvite(false);
+    }
+  };
+
+  const handleUpdateRole = async (user, newRole) => {
+    setTeachersError('');
+    try {
+      if (user.id === currentUser.id) {
+        alert("You cannot change your own role!");
+        return;
+      }
+      if (user.expand && user.expand.dahoot_info) {
+        await pb.collection('dahoot_user_info').update(user.expand.dahoot_info.id, {
+          role: newRole
+        });
+      } else {
+        const info = await pb.collection('dahoot_user_info').create({
+          role: newRole
+        });
+        await pb.collection('users').update(user.id, {
+          dahoot_info: info.id
+        });
+      }
+      
+      const list = await pb.collection('users').getFullList({
+        expand: 'dahoot_info',
+        sort: 'created'
+      });
+      setTeachers(list);
+    } catch (err) {
+      console.error("Error updating user role:", err);
+      setTeachersError("Failed to update role: " + err.message);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (user.id === currentUser.id) {
+      alert("You cannot delete yourself!");
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete user ${user.email || user.username}?`)) {
+      return;
+    }
+    setTeachersError('');
+    try {
+      await pb.collection('users').delete(user.id);
+      if (user.dahoot_info) {
+        await pb.collection('dahoot_user_info').delete(user.dahoot_info);
+      }
+      const list = await pb.collection('users').getFullList({
+        expand: 'dahoot_info',
+        sort: 'created'
+      });
+      setTeachers(list);
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      setTeachersError("Failed to delete user: " + err.message);
+    }
+  };
+
+  const handleCreateTeacher = async (e) => {
+    e.preventDefault();
+    setCreateTeacherError('');
+    setCreateTeacherSuccess('');
+    setCreateTeacherLoading(true);
+    try {
+      if (!newTeacherEmail.trim() || !newTeacherPassword) {
+        throw new Error("Email and password are required.");
+      }
+      if (newTeacherPassword.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
+      }
+      
+      const info = await pb.collection('dahoot_user_info').create({
+        role: newTeacherRole,
+        school: newTeacherSchool.trim() || undefined
+      });
+      
+      await pb.collection('users').create({
+        email: newTeacherEmail.trim(),
+        password: newTeacherPassword,
+        passwordConfirm: newTeacherPassword,
+        username: newTeacherEmail.trim().split('@')[0] + Math.floor(Math.random() * 10000),
+        name: newTeacherName.trim() || undefined,
+        dahoot_info: info.id
+      });
+      
+      setCreateTeacherSuccess("New teacher account created successfully!");
+      setNewTeacherName('');
+      setNewTeacherEmail('');
+      setNewTeacherPassword('');
+      setNewTeacherSchool('');
+      setNewTeacherRole('TEACHER');
+      setIsCreatingTeacher(false);
+      
+      const list = await pb.collection('users').getFullList({
+        expand: 'dahoot_info',
+        sort: 'created'
+      });
+      setTeachers(list);
+    } catch (err) {
+      console.error("Error creating teacher:", err);
+      let msg = err.message || "Failed to create teacher.";
+      if (err.response?.data) {
+        const details = Object.entries(err.response.data)
+          .map(([key, val]) => `${key}: ${val.message}`)
+          .join(', ');
+        if (details) msg = `Validation failed: ${details}`;
+      }
+      setCreateTeacherError(msg);
+    } finally {
+      setCreateTeacherLoading(false);
+    }
+  };
+
+  const renderAdminPanel = () => {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px'
+      }}>
+        <div 
+          className="panel panel-large animate-fade-in p-6 sm:p-8" 
+          style={{ 
+            width: '100%', 
+            maxWidth: '850px', 
+            maxHeight: '90vh', 
+            overflowY: 'auto',
+            textAlign: 'left',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }} className="text-slate-800 flex items-center gap-2">
+                ⚙️ Dahoot Administration Panel
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">Configure global settings and manage teacher access control</p>
+            </div>
+            <button 
+              onClick={() => {
+                setIsAdminPanelOpen(false);
+                setIsCreatingTeacher(false);
+                setCreateTeacherError('');
+                setCreateTeacherSuccess('');
+              }}
+              className="text-slate-400 hover:text-slate-600 font-bold text-lg p-2 rounded-full hover:bg-slate-100 transition-all cursor-pointer border-none outline-none bg-transparent"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex gap-2 mb-6 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+            <button
+              type="button"
+              onClick={() => setAdminPanelTab('invite')}
+              className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer border-none outline-none ${adminPanelTab === 'invite' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+            >
+              ✉️ Signup Invite Code
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminPanelTab('teachers')}
+              className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer border-none outline-none ${adminPanelTab === 'teachers' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+            >
+              👥 Manage Teacher Accounts
+            </button>
+          </div>
+
+          {adminPanelTab === 'invite' && (
+            <div className="space-y-6">
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5">
+                <h3 className="text-sm font-bold text-slate-800 mb-2">Invite Code Settings</h3>
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  When new teachers register, they must enter this exact code. You can update this code at any time.
+                </p>
+                
+                {inviteSuccess && (
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-3 rounded-xl text-xs font-semibold mb-4">
+                    ✓ {inviteSuccess}
+                  </div>
+                )}
+                {inviteError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-xs font-semibold mb-4">
+                    ❌ {inviteError}
+                  </div>
+                )}
+
+                <div className="form-group mb-4">
+                  <label className="form-label" htmlFor="adminInviteCode">Current Invite Code</label>
+                  <input
+                    type="text"
+                    id="adminInviteCode"
+                    className="form-input font-mono uppercase tracking-wider text-center max-w-sm text-base font-bold bg-white"
+                    value={inviteCodeValue}
+                    onChange={(e) => {
+                      setInviteCodeValue(e.target.value);
+                      setInviteSuccess('');
+                    }}
+                    placeholder="Enter invite code"
+                    disabled={isSavingInvite}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={saveInviteCode}
+                  disabled={isSavingInvite || !inviteCodeValue.trim()}
+                  className="btn btn-primary"
+                  style={{ width: 'auto', minWidth: '150px', padding: '10px 20px', fontSize: '0.85rem' }}
+                >
+                  {isSavingInvite ? 'Saving...' : 'Update Invite Code'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {adminPanelTab === 'teachers' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-slate-800 margin-0">Registered Accounts</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingTeacher(!isCreatingTeacher)}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer border-none outline-none"
+                >
+                  {isCreatingTeacher ? '✕ Close Form' : '+ Add Teacher'}
+                </button>
+              </div>
+
+              {teachersError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-xs font-semibold mb-4">
+                  ❌ {teachersError}
+                </div>
+              )}
+
+              {isCreatingTeacher && (
+                <form onSubmit={handleCreateTeacher} className="bg-slate-50 border border-indigo-100 rounded-2xl p-5 mb-6 space-y-4">
+                  <h4 className="text-xs font-extrabold text-indigo-700 uppercase tracking-wider mb-2">Create New Teacher Profile</h4>
+                  
+                  {createTeacherSuccess && (
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-2 rounded-xl text-xs font-semibold">
+                      ✓ {createTeacherSuccess}
+                    </div>
+                  )}
+                  {createTeacherError && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-2 rounded-xl text-xs font-semibold">
+                      ❌ {createTeacherError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="newTName">Full Name</label>
+                      <input
+                        type="text"
+                        id="newTName"
+                        className="form-input bg-white"
+                        value={newTeacherName}
+                        onChange={(e) => setNewTeacherName(e.target.value)}
+                        placeholder="e.g. Sarah Connor"
+                        disabled={createTeacherLoading}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="newTEmail">Email Address *</label>
+                      <input
+                        type="email"
+                        id="newTEmail"
+                        className="form-input bg-white"
+                        value={newTeacherEmail}
+                        onChange={(e) => setNewTeacherEmail(e.target.value)}
+                        placeholder="sarah@school.edu"
+                        required
+                        disabled={createTeacherLoading}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="newTPassword">Password *</label>
+                      <input
+                        type="password"
+                        id="newTPassword"
+                        className="form-input bg-white"
+                        value={newTeacherPassword}
+                        onChange={(e) => setNewTeacherPassword(e.target.value)}
+                        placeholder="Min 8 characters"
+                        required
+                        disabled={createTeacherLoading}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="newTSchool">School / Organization</label>
+                      <input
+                        type="text"
+                        id="newTSchool"
+                        className="form-input bg-white"
+                        value={newTeacherSchool}
+                        onChange={(e) => setNewTeacherSchool(e.target.value)}
+                        placeholder="e.g. West High School"
+                        disabled={createTeacherLoading}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="newTRole">System Role</label>
+                      <select
+                        id="newTRole"
+                        className="form-input bg-white py-2"
+                        value={newTeacherRole}
+                        onChange={(e) => setNewTeacherRole(e.target.value)}
+                        disabled={createTeacherLoading}
+                      >
+                        <option value="TEACHER">TEACHER</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingTeacher(false);
+                        setCreateTeacherError('');
+                        setCreateTeacherSuccess('');
+                      }}
+                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer border-none outline-none"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={createTeacherLoading}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer border-none outline-none"
+                    >
+                      {createTeacherLoading ? 'Creating...' : 'Create Account'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {isLoadingTeachers ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="spinner mb-3 animate-spin" />
+                  <p className="text-xs text-slate-505">Loading user accounts...</p>
+                </div>
+              ) : teachers.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-slate-205 rounded-2xl text-slate-400">
+                  No accounts found.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200/60 rounded-2xl bg-white shadow-xs">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                        <th className="p-3">User Details</th>
+                        <th className="p-3">School</th>
+                        <th className="p-3">System Role</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teachers.map((t) => {
+                        const info = t.expand?.dahoot_info;
+                        const role = info?.role || 'TEACHER';
+                        const schoolName = info?.school || 'N/A';
+                        const isSelf = t.id === currentUser.id;
+
+                        return (
+                          <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                            <td className="p-3">
+                              <div className="font-bold text-slate-800">{t.name || 'Unnamed Teacher'}</div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">{t.email}</div>
+                              {isSelf && (
+                                <span className="bg-slate-100 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded ml-0.5 mt-1 inline-block border border-slate-200">
+                                  Current Session
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-slate-600 font-medium">{schoolName}</td>
+                            <td className="p-3">
+                              <select
+                                value={role}
+                                onChange={(e) => handleUpdateRole(t, e.target.value)}
+                                disabled={isSelf}
+                                className="bg-slate-50 border border-slate-200 rounded px-2 py-1 font-bold text-[10px] text-slate-700 focus:outline-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <option value="TEACHER">TEACHER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="STUDENT">STUDENT</option>
+                              </select>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(t)}
+                                disabled={isSelf}
+                                className="px-2.5 py-1 border border-rose-200 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded font-bold text-[10px] transition-all cursor-pointer outline-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const initPreviewQuestionStates = (question) => {
     setPreviewAnswered(false);
@@ -929,16 +1455,34 @@ export function TeacherDashboard({
   const renderUserStatusBar = () => {
     if (!currentUser) return null;
     return (
-      <div className="flex justify-between items-center bg-slate-50 border-b border-slate-200/80 px-6 py-3 -mx-10 -mt-10 mb-6 text-xs text-slate-505 rounded-t-2xl shadow-inner">
+      <div className="flex justify-between items-center bg-slate-50 border-b border-slate-200/80 px-6 py-3 -mx-10 -mt-10 mb-6 text-xs text-slate-500 rounded-t-2xl shadow-inner w-[calc(100%+80px)]">
         <span className="flex items-center gap-1.5">
           👤 Logged in as: <strong className="text-slate-700 font-bold">{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
+          {userRole === 'ADMIN' && (
+            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border border-amber-200/60 ml-2">
+              Admin
+            </span>
+          )}
         </span>
-        <button 
-          onClick={onLogout} 
-          className="px-3 py-1 bg-white hover:bg-rose-50 border border-slate-200/80 text-rose-500 hover:text-rose-600 font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center outline-none"
-        >
-          Log Out
-        </button>
+        <div className="flex items-center gap-3">
+          {userRole === 'ADMIN' && (
+            <button
+              type="button"
+              onClick={() => setIsAdminPanelOpen(true)}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center border-none outline-none"
+            >
+              🛠 Manage Teachers
+            </button>
+          )}
+          <button 
+            type="button"
+            onClick={onLogout} 
+            className="px-3 py-1 bg-white hover:bg-rose-50 border border-slate-200/80 text-rose-500 hover:text-rose-600 font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center outline-none"
+          >
+            Log Out
+          </button>
+        </div>
+        {isAdminPanelOpen && renderAdminPanel()}
       </div>
     );
   };
