@@ -17,13 +17,15 @@ export function SelectionView({
   joinGame,
   startHosting,
   startSoloPractice,
-  seedQuestions,
   setHasPinFromUrl,
   setView,
   gamesList = [],
   refreshGames,
   availableSubjects = [],
-  availableCefrLevels = []
+  availableCefrLevels = [],
+  isAuthenticated,
+  currentUser,
+  onLogout
 }) {
   const [selectedGameId, setSelectedGameId] = useState('');
 
@@ -261,7 +263,52 @@ export function SelectionView({
           </div>
         </div>
       ) : (
-        <div className="selection-grid">
+        <>
+          {/* Prominent Teacher Signup/Login Header */}
+          <header className="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-white/70 backdrop-blur-md border border-slate-200/60 rounded-2xl shadow-sm animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="bg-rose-100 p-2.5 rounded-xl text-xl">
+                🏫
+              </div>
+              <div className="text-left">
+                <h3 className="font-bold text-slate-800 text-sm sm:text-base">Teacher Portal</h3>
+                <p className="text-xs text-slate-500">Create & manage classroom games</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+              {isAuthenticated ? (
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
+                  <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                    Logged in as: <strong className="text-slate-700 font-semibold">{currentUser?.email}</strong>
+                  </span>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button 
+                      onClick={() => setView('teacher')}
+                      className="px-5 py-2.5 text-xs font-bold rounded-full bg-gradient-to-r from-school-primary to-school-accent text-slate-700 shadow-sm hover:scale-105 transition-all cursor-pointer flex-grow sm:flex-grow-0"
+                    >
+                      📚 Library
+                    </button>
+                    <button 
+                      onClick={onLogout}
+                      className="px-4 py-2.5 text-xs font-semibold rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setView('teacher')}
+                  className="px-6 py-2.5 text-sm font-bold rounded-full bg-gradient-to-r from-rose-400 to-orange-400 text-white shadow-md hover:shadow-rose-100 hover:scale-105 active:scale-95 transition-all cursor-pointer w-full sm:w-auto text-center"
+                >
+                  Teacher Sign Up / Login
+                </button>
+              )}
+            </div>
+          </header>
+
+          <div className="selection-grid">
           {/* Host Panel */}
           <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
             <h2>Host a Quiz</h2>
@@ -678,35 +725,19 @@ export function SelectionView({
                 Practice Solo (Self-Paced)
               </button>
             </div>
-            
-            <div className="divider">OR ADMIN</div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button 
-                className="btn btn-secondary btn-sm"
-                onClick={() => setView('teacher')}
-                disabled={loading || pocketbaseStatus !== 'connected'}
-              >
-                ⚙ Manage Games & Questions
-              </button>
-              
-              <button 
-                className="btn btn-link btn-sm"
-                onClick={seedQuestions}
-                disabled={loading || pocketbaseStatus !== 'connected'}
-                style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}
-              >
-                Reset & Seed Demo Questions
-              </button>
-            </div>
           </div>
 
           {/* Join Panel */}
           <div className="panel">
             <h2>Join Game</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>
-              Participate as a player in an active classroom quiz.
-            </p>
+            <div style={{ marginBottom: 20 }}>
+              <span className="inline-block bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full mb-3 border border-emerald-200/50">
+                ⚡ Student: No account required
+              </span>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                Participate as a player in an active classroom quiz.
+              </p>
+            </div>
             <form onSubmit={joinGame}>
               <div className="form-group">
                 <label className="form-label">Game PIN</label>
@@ -746,7 +777,8 @@ export function SelectionView({
             </form>
           </div>
         </div>
-      )}
+      </>
+    )}
       <SchoolFooter />
     </div>
   );

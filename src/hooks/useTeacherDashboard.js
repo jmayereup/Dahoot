@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 import { parseMarkdownQuestions } from '../utils/markdownParser';
 
-export function useTeacherDashboard(view) {
+export function useTeacherDashboard(view, currentUser) {
   const [gamesList, setGamesList] = useState([]);
   const [selectedGame, setSelectedGame] = useState(null); // The game whose questions we are currently viewing/editing
   
@@ -121,7 +121,7 @@ export function useTeacherDashboard(view) {
     setSelectedGameForEdit(null);
     setGameTitle('');
     setGameDescription('');
-    setGameCreator('');
+    setGameCreator(currentUser?.name || currentUser?.email || '');
     setGameLanguage('English');
     setGameCefrLevel('');
     setGameSubject('');
@@ -173,6 +173,26 @@ export function useTeacherDashboard(view) {
 
     if (!gameTitle.trim()) {
       setError('Game title is required.');
+      return;
+    }
+    if (!gameDescription.trim()) {
+      setError('Description is required.');
+      return;
+    }
+    if (!gameCreator.trim()) {
+      setError('Creator / Author is required.');
+      return;
+    }
+    if (!gameLanguage.trim()) {
+      setError('Language is required.');
+      return;
+    }
+    if (!gameCefrLevel) {
+      setError('CEFR Language Level is required.');
+      return;
+    }
+    if (!gameSubject) {
+      setError('Subject is required.');
       return;
     }
 

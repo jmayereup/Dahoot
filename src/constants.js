@@ -98,3 +98,16 @@ export const BUCKET_COLORS = [
   }
 ];
 
+export const AVAILABLE_LANGUAGES = [
+  'English',
+  'Thai',
+  'Spanish',
+  'French',
+  'German',
+  'Chinese',
+  'Japanese',
+  'Korean',
+  'Russian',
+  'Other'
+];
+

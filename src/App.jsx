@@ -14,8 +14,9 @@ import { PracticeView } from './components/PracticeView';
 function App() {
   const [view, setView] = useState('selection'); // 'selection' | 'host' | 'player' | 'teacher'
   const [pocketbaseStatus, setPocketbaseStatus] = useState('checking');
-  const [availableSubjects, setAvailableSubjects] = useState(['Math', 'Science', 'English', 'History', 'Geography', 'Other']);
+  const [availableSubjects, setAvailableSubjects] = useState(['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other']);
   const [availableCefrLevels, setAvailableCefrLevels] = useState(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+  const [availableLanguages, setAvailableLanguages] = useState(['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other']);
   
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid);
   const [currentUser, setCurrentUser] = useState(pb.authStore.record);
@@ -42,8 +43,10 @@ function App() {
           .then((records) => {
             const subjects = records.filter(r => r.type === 'subject').map(r => r.value);
             const cefr = records.filter(r => r.type === 'cefr_level').map(r => r.value);
+            const langs = records.filter(r => r.type === 'language').map(r => r.value);
             if (subjects.length > 0) setAvailableSubjects(subjects);
             if (cefr.length > 0) setAvailableCefrLevels(cefr);
+            if (langs.length > 0) setAvailableLanguages(langs);
           })
           .catch((err) => {
             console.error("Failed to load options from dahoot_options collection:", err);
@@ -58,7 +61,7 @@ function App() {
   // Initialize hooks
   const hostGame = useHostGame(view, setView);
   const playerGame = usePlayerGame(view, setView);
-  const teacherDashboard = useTeacherDashboard(view);
+  const teacherDashboard = useTeacherDashboard(view, currentUser);
   const practiceGame = usePracticeGame(view, setView);
 
   // 1. SELECTION VIEW
@@ -80,13 +83,15 @@ function App() {
         joinGame={playerGame.joinGame}
         startHosting={hostGame.startHosting}
         startSoloPractice={practiceGame.startSoloPractice}
-        seedQuestions={hostGame.seedQuestions}
         setHasPinFromUrl={playerGame.setHasPinFromUrl}
         setView={setView}
         gamesList={hostGame.gamesList}
         refreshGames={hostGame.refreshGames}
         availableSubjects={availableSubjects}
         availableCefrLevels={availableCefrLevels}
+        isAuthenticated={isAuthenticated}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
     );
   }
@@ -221,6 +226,10 @@ function App() {
         removePendingQuestion={teacherDashboard.removePendingQuestion}
         availableSubjects={availableSubjects}
         availableCefrLevels={availableCefrLevels}
+        setAvailableSubjects={setAvailableSubjects}
+        setAvailableCefrLevels={setAvailableCefrLevels}
+        availableLanguages={availableLanguages}
+        setAvailableLanguages={setAvailableLanguages}
         setView={setView}
         currentUser={currentUser}
         onLogout={handleLogout}

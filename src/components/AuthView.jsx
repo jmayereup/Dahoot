@@ -143,6 +143,19 @@ export function AuthView({ onSuccess, onCancel }) {
             : 'Register a new teacher profile to start creating educational quizzes.'}
         </p>
 
+        {/* Note about only teachers needing to sign up */}
+        <div style={{
+          backgroundColor: 'rgba(255, 183, 178, 0.1)',
+          border: '1.5px solid var(--color-school-primary)',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          marginBottom: '24px',
+          fontSize: '0.85rem',
+          color: 'var(--text-secondary)'
+        }}>
+          <span className="font-semibold text-rose-400">Note for Students:</span> Only teachers need to sign up. Students can join and play instantly without an account. <button type="button" onClick={onCancel} style={{ background: 'none', border: 'none', color: '#ff4b60', textDecoration: 'underline', cursor: 'pointer', font: 'inherit', padding: 0 }}>Click here to go back and enter a Game PIN</button>.
+        </div>
+
         {/* Tab Selection */}
         <div style={{
           display: 'flex',

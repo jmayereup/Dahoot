@@ -86,6 +86,10 @@ export function TeacherDashboard({
   setView,
   availableSubjects = [],
   availableCefrLevels = [],
+  availableLanguages = [],
+  setAvailableSubjects,
+  setAvailableCefrLevels,
+  setAvailableLanguages,
   currentUser = null,
   onLogout = null,
   startHosting = null
@@ -95,6 +99,7 @@ export function TeacherDashboard({
   const [filterCefr, setFilterCefr] = useState([]);
   const [filterLanguage, setFilterLanguage] = useState([]);
   const [filterCreator, setFilterCreator] = useState([]);
+  const [libraryTab, setLibraryTab] = useState('all'); // 'all' | 'my'
 
   // Preview Game state
   const [previewGame, setPreviewGame] = useState(null);
@@ -117,7 +122,15 @@ export function TeacherDashboard({
   // Admin Panel states
   const [userRole, setUserRole] = useState('TEACHER');
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
-  const [adminPanelTab, setAdminPanelTab] = useState('invite'); // 'invite' | 'teachers'
+  const [adminPanelTab, setAdminPanelTab] = useState('invite'); // 'invite' | 'teachers' | 'filters'
+  const [optionsList, setOptionsList] = useState([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
+  const [newSubjectValue, setNewSubjectValue] = useState('');
+  const [newCefrValue, setNewCefrValue] = useState('');
+  const [newLanguageValue, setNewLanguageValue] = useState('');
+  const [isAddingOption, setIsAddingOption] = useState(false);
+  const [showCefrTips, setShowCefrTips] = useState(false);
   const [teachers, setTeachers] = useState([]);
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
   const [teachersError, setTeachersError] = useState('');
@@ -184,9 +197,86 @@ export function TeacherDashboard({
             setTeachersError("Failed to load teachers list.");
             setIsLoadingTeachers(false);
           });
+      } else if (adminPanelTab === 'filters') {
+        setIsLoadingOptions(true);
+        setOptionsError('');
+        pb.collection('dahoot_options').getFullList()
+          .then(list => {
+            setOptionsList(list);
+            setIsLoadingOptions(false);
+          })
+          .catch(err => {
+            console.error("Error fetching options:", err);
+            setOptionsError("Failed to load filter options.");
+            setIsLoadingOptions(false);
+          });
       }
     }
   }, [isAdminPanelOpen, adminPanelTab]);
+
+  const handleAddOption = async (type, value) => {
+    if (!value.trim()) return;
+    const cleanValue = value.trim();
+    
+    // Check for duplicates locally
+    const exists = optionsList.some(opt => opt.type === type && opt.value.toLowerCase() === cleanValue.toLowerCase());
+    if (exists) {
+      alert(`This option already exists.`);
+      return;
+    }
+
+    setIsAddingOption(true);
+    setOptionsError('');
+    try {
+      const created = await pb.collection('dahoot_options').create({ type, value: cleanValue });
+      const updatedList = [...optionsList, created];
+      setOptionsList(updatedList);
+      
+      // Update global parent state instantly
+      const subjects = updatedList.filter(r => r.type === 'subject').map(r => r.value);
+      const cefr = updatedList.filter(r => r.type === 'cefr_level').map(r => r.value);
+      const langs = updatedList.filter(r => r.type === 'language').map(r => r.value);
+      if (type === 'subject') {
+        setAvailableSubjects(subjects);
+        setNewSubjectValue('');
+      } else if (type === 'cefr_level') {
+        setAvailableCefrLevels(cefr);
+        setNewCefrValue('');
+      } else if (type === 'language') {
+        setAvailableLanguages(langs);
+        setNewLanguageValue('');
+      }
+    } catch (err) {
+      console.error("Error adding option:", err);
+      setOptionsError("Failed to add option: " + err.message);
+    } finally {
+      setIsAddingOption(false);
+    }
+  };
+
+  const handleDeleteOption = async (option) => {
+    if (!confirm(`Are you sure you want to delete "${option.value}"?`)) return;
+    
+    setOptionsError('');
+    try {
+      await pb.collection('dahoot_options').delete(option.id);
+      const updatedList = optionsList.filter(opt => opt.id !== option.id);
+      setOptionsList(updatedList);
+      
+      // Update global parent state instantly
+      const subjects = updatedList.filter(r => r.type === 'subject').map(r => r.value);
+      const cefr = updatedList.filter(r => r.type === 'cefr_level').map(r => r.value);
+      const langs = updatedList.filter(r => r.type === 'language').map(r => r.value);
+      
+      // Keep fallbacks if lists are empty
+      setAvailableSubjects(subjects.length > 0 ? subjects : ['Math', 'Science', 'English', 'History', 'Geography', 'Other']);
+      setAvailableCefrLevels(cefr.length > 0 ? cefr : ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+      setAvailableLanguages(langs.length > 0 ? langs : ['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other']);
+    } catch (err) {
+      console.error("Error deleting option:", err);
+      setOptionsError("Failed to delete option: " + err.message);
+    }
+  };
 
   const saveInviteCode = async () => {
     setInviteSuccess('');
@@ -349,7 +439,7 @@ export function TeacherDashboard({
           className="panel panel-large animate-fade-in p-6 sm:p-8" 
           style={{ 
             width: '100%', 
-            maxWidth: '850px', 
+            maxWidth: '1100px', 
             maxHeight: '90vh', 
             overflowY: 'auto',
             textAlign: 'left',
@@ -391,6 +481,13 @@ export function TeacherDashboard({
               className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer border-none outline-none ${adminPanelTab === 'teachers' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
             >
               👥 Manage Teacher Accounts
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminPanelTab('filters')}
+              className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer border-none outline-none ${adminPanelTab === 'filters' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+            >
+              🏷️ Filter Options
             </button>
           </div>
 
@@ -631,6 +728,168 @@ export function TeacherDashboard({
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {adminPanelTab === 'filters' && (
+            <div className="space-y-6">
+              <h3 className="text-sm font-bold text-slate-800 mb-2">Manage Filter Options</h3>
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                Add or remove subjects and CEFR levels that are globally available for tagging and filtering quizzes.
+              </p>
+
+              {optionsError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-xs font-semibold mb-4">
+                  ❌ {optionsError}
+                </div>
+              )}
+
+              {isLoadingOptions ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="spinner mb-3 animate-spin" />
+                  <p className="text-xs text-slate-500">Loading filter options...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Subjects Section */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 space-y-4">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Subjects</h4>
+                    
+                    {/* Add Subject Inline Form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="New Subject (e.g. Science)"
+                        className="form-input bg-white text-xs py-2 px-3 h-auto"
+                        value={newSubjectValue}
+                        onChange={(e) => setNewSubjectValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddOption('subject', newSubjectValue)}
+                        disabled={isAddingOption}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddOption('subject', newSubjectValue)}
+                        disabled={isAddingOption || !newSubjectValue.trim()}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    {/* Subjects List */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200/50 rounded-xl p-3 bg-white">
+                      {optionsList.filter(o => o.type === 'subject').length === 0 ? (
+                        <p className="text-slate-400 text-xs italic text-center py-2">No subjects configured.</p>
+                      ) : (
+                        optionsList.filter(o => o.type === 'subject').map(opt => (
+                          <div key={opt.id} className="flex justify-between items-center bg-slate-50 hover:bg-slate-100/50 p-2.5 rounded-lg border border-slate-100 text-xs transition-colors">
+                            <span className="font-semibold text-slate-700">{opt.value}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOption(opt)}
+                              className="text-rose-400 hover:text-rose-600 font-bold px-2 py-1 bg-transparent border-none cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CEFR Levels Section */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 space-y-4">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">CEFR Levels</h4>
+                    
+                    {/* Add CEFR Inline Form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="New CEFR Level (e.g. C1)"
+                        className="form-input bg-white text-xs py-2 px-3 h-auto"
+                        value={newCefrValue}
+                        onChange={(e) => setNewCefrValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddOption('cefr_level', newCefrValue)}
+                        disabled={isAddingOption}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddOption('cefr_level', newCefrValue)}
+                        disabled={isAddingOption || !newCefrValue.trim()}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    {/* CEFR List */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200/50 rounded-xl p-3 bg-white">
+                      {optionsList.filter(o => o.type === 'cefr_level').length === 0 ? (
+                        <p className="text-slate-400 text-xs italic text-center py-2">No CEFR levels configured.</p>
+                      ) : (
+                        optionsList.filter(o => o.type === 'cefr_level').map(opt => (
+                          <div key={opt.id} className="flex justify-between items-center bg-slate-50 hover:bg-slate-100/50 p-2.5 rounded-lg border border-slate-100 text-xs transition-colors">
+                            <span className="font-semibold text-slate-700">{opt.value}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOption(opt)}
+                              className="text-rose-400 hover:text-rose-600 font-bold px-2 py-1 bg-transparent border-none cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Languages Section */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 space-y-4">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Languages</h4>
+                    
+                    {/* Add Language Inline Form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="New Language (e.g. French)"
+                        className="form-input bg-white text-xs py-2 px-3 h-auto"
+                        value={newLanguageValue}
+                        onChange={(e) => setNewLanguageValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddOption('language', newLanguageValue)}
+                        disabled={isAddingOption}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddOption('language', newLanguageValue)}
+                        disabled={isAddingOption || !newLanguageValue.trim()}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    {/* Languages List */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200/50 rounded-xl p-3 bg-white">
+                      {optionsList.filter(o => o.type === 'language').length === 0 ? (
+                        <p className="text-slate-400 text-xs italic text-center py-2">No languages configured.</p>
+                      ) : (
+                        optionsList.filter(o => o.type === 'language').map(opt => (
+                          <div key={opt.id} className="flex justify-between items-center bg-slate-50 hover:bg-slate-100/50 p-2.5 rounded-lg border border-slate-100 text-xs transition-colors">
+                            <span className="font-semibold text-slate-700">{opt.value}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOption(opt)}
+                              className="text-rose-400 hover:text-rose-600 font-bold px-2 py-1 bg-transparent border-none cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1471,7 +1730,7 @@ export function TeacherDashboard({
               onClick={() => setIsAdminPanelOpen(true)}
               className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center border-none outline-none"
             >
-              🛠 Manage Teachers
+              🛠 Manage
             </button>
           )}
           <button 
@@ -1951,16 +2210,47 @@ Sort these numbers from lowest to highest.
 
   const hasActiveFilters = filterSubject.length > 0 || filterCefr.length > 0 || filterLanguage.length > 0 || filterCreator.length > 0;
 
+  // Count of games created by the current teacher
+  const myGamesCount = useMemo(() => {
+    return gamesList.filter(game => {
+      const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+      const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+      const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+      const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+      
+      return (myName && creatorName === myName) || 
+             (myEmail && creatorName === myEmail) || 
+             (myUsername && creatorName === myUsername) || 
+             (currentUser?.id && creatorName === currentUser.id);
+    }).length;
+  }, [gamesList, currentUser]);
+
   // Filtered games array
   const filteredGamesList = useMemo(() => {
     return gamesList.filter(game => {
+      // 1. Tab filtering (All vs My Games)
+      if (libraryTab === 'my') {
+        const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+        const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+        const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+        const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+        
+        const isMyGame = (myName && creatorName === myName) || 
+                         (myEmail && creatorName === myEmail) || 
+                         (myUsername && creatorName === myUsername) || 
+                         (currentUser?.id && creatorName === currentUser.id);
+        
+        if (!isMyGame) return false;
+      }
+
+      // 2. Category/Pill filtering
       if (filterSubject.length > 0 && !filterSubject.includes(game.subject)) return false;
       if (filterCefr.length > 0 && !filterCefr.includes(game.cefr_level)) return false;
       if (filterLanguage.length > 0 && !filterLanguage.includes(game.language)) return false;
       if (filterCreator.length > 0 && !filterCreator.includes(game.creator)) return false;
       return true;
     });
-  }, [gamesList, filterSubject, filterCefr, filterLanguage, filterCreator]);
+  }, [gamesList, libraryTab, currentUser, filterSubject, filterCefr, filterLanguage, filterCreator]);
   
   // 1. GAME EDITING MODE
   if (!selectedGame && isEditingGame) {
@@ -1990,7 +2280,7 @@ Sort these numbers from lowest to highest.
 
           <form onSubmit={saveGame}>
             <div className="form-group">
-              <label className="form-label">Game Title</label>
+              <label className="form-label">Game Title *</label>
               <input 
                 type="text"
                 className="form-input" 
@@ -1999,11 +2289,12 @@ Sort these numbers from lowest to highest.
                 onChange={(e) => setGameTitle(e.target.value)}
                 disabled={loading}
                 autoFocus
+                required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Description (Optional)</label>
+              <label className="form-label">Description *</label>
               <textarea 
                 className="form-input" 
                 placeholder="e.g. 10 questions covering major historical events of the 20th century."
@@ -2011,12 +2302,13 @@ Sort these numbers from lowest to highest.
                 onChange={(e) => setGameDescription(e.target.value)}
                 disabled={loading}
                 rows={3}
+                required
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div className="form-group">
-                <label className="form-label">Creator / Author (Optional)</label>
+                <label className="form-label">Creator / Author *</label>
                 <input 
                   type="text"
                   className="form-input" 
@@ -2024,49 +2316,86 @@ Sort these numbers from lowest to highest.
                   value={gameCreator}
                   onChange={(e) => setGameCreator(e.target.value)}
                   disabled={loading}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Language (Optional)</label>
-                <input 
-                  type="text"
-                  className="form-input" 
-                  placeholder="e.g. English"
+                <label className="form-label">Language *</label>
+                <select
+                  className="form-input"
                   value={gameLanguage}
                   onChange={(e) => setGameLanguage(e.target.value)}
                   disabled={loading}
-                />
+                  style={{ cursor: 'pointer' }}
+                  required
+                >
+                  <option value="">Select Language...</option>
+                  {availableLanguages.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div className="form-group">
-                <label className="form-label">CEFR Language Level (Optional)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label">CEFR Language Level *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCefrTips(!showCefrTips)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      padding: '2px'
+                    }}
+                  >
+                    💡 Quick Guide
+                  </button>
+                </div>
                 <select
                   className="form-input"
                   value={gameCefrLevel}
                   onChange={(e) => setGameCefrLevel(e.target.value)}
                   disabled={loading}
                   style={{ cursor: 'pointer' }}
+                  required
                 >
-                  <option value="">None / Not Applicable</option>
+                  <option value="">Select CEFR Level...</option>
                   {availableCefrLevels.map(lvl => (
                     <option key={lvl} value={lvl}>{lvl}</option>
                   ))}
                 </select>
+                
+                {showCefrTips && (
+                  <div className="animate-fade-in text-[11px] text-slate-500 bg-slate-50 border border-slate-200/50 rounded-xl p-3 mt-2 space-y-1.5 leading-normal">
+                    <div><strong>A1 (Beginner)</strong> / <strong>A2 (Elementary)</strong>: Simple everyday sentences, basic questions.</div>
+                    <div><strong>B1 (Intermediate)</strong> / <strong>B2 (Upper-Intermediate)</strong>: Spontaneous conversation, clear texts on familiar topics.</div>
+                    <div><strong>C1 (Advanced)</strong> / <strong>C2 (Mastery)</strong>: Complex subjects, professional or academic level fluency.</div>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
-                <label className="form-label">Subject</label>
+                <label className="form-label">Subject *</label>
                 <select
                   className="form-input"
                   value={gameSubject}
                   onChange={(e) => setGameSubject(e.target.value)}
                   disabled={loading}
                   style={{ cursor: 'pointer' }}
+                  required
                 >
-                  <option value="">None / General</option>
+                  <option value="">Select Subject...</option>
                   {availableSubjects.map(sub => (
                     <option key={sub} value={sub}>{sub}</option>
                   ))}
@@ -2227,6 +2556,55 @@ Sort these numbers from lowest to highest.
             </div>
             <button className="btn btn-primary" onClick={startCreatingGame} style={{ width: 'auto', minWidth: 180 }}>
               + Create Dahoot
+            </button>
+          </div>
+
+          {/* Library Tabs */}
+          <div style={{
+            display: 'flex',
+            borderBottom: '2px solid rgba(93, 107, 130, 0.1)',
+            marginBottom: '24px',
+            gap: '24px'
+          }}>
+            <button
+              onClick={() => setLibraryTab('all')}
+              style={{
+                padding: '12px 8px',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: libraryTab === 'all' ? 'var(--accent-light)' : 'var(--text-secondary)',
+                borderBottom: libraryTab === 'all' ? '3px solid var(--accent-light)' : '3px solid transparent',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                marginBottom: '-2px',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              🌐 All Games ({gamesList.length})
+            </button>
+            <button
+              onClick={() => setLibraryTab('my')}
+              style={{
+                padding: '12px 8px',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: libraryTab === 'my' ? 'var(--accent-light)' : 'var(--text-secondary)',
+                borderBottom: libraryTab === 'my' ? '3px solid var(--accent-light)' : '3px solid transparent',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                marginBottom: '-2px',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              👤 My Games ({myGamesCount})
             </button>
           </div>
 

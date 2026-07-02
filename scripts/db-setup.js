@@ -132,22 +132,49 @@ async function getOrCreateCollection(name, config) {
     console.log(`[Dahoot DB] Collection '${name}' already exists.`);
     
     // Non-destructive update: check for any new fields and append them.
-    // We never delete fields.
+    // Also update existing fields if properties mismatch. We never delete fields.
     let updated = false;
     if (config.fields) {
       for (const field of config.fields) {
-        const hasField = col.fields.some(f => f.name === field.name);
-        if (!hasField) {
+        const existingFieldIdx = col.fields.findIndex(f => f.name === field.name);
+        if (existingFieldIdx === -1) {
           console.log(`[Dahoot DB] Collection '${name}': Adding missing field '${field.name}'...`);
           col.fields.push(field);
           updated = true;
+        } else {
+          const existingField = col.fields[existingFieldIdx];
+          let fieldChanged = false;
+          
+          // Sync required status
+          if (existingField.required !== field.required) {
+            console.log(`[Dahoot DB] Collection '${name}': Syncing required status for field '${field.name}' (${existingField.required} -> ${field.required})`);
+            existingField.required = field.required;
+            fieldChanged = true;
+          }
+          
+          // Sync select values
+          if (field.type === 'select' && existingField.type === 'select') {
+            const valuesEqual = Array.isArray(existingField.values) && Array.isArray(field.values) &&
+              existingField.values.length === field.values.length &&
+              existingField.values.every((v, i) => v === field.values[i]);
+            if (!valuesEqual) {
+              console.log(`[Dahoot DB] Collection '${name}': Syncing select values for field '${field.name}'`);
+              existingField.values = field.values;
+              fieldChanged = true;
+            }
+          }
+          
+          if (fieldChanged) {
+            col.fields[existingFieldIdx] = existingField;
+            updated = true;
+          }
         }
       }
     }
     
     if (updated) {
       await pb.collections.update(col.id, col);
-      console.log(`\x1b[32m[Dahoot DB] Collection '${name}' updated with new fields.\x1b[0m`);
+      console.log(`\x1b[32m[Dahoot DB] Collection '${name}' updated with new fields or configurations.\x1b[0m`);
     }
     
     return col;
@@ -314,7 +341,7 @@ async function runSetup() {
     name: 'dahoot_options',
     type: 'base',
     fields: [
-      { name: 'type', type: 'select', required: true, values: ['subject', 'cefr_level'], maxSelect: 1 },
+      { name: 'type', type: 'select', required: true, values: ['subject', 'cefr_level', 'language'], maxSelect: 1 },
       { name: 'value', type: 'text', required: true, min: 1, max: 50 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
@@ -332,11 +359,11 @@ async function runSetup() {
     type: 'base',
     fields: [
       { name: 'title', type: 'text', required: true, min: 1, max: 100 },
-      { name: 'description', type: 'text', required: false, max: 500 },
-      { name: 'creator', type: 'text', required: false, max: 100 },
-      { name: 'language', type: 'text', required: false, max: 50 },
-      { name: 'cefr_level', type: 'text', required: false, max: 50 },
-      { name: 'subject', type: 'text', required: false, max: 100 },
+      { name: 'description', type: 'text', required: true, max: 500 },
+      { name: 'creator', type: 'text', required: true, max: 100 },
+      { name: 'language', type: 'text', required: true, max: 50 },
+      { name: 'cefr_level', type: 'text', required: true, max: 50 },
+      { name: 'subject', type: 'text', required: true, max: 100 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
@@ -414,14 +441,18 @@ async function runSetup() {
   if (isLocalUrl(pbUrl) && !isProd) {
     try {
       console.log("[Dahoot DB] Seeding default options...");
-      const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Other'];
+      const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other'];
       const defaultCefr = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      const defaultLanguages = ['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other'];
 
       for (const sub of defaultSubjects) {
         await pb.collection('dahoot_options').create({ type: 'subject', value: sub });
       }
       for (const lvl of defaultCefr) {
         await pb.collection('dahoot_options').create({ type: 'cefr_level', value: lvl });
+      }
+      for (const lang of defaultLanguages) {
+        await pb.collection('dahoot_options').create({ type: 'language', value: lang });
       }
 
       console.log("[Dahoot DB] Seeding default game...");
