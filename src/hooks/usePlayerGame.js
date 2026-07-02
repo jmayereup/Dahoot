@@ -205,7 +205,9 @@ export function usePlayerGame(view, setView) {
   const submitAnswer = async (userAnswer) => {
     if (!playerRoom || !playerRecord || playerSelectedIdx !== null) return;
     
-    if (playerTimeLeft <= 0) {
+    const duration = playerRoom.timer_duration;
+    const isTimerActive = duration !== 0;
+    if (isTimerActive && playerTimeLeft !== null && playerTimeLeft <= 0) {
       setError("Time's up!");
       return;
     }
