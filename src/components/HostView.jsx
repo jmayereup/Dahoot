@@ -3,6 +3,7 @@ import { HostLobby } from './HostLobby';
 import { HostQuestion } from './HostQuestion';
 import { HostLeaderboard } from './HostLeaderboard';
 import { HostFinished } from './HostFinished';
+import { GameMusicController } from './GameMusicController';
 
 export function HostView({
   hostRoom,
@@ -25,6 +26,7 @@ export function HostView({
 
   return (
     <div className="app-container">
+      <GameMusicController gameStatus={hostRoom.status} />
       <div className="panel panel-large">
         
         {hostRoom.status === 'LOBBY' && (
