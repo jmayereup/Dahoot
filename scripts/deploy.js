@@ -237,7 +237,9 @@ async function compareSchemas(env) {
     console.error('\n\x1b[31m[Dahoot Deploy] Schema mismatch detected between Dev and Live database! Aborting deployment.\x1b[0m');
     console.error('The following differences must be resolved:');
     differences.forEach(diff => console.error(`  - ${diff}`));
-    console.error('\nPlease synchronize the schemas (e.g., by running db-setup or making manual schema updates) before deploying.\n');
+    console.error('\nPlease synchronize the schemas by running:');
+    console.error('  \x1b[33mnpm run db:setup -- --live\x1b[0m');
+    console.error('or by making manual schema updates in the PocketBase Admin UI before deploying.\n');
     process.exit(1);
   }
 
