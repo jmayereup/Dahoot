@@ -244,14 +244,20 @@ export function HostQuestion({
       </div>
 
       <div style={{ marginTop: 32, display: 'flex', gap: 16, justifyContent: 'center' }}>
-        {timerDuration > 0 && hostTimeLeft > 0 && (
-          <button className="btn btn-warning btn-sm" onClick={hostCancelTimer} style={{ width: 'auto' }}>
-            ⏱ Stop Timer
+        {timerDuration > 0 && hostTimeLeft > 0 ? (
+          <>
+            <button className="btn btn-warning btn-sm" onClick={hostCancelTimer} style={{ width: 'auto' }}>
+              ⏱ Stop Timer
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
+              Skip Question
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-primary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
+            Reveal Answers
           </button>
         )}
-        <button className="btn btn-secondary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
-          Skip Question
-        </button>
         <button 
           className="btn btn-danger btn-sm" 
           onClick={() => {

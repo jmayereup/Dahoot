@@ -183,29 +183,60 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
         {/* Left Column: Podium Standings & Control */}
         <div className="lg:w-5/12 flex flex-col items-center bg-white border border-slate-150 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-bold text-slate-800 mb-2">Podium Finishers</h3>
-          <div className="podium-container mx-auto mt-2">
+          <div className="podium-container mx-auto">
             {/* 2nd Place */}
             {hostPlayers[1] && (
               <div className="podium-step podium-step-2">
-                <span className="podium-player-score">{hostPlayers[1].score} pts</span>
-                <span className="podium-player-name">{hostPlayers[1].name}</span>
-                <div className="podium-block">2</div>
+                <div className="podium-player-info" style={{ animationDelay: '0.9s', animationFillMode: 'both' }}>
+                  <div className="podium-avatar podium-avatar-2">
+                    {hostPlayers[1].name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="podium-player-name">{hostPlayers[1].name}</span>
+                  <span className="podium-player-score-badge podium-player-score-badge-2">
+                    {hostPlayers[1].score} pts
+                  </span>
+                </div>
+                <div className="podium-block podium-block-2">
+                  <span className="podium-number">2</span>
+                  <div className="absolute bottom-2 text-[9px] uppercase font-black text-slate-500 tracking-wider">Silver</div>
+                </div>
               </div>
             )}
             {/* 1st Place */}
             {hostPlayers[0] && (
               <div className="podium-step podium-step-1">
-                <span className="podium-player-score">{hostPlayers[0].score} pts</span>
-                <span className="podium-player-name">{hostPlayers[0].name}</span>
-                <div className="podium-block">1</div>
+                <div className="podium-player-info" style={{ animationDelay: '1.2s', animationFillMode: 'both' }}>
+                  <div className="absolute -top-7 text-2xl animate-crown-drop">👑</div>
+                  <div className="podium-avatar podium-avatar-1">
+                    {hostPlayers[0].name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="podium-player-name">{hostPlayers[0].name}</span>
+                  <span className="podium-player-score-badge podium-player-score-badge-1">
+                    {hostPlayers[0].score} pts
+                  </span>
+                </div>
+                <div className="podium-block podium-block-1">
+                  <span className="podium-number">1</span>
+                  <div className="absolute bottom-2.5 text-[9px] uppercase font-black text-amber-700 tracking-wider">Champion</div>
+                </div>
               </div>
             )}
             {/* 3rd Place */}
             {hostPlayers[2] && (
               <div className="podium-step podium-step-3">
-                <span className="podium-player-score">{hostPlayers[2].score} pts</span>
-                <span className="podium-player-name">{hostPlayers[2].name}</span>
-                <div className="podium-block">3</div>
+                <div className="podium-player-info" style={{ animationDelay: '0.6s', animationFillMode: 'both' }}>
+                  <div className="podium-avatar podium-avatar-3">
+                    {hostPlayers[2].name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="podium-player-name">{hostPlayers[2].name}</span>
+                  <span className="podium-player-score-badge podium-player-score-badge-3">
+                    {hostPlayers[2].score} pts
+                  </span>
+                </div>
+                <div className="podium-block podium-block-3">
+                  <span className="podium-number">3</span>
+                  <div className="absolute bottom-2 text-[9px] uppercase font-black text-orange-800 tracking-wider">Bronze</div>
+                </div>
               </div>
             )}
             {!hostPlayers[0] && (

@@ -22,6 +22,10 @@
   --animate-pop-in: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   --animate-pulse-glow: pulse-glow 2s infinite ease-in-out;
   --animate-bounce-slow: bounce-slow 4s infinite ease-in-out;
+  --animate-podium-1: podium-rise 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s both;
+  --animate-podium-2: podium-rise 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.25s both;
+  --animate-podium-3: podium-rise 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0s both;
+  --animate-crown-drop: crown-drop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.5) 1.2s both;
 
   @keyframes fade-in {
     from { opacity: 0; transform: translateY(12px); }
@@ -38,6 +42,14 @@
   @keyframes bounce-slow {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
+  }
+  @keyframes podium-rise {
+    from { transform: translateY(120px) scaleY(0); opacity: 0; }
+    to { transform: translateY(0) scaleY(1); opacity: 1; }
+  }
+  @keyframes crown-drop {
+    from { transform: translateY(-45px) scale(0) rotate(-15deg); opacity: 0; }
+    to { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
   }
 }
 
@@ -258,38 +270,82 @@ p.subtitle {
 
 /* Podium results utilities */
 @utility podium-container {
-  @apply flex items-end justify-center gap-5 h-80 my-10;
+  @apply flex items-end justify-center gap-4 md:gap-8 h-[340px] mt-12 mb-6 max-w-full overflow-visible px-4;
 }
 
 @utility podium-step {
-  @apply flex flex-col items-center w-36 rounded-t-2xl bg-white border border-slate-200/80 border-b-0 shadow-md transition-all relative;
-}
-
-@utility podium-player-name {
-  @apply absolute -top-10 text-base font-extrabold text-slate-800 w-full text-center overflow-hidden text-ellipsis whitespace-nowrap;
-}
-
-@utility podium-player-score {
-  @apply absolute -top-16 text-sm font-semibold text-slate-500;
+  @apply flex flex-col items-center w-28 md:w-36 origin-bottom;
 }
 
 @utility podium-step-1 {
-  @apply h-44 bg-gradient-to-b from-amber-50 to-white border-amber-200;
-  & .podium-block { @apply bg-amber-100 text-amber-800; }
+  @apply w-32 md:w-40 animate-podium-1;
 }
 
 @utility podium-step-2 {
-  @apply h-32 bg-gradient-to-b from-slate-50 to-white border-slate-200;
-  & .podium-block { @apply bg-slate-100 text-slate-700; }
+  @apply animate-podium-2;
 }
 
 @utility podium-step-3 {
-  @apply h-24 bg-gradient-to-b from-orange-50 to-white border-orange-200;
-  & .podium-block { @apply bg-orange-100 text-orange-800; }
+  @apply animate-podium-3;
+}
+
+@utility podium-player-info {
+  @apply flex flex-col items-center mb-3.5 text-center w-full relative animate-fade-in;
+}
+
+@utility podium-avatar {
+  @apply flex items-center justify-center font-black rounded-full shadow-sm mb-1 bg-white;
+}
+
+@utility podium-avatar-1 {
+  @apply w-16 h-16 border-4 border-amber-400 text-amber-600 text-2xl animate-pulse-glow;
+}
+
+@utility podium-avatar-2 {
+  @apply w-12 h-12 border-2 border-slate-300 text-slate-600 text-lg;
+}
+
+@utility podium-avatar-3 {
+  @apply w-12 h-12 border-2 border-amber-600 text-amber-700 text-lg;
+}
+
+@utility podium-player-name {
+  @apply font-black text-slate-800 block truncate w-full px-1 text-sm md:text-base;
+}
+
+@utility podium-player-score-badge {
+  @apply inline-block text-[11px] font-extrabold px-2.5 py-0.5 rounded-full mt-1 shadow-2xs;
+}
+
+@utility podium-player-score-badge-1 {
+  @apply bg-amber-50 text-amber-700 border border-amber-200 animate-pulse-glow;
+}
+
+@utility podium-player-score-badge-2 {
+  @apply bg-slate-100 text-slate-600 border border-slate-200;
+}
+
+@utility podium-player-score-badge-3 {
+  @apply bg-orange-50 text-orange-700 border border-orange-200;
 }
 
 @utility podium-block {
-  @apply w-full flex-grow flex items-center justify-center text-3xl font-extrabold rounded-t-2xl;
+  @apply w-full border rounded-t-3xl shadow-lg flex flex-col items-center pt-4 relative;
+}
+
+@utility podium-block-1 {
+  @apply h-[160px] bg-gradient-to-b from-amber-300 via-yellow-100 to-amber-500 border-amber-400 shadow-xl shadow-amber-100/50;
+  & .podium-number { @apply text-5xl font-black text-amber-600 drop-shadow-[0_2px_2px_rgba(255,255,255,0.75)] select-none; }
+}
+
+@utility podium-block-2 {
+  @apply h-[120px] bg-gradient-to-b from-slate-200 via-slate-50 to-slate-300 border-slate-300 shadow-md;
+  & .podium-number { @apply text-4xl font-black text-slate-500 drop-shadow-sm select-none; }
+}
+
+@utility podium-block-3 {
+  @apply h-[85px] bg-gradient-to-b from-amber-600 via-orange-100 to-amber-700 border-orange-600 shadow-md;
+  & .podium-number { @apply text-3xl font-black text-orange-900/80 drop-shadow-sm select-none; }
 }
 
 /* Student feedback view utilities */
