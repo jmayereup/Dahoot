@@ -101,10 +101,12 @@ export function SelectionView({
   // Automatically update selected game when the filtered list changes
   useEffect(() => {
     if (filteredGames.length > 0) {
-      // If current selection is not in the filtered list, set it to the first filtered game
-      const isStillAvailable = filteredGames.some(g => g.id === selectedGameId);
-      if (!isStillAvailable) {
-        setSelectedGameId(filteredGames[0].id);
+      // If a game was selected but is no longer in the filtered list, set it to the first filtered game
+      if (selectedGameId) {
+        const isStillAvailable = filteredGames.some(g => g.id === selectedGameId);
+        if (!isStillAvailable) {
+          setSelectedGameId(filteredGames[0].id);
+        }
       }
     } else {
       setSelectedGameId('');
@@ -114,28 +116,22 @@ export function SelectionView({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Sync searchQuery when selectedGameDetails changes
+  // Clear search query when a different game is selected
   useEffect(() => {
-    if (selectedGameDetails) {
-      setSearchQuery(selectedGameDetails.title);
-    } else {
-      setSearchQuery('');
-    }
-  }, [selectedGameDetails]);
+    setSearchQuery('');
+  }, [selectedGameId]);
 
   // Handle click outside to close search dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
-        if (selectedGameDetails) {
-          setSearchQuery(selectedGameDetails.title);
-        }
+        setSearchQuery('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedGameDetails]);
+  }, []);
 
   // Filter games based on typed search query (by title, description, subject, or creator)
   const searchedGames = useMemo(() => {
@@ -284,7 +280,7 @@ export function SelectionView({
             )}
 
             <div className="form-group" style={{ textAlign: 'left', marginBottom: 20, position: 'relative' }} ref={dropdownRef}>
-              <label className="form-label">Select Game Collection</label>
+              <label className="form-label">Select Dahoot</label>
               {gamesList.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0' }}>
                   No games found. Click "Reset & Seed Demo Questions" to create one.
@@ -299,7 +295,7 @@ export function SelectionView({
                     <input 
                       type="text" 
                       className="form-input" 
-                      placeholder="Type to search games..."
+                      placeholder={selectedGameDetails ? selectedGameDetails.title : "Type to search games..."}
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -308,10 +304,42 @@ export function SelectionView({
                       onFocus={() => setIsOpen(true)}
                       disabled={loading}
                       style={{ 
-                        paddingRight: '40px',
+                        paddingRight: (searchQuery || selectedGameId) ? '60px' : '40px',
                         cursor: 'text'
                       }}
                     />
+                    {(searchQuery || selectedGameId) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSearchQuery('');
+                          setSelectedGameId('');
+                          setIsOpen(true);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '36px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          border: 'none',
+                          background: 'none',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#ff4b60'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                        aria-label="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
                     <div 
                       onClick={() => !loading && setIsOpen(prev => !prev)}
                       style={{
@@ -349,7 +377,7 @@ export function SelectionView({
                       >
                         {searchedGames.length === 0 ? (
                           <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>
-                            No collections found
+                            No Dahoots found
                           </div>
                         ) : (
                           searchedGames.map(g => {

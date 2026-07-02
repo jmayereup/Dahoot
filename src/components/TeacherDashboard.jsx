@@ -753,7 +753,7 @@ export function TeacherDashboard({
       setPreviewCurrentIdx(nextIdx);
       initPreviewQuestionStates(previewQuestions[nextIdx]);
     } else {
-      alert("You have previewed all questions in this collection!");
+      alert("You have previewed all questions in this Dahoot!");
       closePreviewGame();
     }
   };
@@ -1439,7 +1439,7 @@ export function TeacherDashboard({
             </div>
           ) : previewQuestions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This game collection has no questions yet.</p>
+              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
               <button className="btn btn-secondary" onClick={closePreviewGame}>Close</button>
             </div>
           ) : (
@@ -1775,7 +1775,7 @@ export function TeacherDashboard({
           color: 'var(--text-muted)',
           marginTop: '20px'
         }}>
-          No questions added to this collection yet. Fill out the form above and click "+ Add Question to Collection".
+          No questions added to this Dahoot yet. Fill out the form above and click "+ Add Question to Dahoot".
         </div>
       );
     }
@@ -1860,7 +1860,7 @@ export function TeacherDashboard({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ marginBottom: 4 }}>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
-            Paste your Markdown-formatted questions below to import them in bulk when the collection is created.
+            Paste your Markdown-formatted questions below to import them in bulk when the Dahoot is created.
           </p>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <a 
@@ -1969,9 +1969,9 @@ Sort these numbers from lowest to highest.
         <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
           {renderUserStatusBar()}
           <div style={{ marginBottom: 24 }}>
-            <h2>{selectedGameForEdit ? 'Edit Game Details' : 'Create New Game Collection'}</h2>
+            <h2>{selectedGameForEdit ? 'Edit Dahoot Details' : 'Create New Dahoot'}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-              Specify the details and metadata tags for your quiz game collection.
+              Specify the details and metadata tags for your Dahoot.
             </p>
           </div>
 
@@ -2182,7 +2182,7 @@ Sort these numbers from lowest to highest.
                           minWidth: '200px'
                         }}
                       >
-                        ➕ Add Question to Collection
+                        ➕ Add Question to Dahoot
                       </button>
                     </div>
                     
@@ -2220,13 +2220,13 @@ Sort these numbers from lowest to highest.
           {renderUserStatusBar()}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
             <div style={{ textAlign: 'left' }}>
-              <h2 style={{ marginBottom: 4 }}>Game Collections</h2>
+              <h2 style={{ marginBottom: 4 }}>Dahoots</h2>
               <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
                 Manage groups of quiz questions that can be played, copied, and edited.
               </p>
             </div>
             <button className="btn btn-primary" onClick={startCreatingGame} style={{ width: 'auto', minWidth: 180 }}>
-              + Create Game Collection
+              + Create Dahoot
             </button>
           </div>
 
@@ -2248,7 +2248,7 @@ Sort these numbers from lowest to highest.
           <div className="filter-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                🔍 Filter Collections {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({filteredGamesList.length} matches)</span>}
+                🔍 Filter Dahoots {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({filteredGamesList.length} matches)</span>}
               </span>
               {hasActiveFilters && (
                 <button 
@@ -2374,7 +2374,7 @@ Sort these numbers from lowest to highest.
                 border: '1px dashed var(--panel-border)',
                 borderRadius: 'var(--radius-md)'
               }}>
-                No game collections match the selected filters. Clear filters or create a new collection.
+                No Dahoots match the selected filters. Clear filters or create a new Dahoot.
               </div>
             ) : (
               filteredGamesList.map((game) => (
@@ -2596,7 +2596,7 @@ Sort these numbers from lowest to highest.
           <div style={{ marginBottom: 24 }}>
             <h2>{selectedQuestion ? 'Edit Question' : 'Add Question'}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-              Create or edit a question for the collection: <strong>{selectedGame.title}</strong>
+              Create or edit a question for the Dahoot: <strong>{selectedGame.title}</strong>
             </p>
           </div>
 
@@ -2647,7 +2647,7 @@ Sort these numbers from lowest to highest.
               <h2 style={{ margin: 0 }}>{selectedGame.title}</h2>
             </div>
             <p style={{ color: 'var(--text-secondary)', margin: 0, paddingLeft: 24 }}>
-              Manage questions for this game collection
+              Manage questions for this Dahoot
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -2695,7 +2695,7 @@ Sort these numbers from lowest to highest.
               border: '1px dashed var(--panel-border)',
               borderRadius: 'var(--radius-md)'
             }}>
-              No questions in this collection yet. Click "+ Add Question" or "📥 Import in Bulk" to get started.
+              No questions in this Dahoot yet. Click "+ Add Question" or "📥 Import in Bulk" to get started.
             </div>
           ) : (
             questionsList.map((question, qIdx) => {
