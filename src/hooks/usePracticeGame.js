@@ -46,6 +46,14 @@ export function usePracticeGame(view, setView) {
 
       // Prepare active questions
       let activeQuestions = [...qList];
+      if (options.questionTypes && options.questionTypes.length > 0) {
+        activeQuestions = activeQuestions.filter(q => options.questionTypes.includes(q.type || 'MULTIPLE_CHOICE'));
+      }
+
+      if (activeQuestions.length === 0) {
+        throw new Error('This game has no questions matching the selected question types.');
+      }
+
       if (options.randomize) {
         activeQuestions.sort(() => 0.5 - Math.random());
       } else {

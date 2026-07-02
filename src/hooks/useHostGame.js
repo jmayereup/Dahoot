@@ -162,8 +162,17 @@ export function useHostGame(view, setView) {
         throw new Error('This game has no questions. Please add questions in the Question Bank Manager first.');
       }
       
-      // Shuffle if randomize option is enabled
+      // Filter by question types if specified
       let activeQuestions = [...qList];
+      if (options.questionTypes && options.questionTypes.length > 0) {
+        activeQuestions = activeQuestions.filter(q => options.questionTypes.includes(q.type || 'MULTIPLE_CHOICE'));
+      }
+
+      if (activeQuestions.length === 0) {
+        throw new Error('This game has no questions matching the selected question types.');
+      }
+
+      // Shuffle if randomize option is enabled
       if (options.randomize) {
         for (let i = activeQuestions.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));

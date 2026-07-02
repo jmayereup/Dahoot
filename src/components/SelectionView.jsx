@@ -28,33 +28,41 @@ export function SelectionView({
   const [selectedGameId, setSelectedGameId] = useState('');
 
   // Custom game options
-  const [randomize, setRandomize] = useState(false);
+  const [randomize, setRandomize] = useState(true);
+  const [gameQuestions, setGameQuestions] = useState([]);
+  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState([
+    'MULTIPLE_CHOICE',
+    'SORTING',
+    'DRAG_DROP',
+    'DROP_DOWN',
+    'CATEGORIZE'
+  ]);
   const [maxQuestions, setMaxQuestions] = useState('');
-  const [totalQuestions, setTotalQuestions] = useState(0);
   const [timerDuration, setTimerDuration] = useState(20);
 
-  // Fetch total questions count when game is selected
+  // Fetch questions when game is selected
   useEffect(() => {
     if (!selectedGameId) {
-      setTotalQuestions(0);
+      setGameQuestions([]);
       setMaxQuestions('');
       return;
     }
 
     let isMounted = true;
-    pb.collection('dahoot_questions').getList(1, 1, {
+    pb.collection('dahoot_questions').getFullList({
       filter: `game_id = "${selectedGameId}"`
     })
     .then(res => {
       if (isMounted) {
-        setTotalQuestions(res.totalItems);
-        setMaxQuestions(res.totalItems.toString());
+        setGameQuestions(res);
+        setMaxQuestions(res.length.toString());
+        setSelectedQuestionTypes(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
       }
     })
     .catch(err => {
-      console.error("Error fetching questions count:", err);
+      console.error("Error fetching questions:", err);
       if (isMounted) {
-        setTotalQuestions(0);
+        setGameQuestions([]);
         setMaxQuestions('');
       }
     });
@@ -63,6 +71,58 @@ export function SelectionView({
       isMounted = false;
     };
   }, [selectedGameId]);
+
+  // Derived properties and helper functions
+  const totalQuestions = useMemo(() => {
+    return gameQuestions.filter(q => {
+      const type = q.type || 'MULTIPLE_CHOICE';
+      return selectedQuestionTypes.includes(type);
+    }).length;
+  }, [gameQuestions, selectedQuestionTypes]);
+
+  const availableQuestionTypes = useMemo(() => {
+    const types = new Set();
+    gameQuestions.forEach(q => {
+      types.add(q.type || 'MULTIPLE_CHOICE');
+    });
+    return Array.from(types);
+  }, [gameQuestions]);
+
+  const getQuestionTypeCount = (type) => {
+    return gameQuestions.filter(q => (q.type || 'MULTIPLE_CHOICE') === type).length;
+  };
+
+  const toggleQuestionType = (type) => {
+    setSelectedQuestionTypes(prev => {
+      if (prev.includes(type)) {
+        return prev.filter(t => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
+  };
+
+  const getQuestionTypeLabel = (type) => {
+    const QUESTION_TYPE_LABELS = {
+      MULTIPLE_CHOICE: 'Multiple Choice',
+      SORTING: 'Sorting Order',
+      DRAG_DROP: 'Drag & Drop (Blanks)',
+      DROP_DOWN: 'Drop-Down (Select Blanks)',
+      CATEGORIZE: 'Categorization Groups'
+    };
+    return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');
+  };
+
+  // Clamp/sync maxQuestions when totalQuestions changes
+  useEffect(() => {
+    setMaxQuestions(prev => {
+      const prevNum = parseInt(prev);
+      if (isNaN(prevNum) || prevNum >= totalQuestions || prev === '') {
+        return totalQuestions.toString();
+      }
+      return prev;
+    });
+  }, [totalQuestions]);
 
   
   // Filter states
@@ -456,7 +516,7 @@ export function SelectionView({
               )}
             </div>
 
-            {selectedGameId && totalQuestions > 0 && (
+            {selectedGameId && gameQuestions.length > 0 && (
               <div 
                 className="animate-fade-in" 
                 style={{ 
@@ -493,6 +553,39 @@ export function SelectionView({
                   </span>
                 </label>
 
+                {/* Question Types Option */}
+                {availableQuestionTypes.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+                      Question Types to Include:
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>
+                      {availableQuestionTypes.map(type => {
+                        const count = getQuestionTypeCount(type);
+                        const isChecked = selectedQuestionTypes.includes(type);
+                        return (
+                          <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked} 
+                              onChange={() => toggleQuestionType(type)}
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                accentColor: '#FFB7B2',
+                                cursor: 'pointer'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.9rem', color: '#475569' }}>
+                              {getQuestionTypeLabel(type)} <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>({count})</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Limit Option */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
@@ -503,8 +596,9 @@ export function SelectionView({
                       type="number" 
                       className="form-input" 
                       min={1} 
-                      max={totalQuestions}
-                      value={maxQuestions}
+                      max={totalQuestions || 1}
+                      disabled={totalQuestions === 0}
+                      value={totalQuestions === 0 ? '' : maxQuestions}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === '') {
@@ -526,6 +620,11 @@ export function SelectionView({
                       out of {totalQuestions} available
                     </span>
                   </div>
+                  {totalQuestions === 0 && (
+                    <span style={{ color: '#ff4b60', fontSize: '0.8rem', marginTop: '2px' }}>
+                      ⚠️ Please select at least one question type.
+                    </span>
+                  )}
                 </div>
 
                 {/* Timer Duration Option */}
@@ -552,8 +651,8 @@ export function SelectionView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginBottom: 16 }}>
               <button 
                 className="btn btn-primary" 
-                onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, timerDuration })} 
-                disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId}
+                onClick={() => startHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, timerDuration, questionTypes: selectedQuestionTypes })} 
+                disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId || !totalQuestions}
                 style={{ width: '100%' }}
               >
                 {loading ? 'Initializing...' : 'Host Live Room'}
@@ -561,8 +660,8 @@ export function SelectionView({
               
               <button 
                 className="btn btn-secondary" 
-                onClick={() => startSoloPractice(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0 })} 
-                disabled={loading || !selectedGameId}
+                onClick={() => startSoloPractice(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes })} 
+                disabled={loading || !selectedGameId || !totalQuestions}
                 style={{ 
                   width: '100%',
                   background: 'rgba(255, 183, 178, 0.1)', 
