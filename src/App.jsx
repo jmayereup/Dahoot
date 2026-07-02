@@ -13,6 +13,7 @@ import { PracticeView } from './components/PracticeView';
 
 function App() {
   const [view, setView] = useState('selection'); // 'selection' | 'host' | 'player' | 'teacher'
+  const [selectedGameId, setSelectedGameId] = useState('');
   const [pocketbaseStatus, setPocketbaseStatus] = useState('checking');
   const [availableSubjects, setAvailableSubjects] = useState(['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other']);
   const [availableCefrLevels, setAvailableCefrLevels] = useState(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
@@ -31,6 +32,7 @@ function App() {
 
   const handleLogout = () => {
     pb.authStore.clear();
+    setSelectedGameId('');
     setView('selection');
   };
 
@@ -92,6 +94,8 @@ function App() {
         isAuthenticated={isAuthenticated}
         currentUser={currentUser}
         onLogout={handleLogout}
+        selectedGameId={selectedGameId}
+        setSelectedGameId={setSelectedGameId}
       />
     );
   }
@@ -233,7 +237,10 @@ function App() {
         setView={setView}
         currentUser={currentUser}
         onLogout={handleLogout}
-        startHosting={hostGame.startHosting}
+        startHosting={(gameId) => {
+          setSelectedGameId(gameId);
+          setView('selection');
+        }}
       />
     );
   }

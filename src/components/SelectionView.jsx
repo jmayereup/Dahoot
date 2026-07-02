@@ -25,9 +25,10 @@ export function SelectionView({
   availableCefrLevels = [],
   isAuthenticated,
   currentUser,
-  onLogout
+  onLogout,
+  selectedGameId,
+  setSelectedGameId
 }) {
-  const [selectedGameId, setSelectedGameId] = useState('');
 
   // Custom game options
   const [randomize, setRandomize] = useState(true);
@@ -162,6 +163,7 @@ export function SelectionView({
 
   // Automatically update selected game when the filtered list changes
   useEffect(() => {
+    if (gamesList.length === 0) return;
     if (filteredGames.length > 0) {
       // If a game was selected but is no longer in the filtered list, set it to the first filtered game
       if (selectedGameId) {
@@ -173,7 +175,7 @@ export function SelectionView({
     } else {
       setSelectedGameId('');
     }
-  }, [filteredGames, selectedGameId]);
+  }, [filteredGames, selectedGameId, gamesList, setSelectedGameId]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
