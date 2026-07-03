@@ -1,5 +1,4 @@
-import { spawn } from 'child_process';
-import net from 'net';
+import { spawn, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -26,51 +25,55 @@ function loadEnv() {
   }
 }
 
-// Check if port is already in use
-function isPortInUse(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer()
-      .once('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          resolve(true);
-        } else {
-          resolve(false);
+// Kill process using a specific port
+function killProcessOnPort(port) {
+  try {
+    const isWindows = process.platform === 'win32';
+    if (isWindows) {
+      const result = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8' });
+      const lines = result.trim().split('\n');
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== '0') {
+          try { execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' }); } catch {}
         }
-      })
-      .once('listening', () => {
-        server.close();
-        resolve(false);
-      })
-      .listen(port, '127.0.0.1');
-  });
+      }
+    } else {
+      const result = execSync(`lsof -ti :${port}`, { encoding: 'utf8' });
+      const pids = result.trim().split('\n').filter(Boolean);
+      for (const pid of pids) {
+        try { process.kill(parseInt(pid), 'SIGTERM'); } catch {}
+      }
+    }
+  } catch {}
 }
 
 async function start() {
   loadEnv();
   const pbPort = 8090;
-  const pbRunning = await isPortInUse(pbPort);
+  const vitePort = 5173;
+
+  console.log(`\x1b[35m[Dahoot]\x1b[0m Killing any existing processes on ports ${pbPort} and ${vitePort}...`);
+  killProcessOnPort(pbPort);
+  killProcessOnPort(vitePort);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  console.log(`\x1b[35m[Dahoot]\x1b[0m Starting PocketBase server...`);
   
-  let pbProcess = null;
+  const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
+  const pbProcess = spawn(pbExecutable, ['serve'], {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env: process.env
+  });
 
-  if (pbRunning) {
-    console.log(`\x1b[35m[Dahoot]\x1b[0m PocketBase is already running on port ${pbPort}.`);
-  } else {
-    console.log(`\x1b[35m[Dahoot]\x1b[0m PocketBase is not running. Starting PocketBase server...`);
-    
-    const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
-    pbProcess = spawn(pbExecutable, ['serve'], {
-      cwd: rootDir,
-      stdio: 'inherit',
-      env: process.env
-    });
+  pbProcess.on('error', (err) => {
+    console.error('\x1b[31m[Dahoot] Failed to start PocketBase:\x1b[0m', err);
+  });
 
-    pbProcess.on('error', (err) => {
-      console.error('\x1b[31m[Dahoot] Failed to start PocketBase:\x1b[0m', err);
-    });
-
-    // Wait half a second for PocketBase to bind to the port
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  // Wait half a second for PocketBase to bind to the port
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   console.log(`\x1b[35m[Dahoot]\x1b[0m Starting Vite development server...`);
   
@@ -82,10 +85,8 @@ async function start() {
   });
 
   const cleanup = () => {
-    if (pbProcess) {
-      console.log('\n\x1b[35m[Dahoot]\x1b[0m Stopping PocketBase server...');
-      pbProcess.kill();
-    }
+    console.log('\n\x1b[35m[Dahoot]\x1b[0m Stopping servers...');
+    pbProcess.kill();
     viteProcess.kill();
     process.exit();
   };
