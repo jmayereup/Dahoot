@@ -255,6 +255,7 @@ async function deploy() {
   const targetPath = env.DEPLOY_SERVER_PATH;
   const serviceName = env.DEPLOY_SERVICE_NAME;
   const liveUrl = env.VITE_POCKETBASE_LIVE_URL;
+  const hooksPath = env.POCKETBASE_HOOKS_PATH || `${targetPath}/pocketbase/pb_hooks`;
 
   if (!ip || !user || !targetPath || !serviceName || !liveUrl) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Missing deployment configuration in .env file.\x1b[0m');
@@ -325,9 +326,9 @@ async function deploy() {
   // Step 4b: Deploy PocketBase JS VM hooks (if exists)
   const localHooksDir = path.join(rootDir, 'pocketbase', 'pb_hooks');
   if (fs.existsSync(localHooksDir)) {
-    console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks...\x1b[0m');
+    console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
     try {
-      execSync(`rsync -avz --delete -e ssh "${localHooksDir}/" "${connectionString}:${targetPath}/pocketbase/pb_hooks/"`, { stdio: 'inherit' });
+      execSync(`rsync -avz --delete -e ssh "${localHooksDir}/" "${connectionString}:${hooksPath}/"`, { stdio: 'inherit' });
       console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
     } catch (err) {
       console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
