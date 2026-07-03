@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PocketBaseStatusBanner } from './PocketBaseStatusBanner';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
@@ -177,42 +177,18 @@ export function SelectionView({
     }
   }, [filteredGames, selectedGameId, gamesList, setSelectedGameId]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Clear search query when a different game is selected
-  useEffect(() => {
-    setSearchQuery('');
-  }, [selectedGameId]);
-
-  // Handle click outside to close search dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchQuery('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Filter games based on typed search query (by title, description, subject, or creator)
   const searchedGames = useMemo(() => {
-    return filteredGames.filter(game => {
-      // If the query matches the current selection exactly, show all options on focus rather than filtering to just one
-      if (!searchQuery || (selectedGameDetails && searchQuery === selectedGameDetails.title)) {
-        return true;
-      }
-      const q = searchQuery.toLowerCase();
-      return (
-        game.title.toLowerCase().includes(q) ||
-        (game.description && game.description.toLowerCase().includes(q)) ||
-        (game.subject && game.subject.toLowerCase().includes(q)) ||
-        (game.creator && game.creator.toLowerCase().includes(q))
-      );
-    });
-  }, [filteredGames, searchQuery, selectedGameDetails]);
+    if (!searchQuery) return filteredGames.slice(0, 10);
+    const q = searchQuery.toLowerCase();
+    return filteredGames.filter(game =>
+      game.title.toLowerCase().includes(q) ||
+      (game.description && game.description.toLowerCase().includes(q)) ||
+      (game.subject && game.subject.toLowerCase().includes(q)) ||
+      (game.creator && game.creator.toLowerCase().includes(q))
+    );
+  }, [filteredGames, searchQuery]);
 
   return (
     <div className="app-container">
@@ -311,30 +287,90 @@ export function SelectionView({
           </header>
 
           <div className="selection-grid">
+          {/* Join Panel */}
+          <div className="panel" style={{ padding: '24px 32px', maxWidth: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Join Game</h2>
+              <span className="inline-block bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200/50">
+                ⚡ No account required
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+              Enter a game PIN to join an active classroom quiz.
+            </p>
+            <form onSubmit={joinGame} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="form-group" style={{ marginBottom: 0, flex: '1', minWidth: '120px' }}>
+                <label className="form-label">Game PIN</label>
+                <input 
+                  type="text" 
+                  className="form-input text-center" 
+                  placeholder="e.g. 1234"
+                  maxLength={4}
+                  value={joinPin}
+                  onChange={(e) => setJoinPin(e.target.value.replace(/\D/g, ''))}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0, flex: '2', minWidth: '180px' }}>
+                <label className="form-label">Nickname</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Einstein"
+                  maxLength={15}
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={loading || pocketbaseStatus !== 'connected'}
+                style={{ marginBottom: 0, height: '44px' }}
+              >
+                {loading ? 'Joining...' : 'Enter Game'}
+              </button>
+            </form>
+            {error && <p style={{ color: '#ff4b60', marginTop: 12, fontSize: '0.9rem' }}>{error}</p>}
+          </div>
+
           {/* Host Panel */}
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
             <h2>Host a Quiz</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
               Open a new game lobby on this screen and project it for the class.
             </p>
 
-            {/* Filter Pills inside Selection View */}
+            {/* Search / Filter Box */}
             {gamesList.length > 0 && (
-              <div className="filter-panel" style={{ padding: '16px', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    🔍 Filter Games List
-                  </span>
-                  {hasActiveFilters && (
-                    <button 
-                      onClick={clearFilters}
+              <div className="filter-panel" style={{ padding: '12px 16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: availableSubjects.length || availableCefrLevels.length ? '10px' : '0' }}>
+                  <span style={{ fontSize: '1rem', flexShrink: 0 }}>🔍</span>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search games by title, subject, creator..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    disabled={loading}
+                    style={{ padding: '8px 12px', fontSize: '0.9rem', margin: 0 }}
+                  />
+                  {(searchQuery || hasActiveFilters) && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(''); clearFilters(); }}
                       style={{
-                        background: 'none',
                         border: 'none',
+                        background: 'none',
                         color: '#ff4b60',
                         fontSize: '0.75rem',
                         cursor: 'pointer',
-                        textDecoration: 'underline'
+                        textDecoration: 'underline',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}
                     >
                       Clear
@@ -342,12 +378,8 @@ export function SelectionView({
                   )}
                 </div>
 
-                {/* Subject Pills */}
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-                    Subject
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {(availableSubjects.length > 0 || availableCefrLevels.length > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {availableSubjects.map(sub => {
                       const active = filterSubject.includes(sub);
                       return (
@@ -355,21 +387,12 @@ export function SelectionView({
                           key={sub}
                           onClick={() => toggleSubjectFilter(sub)}
                           className={`filter-btn ${active ? 'active-subject' : ''}`}
-                          style={{ padding: '2px 8px', fontSize: '0.75rem' }}
+                          style={{ padding: '2px 8px', fontSize: '0.7rem' }}
                         >
                           {sub}
                         </button>
                       );
                     })}
-                  </div>
-                </div>
-
-                {/* CEFR Level Pills */}
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-                    CEFR Level
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {availableCefrLevels.map(level => {
                       const active = filterCefr.includes(level);
                       return (
@@ -377,193 +400,77 @@ export function SelectionView({
                           key={level}
                           onClick={() => toggleCefrFilter(level)}
                           className={`filter-btn ${active ? 'active-cefr' : ''}`}
-                          style={{ padding: '2px 8px', fontSize: '0.75rem' }}
+                          style={{ padding: '2px 8px', fontSize: '0.7rem' }}
                         >
                           {level}
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                )}
               </div>
             )}
 
-            <div className="form-group" style={{ textAlign: 'left', marginBottom: 20, position: 'relative' }} ref={dropdownRef}>
-              <label className="form-label">Select Dahoot</label>
-              {gamesList.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0' }}>
-                  No games found. Click "Reset & Seed Demo Questions" to create one.
+            {/* Scrollable Game List */}
+            {gamesList.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 20px' }}>
+                No games found. Click "Reset & Seed Demo Questions" to create one.
+              </p>
+            ) : searchedGames.length === 0 ? (
+              <p style={{ color: '#ff4b60', fontSize: '0.85rem', margin: '4px 0 20px' }}>
+                No games match your search.
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  Showing {searchedGames.length} of {gamesList.length} games
                 </p>
-              ) : filteredGames.length === 0 ? (
-                <p style={{ color: '#ff4b60', fontSize: '0.85rem', margin: '4px 0' }}>
-                  No games match your selected filters.
-                </p>
-              ) : (
-                <>
-                  <div style={{ position: 'relative', marginBottom: 12 }}>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder={selectedGameDetails ? selectedGameDetails.title : "Type to search games..."}
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setIsOpen(true);
-                      }}
-                      onFocus={() => setIsOpen(true)}
-                      disabled={loading}
-                      style={{ 
-                        paddingRight: (searchQuery || selectedGameId) ? '60px' : '40px',
-                        cursor: 'text'
-                      }}
-                    />
-                    {(searchQuery || selectedGameId) && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSearchQuery('');
-                          setSelectedGameId('');
-                          setIsOpen(true);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          right: '36px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          border: 'none',
-                          background: 'none',
-                          color: 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          fontSize: '0.9rem',
-                          padding: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#ff4b60'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                        aria-label="Clear search"
+                <div className="game-list" style={{ marginBottom: '16px' }}>
+                  {searchedGames.map(g => {
+                    const isSelected = g.id === selectedGameId;
+                    return (
+                      <div
+                        key={g.id}
+                        className={`game-list-item${isSelected ? ' selected' : ''}`}
+                        onClick={() => setSelectedGameId(g.id)}
                       >
-                        ✕
-                      </button>
-                    )}
-                    <div 
-                      onClick={() => !loading && setIsOpen(prev => !prev)}
-                      style={{
-                        position: 'absolute',
-                        right: '16px',
-                        top: '50%',
-                        transform: isOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%) rotate(0deg)',
-                        color: 'var(--text-secondary)',
-                        cursor: 'pointer',
-                        pointerEvents: loading ? 'none' : 'auto',
-                        fontSize: '0.8rem',
-                        transition: 'transform 0.2s'
-                      }}
-                    >
-                      ▼
-                    </div>
-
-                    {isOpen && !loading && (
-                      <div 
-                        className="animate-pop-in"
-                        style={{
-                          position: 'absolute',
-                          top: '105%',
-                          left: 0,
-                          right: 0,
-                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                          border: '1px solid var(--panel-border)',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                          zIndex: 1000,
-                          maxHeight: '220px',
-                          overflowY: 'auto',
-                          backdropFilter: 'blur(8px)'
-                        }}
-                      >
-                        {searchedGames.length === 0 ? (
-                          <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>
-                            No Dahoots found
+                        <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b' }}>
+                          {g.title}
+                        </div>
+                        {g.description && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {g.description}
                           </div>
-                        ) : (
-                          searchedGames.map(g => {
-                            const isSelected = g.id === selectedGameId;
-                            return (
-                              <div
-                                key={g.id}
-                                onClick={() => {
-                                  setSelectedGameId(g.id);
-                                  setIsOpen(false);
-                                }}
-                                style={{
-                                  padding: '12px 16px',
-                                  cursor: 'pointer',
-                                  transition: 'background-color 0.2s',
-                                  backgroundColor: isSelected ? 'rgba(255, 183, 178, 0.15)' : 'transparent',
-                                  borderLeft: isSelected ? '4px solid var(--accent-light)' : '4px solid transparent',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(93, 107, 130, 0.04)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                              >
-                                <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#1e293b' }}>
-                                  {g.title}
-                                </div>
-                                {g.description && (
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {g.description}
-                                  </div>
-                                )}
-                                <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', marginTop: '2px', color: 'var(--text-secondary)' }}>
-                                  {g.subject && <span>📚 {g.subject}</span>}
-                                  {g.cefr_level && <span>🎓 {g.cefr_level}</span>}
-                                </div>
-                              </div>
-                            );
-                          })
                         )}
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem', marginTop: '2px', color: 'var(--text-secondary)' }}>
+                          {g.subject && <span>📚 {g.subject}</span>}
+                          {g.cefr_level && <span>🎓 {g.cefr_level}</span>}
+                          {g.creator && <span>👤 {g.creator}</span>}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
-                  {/* Selected Game Metadata Badges */}
-                  {selectedGameDetails && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 2px' }}>
-                      {selectedGameDetails.subject && (
-                        <span className="game-tag">
-                          📚 {selectedGameDetails.subject}
-                        </span>
-                      )}
-                      {selectedGameDetails.cefr_level && (
-                        <span className="game-tag">
-                          🎓 {selectedGameDetails.cefr_level}
-                        </span>
-                      )}
-                      {selectedGameDetails.language && (
-                        <span className="game-tag">
-                          🗣️ {selectedGameDetails.language}
-                        </span>
-                      )}
-                      {selectedGameDetails.creator && (
-                        <span className="game-tag">
-                          👤 {selectedGameDetails.creator}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            {/* Selected Game Metadata Badges */}
+            {selectedGameDetails && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 2px', marginBottom: '12px' }}>
+                {selectedGameDetails.subject && (
+                  <span className="game-tag">📚 {selectedGameDetails.subject}</span>
+                )}
+                {selectedGameDetails.cefr_level && (
+                  <span className="game-tag">🎓 {selectedGameDetails.cefr_level}</span>
+                )}
+                {selectedGameDetails.language && (
+                  <span className="game-tag">🗣️ {selectedGameDetails.language}</span>
+                )}
+                {selectedGameDetails.creator && (
+                  <span className="game-tag">👤 {selectedGameDetails.creator}</span>
+                )}
+              </div>
+            )}
 
             {selectedGameId && gameQuestions.length > 0 && (
               <div 
@@ -727,56 +634,6 @@ export function SelectionView({
                 Practice Solo (Self-Paced)
               </button>
             </div>
-          </div>
-
-          {/* Join Panel */}
-          <div className="panel">
-            <h2>Join Game</h2>
-            <div style={{ marginBottom: 20 }}>
-              <span className="inline-block bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full mb-3 border border-emerald-200/50">
-                ⚡ Student: No account required
-              </span>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Participate as a player in an active classroom quiz.
-              </p>
-            </div>
-            <form onSubmit={joinGame}>
-              <div className="form-group">
-                <label className="form-label">Game PIN</label>
-                <input 
-                  type="text" 
-                  className="form-input text-center" 
-                  placeholder="e.g. 1234"
-                  maxLength={4}
-                  value={joinPin}
-                  onChange={(e) => setJoinPin(e.target.value.replace(/\D/g, ''))}
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Nickname</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Einstein"
-                  maxLength={15}
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-
-              {error && <p style={{ color: '#ff4b60', marginBottom: 16, fontSize: '0.95rem' }}>{error}</p>}
-
-              <button 
-                type="submit" 
-                className="btn btn-primary"
-                disabled={loading || pocketbaseStatus !== 'connected'}
-              >
-                {loading ? 'Joining...' : 'Enter Game'}
-              </button>
-            </form>
           </div>
         </div>
       </>

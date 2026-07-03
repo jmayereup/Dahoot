@@ -165,7 +165,7 @@ p.subtitle {
 }
 
 @utility selection-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl;
+  @apply flex flex-col gap-6 w-full max-w-4xl;
 }
 
 /* Lobby roster badges */
@@ -571,6 +571,22 @@ p.subtitle {
 
 @utility game-tag {
   @apply bg-slate-100/60 border border-slate-200/50 text-slate-500 font-bold text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors hover:bg-slate-200/45;
+}
+
+@utility game-list {
+  @apply flex flex-col gap-1 max-h-96 overflow-y-auto rounded-xl border border-slate-200/60 bg-slate-50/50 p-2;
+}
+
+@utility game-list-item {
+  @apply flex flex-col gap-0.5 px-4 py-3 rounded-lg cursor-pointer transition-all text-left border-l-4 border-transparent;
+  
+  &:hover {
+    @apply bg-white border-slate-200 shadow-sm;
+  }
+  
+  &.selected {
+    @apply bg-rose-50/40 border-l-rose-300;
+  }
 }
 
 /* Card Action Buttons styling for modern, premium dashboard */

@@ -57,6 +57,49 @@ export const DEFAULT_QUESTIONS = [
   }
 ];
 
+export const SAMPLE_GAMES = [
+  {
+    title: "General Tech Trivia",
+    description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
+    subject: "Technology",
+    cefr_level: "B1",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "World Capitals Challenge",
+    description: "Test your geography knowledge by identifying capital cities from around the world.",
+    subject: "Geography",
+    cefr_level: "A2",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "Basic Spanish Vocabulary",
+    description: "Learn essential Spanish words and phrases for everyday conversations.",
+    subject: "Foreign Languages",
+    cefr_level: "A1",
+    language: "Spanish",
+    creator: "System"
+  },
+  {
+    title: "Ancient History Quiz",
+    description: "Explore the fascinating world of ancient civilizations from Egypt to Rome.",
+    subject: "History",
+    cefr_level: "B2",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "Math Fundamentals",
+    description: "Practice basic arithmetic, algebra, and geometry concepts.",
+    subject: "Math",
+    cefr_level: "A2",
+    language: "English",
+    creator: "System"
+  }
+];
+
 export const OPTION_CLASSES = [
   'option-card-red',
   'option-card-blue',

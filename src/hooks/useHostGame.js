@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 import QRCode from 'qrcode';
-import { DEFAULT_QUESTIONS } from '../constants';
+import { DEFAULT_QUESTIONS, SAMPLE_GAMES } from '../constants';
 
 export function useHostGame(view, setView) {
   const [gamesList, setGamesList] = useState([]);
@@ -271,17 +271,16 @@ export function useHostGame(view, setView) {
       setLoading(true);
       const list = await pb.collection('dahoot_games').getList(1, 1);
       if (list.totalItems === 0) {
-        const defaultGame = await pb.collection('dahoot_games').create({
-          title: "General Tech Trivia",
-          description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers."
-        });
-        for (const q of DEFAULT_QUESTIONS) {
-          await pb.collection('dahoot_questions').create({
-            ...q,
-            game_id: defaultGame.id
-          });
+        for (const gameData of SAMPLE_GAMES) {
+          const newGame = await pb.collection('dahoot_games').create(gameData);
+          for (const q of DEFAULT_QUESTIONS) {
+            await pb.collection('dahoot_questions').create({
+              ...q,
+              game_id: newGame.id
+            });
+          }
         }
-        alert("Sample game and questions seeded successfully!");
+        alert("Sample games and questions seeded successfully!");
       } else {
         alert("Games database already has data.");
       }
