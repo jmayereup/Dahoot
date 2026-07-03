@@ -152,6 +152,18 @@ export function TeacherDashboard({
   const [createTeacherError, setCreateTeacherError] = useState('');
   const [createTeacherSuccess, setCreateTeacherSuccess] = useState('');
 
+  // AI Autogenerate States
+  const [isGenModalOpen, setIsGenModalOpen] = useState(false);
+  const [genPrompt, setGenPrompt] = useState('');
+  const [genMcCount, setGenMcCount] = useState(10);
+  const [genSortingCount, setGenSortingCount] = useState(3);
+  const [genCategorizeCount, setGenCategorizeCount] = useState(2);
+  const [genDragDropCount, setGenDragDropCount] = useState(5);
+  const [genDropDownCount, setGenDropDownCount] = useState(5);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genError, setGenError] = useState('');
+
+
   // Fetch current user's role from dahoot_user_info
   useEffect(() => {
     if (currentUser && currentUser.dahoot_info) {
@@ -2114,6 +2126,514 @@ export function TeacherDashboard({
     );
   };
 
+  const getMissingFieldsForGenerate = () => {
+    const missing = [];
+    if (isEditingGame) {
+      if (!gameCefrLevel) missing.push('CEFR Language Level');
+      if (!gameLanguage) missing.push('Language');
+      if (!gameSubject) missing.push('Subject');
+    } else if (isImporting) {
+      if (!selectedGame?.cefr_level) missing.push('CEFR Language Level');
+      if (!selectedGame?.language) missing.push('Language');
+      if (!selectedGame?.subject) missing.push('Subject');
+    } else {
+      missing.push('CEFR Language Level', 'Language', 'Subject');
+    }
+    return missing;
+  };
+
+  const isGenerateDisabled = getMissingFieldsForGenerate().length > 0;
+
+  const handleGenerateQuestions = async () => {
+    setGenLoading(true);
+    setGenError('');
+
+    const language = isEditingGame ? gameLanguage : selectedGame?.language;
+    const cefrLevel = isEditingGame ? gameCefrLevel : selectedGame?.cefr_level;
+    const subject = isEditingGame ? gameSubject : selectedGame?.subject;
+
+    const systemPrompt = `You are an expert curriculum designer and language/subject assessment expert.
+Generate educational questions in Markdown format exactly conforming to the specifications below.
+
+Target Student Profile:
+- Language of questions/answers: ${language || 'English'}
+- CEFR Language Level: ${cefrLevel || 'A2'}
+- Subject: ${subject || 'General'}
+
+Generate the following question counts (adjust based on user source content if provided, but default to these counts if not specified):
+- Multiple Choice (MULTIPLE_CHOICE): ${genMcCount} questions
+- Sorting (SORTING): ${genSortingCount} questions
+- Categorization (CATEGORIZE): ${genCategorizeCount} questions
+- Drag & Drop (DRAG_DROP): ${genDragDropCount} questions
+- Drop Down (DROP_DOWN): ${genDropDownCount} questions
+
+Each question must be formatted EXACTLY as follows. Do not add any extra text or conversational chatter between the markdown question blocks.
+
+--- FORMAT SPECIFICATIONS ---
+
+1. MULTIPLE_CHOICE
+Format:
+# MULTIPLE_CHOICE
+<Question text here>
+- <Option 1>
+- *<Correct Option> (prefixed with an asterisk * after the hyphen and space)
+- <Option 3>
+- <Option 4>
+
+Example:
+# MULTIPLE_CHOICE
+What is the capital of France?
+- Berlin
+- *Paris
+- London
+- Rome
+
+2. SORTING
+Format:
+# SORTING
+<Instruction text here>
+1. <First item in correct order>
+2. <Second item in correct order>
+3. <Third item in correct order>
+4. <Fourth item in correct order>
+
+Example:
+# SORTING
+Sort these numbers from lowest to highest.
+1. Five
+2. Ten
+3. Fifteen
+4. Twenty
+
+3. DRAG_DROP
+Format:
+# DRAG_DROP
+<Instruction text here>
+sentence: <Sentence text with correct answers inside bracket placeholders [answer1] and [answer2]>
+- *<Correct Answer 1> (prefixed with *)
+- *<Correct Answer 2> (prefixed with *)
+- <Distractor 1> (no asterisk)
+- <Distractor 2> (no asterisk)
+
+Example:
+# DRAG_DROP
+Fill in the blanks by dragging the correct words.
+sentence: The quick brown [fox] jumps over the lazy [dog].
+- *fox
+- *dog
+- cat
+- horse
+
+4. DROP_DOWN
+Format:
+# DROP_DOWN
+<Instruction text here>
+sentence: <Sentence text with correct answers inside bracket placeholders [dropdown1] and [dropdown2]>
+dropdown
+- *<Correct Option for dropdown1> (prefixed with *)
+- <Option 2>
+- <Option 3>
+- <Option 4>
+dropdown
+- *<Correct Option for dropdown2> (prefixed with *)
+- <Option 2>
+- <Option 3>
+- <Option 4>
+
+Example:
+# DROP_DOWN
+Choose the correct verb conjugation.
+sentence: Yesterday I [dropdown1] to school and [dropdown2] my friend.
+dropdown
+- *went
+- go
+- gone
+- goes
+dropdown
+- *saw
+- see
+- seen
+- sees
+
+5. CATEGORIZE
+Format:
+# CATEGORIZE
+<Instruction text here>
+categories: <Category 1>, <Category 2>
+- <Item 1>: <Category 1>
+- <Item 2>: <Category 2>
+- <Item 3>: <Category 1>
+- <Item 4>: <Category 2>
+
+Example:
+# CATEGORIZE
+Group the items into the correct categories.
+categories: Fruits, Vegetables
+- Apple: Fruits
+- Broccoli: Vegetables
+- Banana: Fruits
+- Carrot: Vegetables
+
+-----------------------------
+
+ADDITIONAL REQUIREMENT:
+At the very end of your response, output a JSON block containing an engaging 1-2 sentence description for this game based on the subject and questions generated, like this:
+\`\`\`json
+{
+  "description": "Engaging description here"
+}
+\`\`\`
+Ensure that the JSON block is the absolute last thing in your response. Do not output any other text after it.`;
+
+    const userPromptContent = genPrompt.trim() 
+      ? `Source text/Instructions provided by the teacher:\n"""\n${genPrompt}\n"""\n\nGenerate the questions based on the source text/instructions above. Ensure they are tailored for CEFR level ${cefrLevel}, Language ${language}, and Subject ${subject}.`
+      : `Generate high-quality educational questions for CEFR level ${cefrLevel}, Language ${language}, and Subject ${subject}. Use age-appropriate and level-appropriate vocabulary.`;
+
+    try {
+      const data = await pb.send("/api/generate-questions", {
+        method: "POST",
+        body: {
+          systemPrompt,
+          userPromptContent
+        }
+      });
+
+      const choice = data.choices?.[0]?.message?.content;
+      if (!choice) {
+        throw new Error('No content returned from OpenRouter API.');
+      }
+
+      let markdownText = choice;
+      let aiDescription = '';
+
+      const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/i;
+      const match = choice.match(jsonRegex);
+      if (match) {
+        try {
+          const jsonObj = JSON.parse(match[1]);
+          aiDescription = jsonObj.description || '';
+          markdownText = choice.replace(match[0], '').trim();
+        } catch (e) {
+          console.error("Failed to parse AI description JSON:", e);
+        }
+      } else {
+        const endJsonIndex = choice.lastIndexOf('{');
+        if (endJsonIndex !== -1) {
+          const possibleJson = choice.substring(endJsonIndex);
+          try {
+            const jsonObj = JSON.parse(possibleJson);
+            aiDescription = jsonObj.description || '';
+            markdownText = choice.substring(0, endJsonIndex).trim();
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+
+      // Populate description if blank
+      if (isEditingGame && !gameDescription?.trim() && aiDescription) {
+        setGameDescription(aiDescription);
+      } else if (!isEditingGame && selectedGame && !selectedGame.description?.trim() && aiDescription) {
+        try {
+          await pb.collection('dahoot_games').update(selectedGame.id, {
+            description: aiDescription
+          });
+          setSelectedGame(prev => ({ ...prev, description: aiDescription }));
+        } catch (pbErr) {
+          console.error("Failed to update blank description on existing game:", pbErr);
+        }
+      }
+
+      setImportText(prev => prev ? prev + '\n\n' + markdownText : markdownText);
+      setIsGenModalOpen(false);
+      setGenPrompt('');
+    } catch (err) {
+      console.error("Error generating questions:", err);
+      setGenError(err.message || 'An error occurred during generation.');
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  const renderGenerateModal = () => {
+    if (!isGenModalOpen) return null;
+
+    const missingFields = getMissingFieldsForGenerate();
+    const language = isEditingGame ? gameLanguage : selectedGame?.language;
+    const cefrLevel = isEditingGame ? gameCefrLevel : selectedGame?.cefr_level;
+    const subject = isEditingGame ? gameSubject : selectedGame?.subject;
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 1100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px'
+      }}>
+        <div 
+          className="panel panel-large animate-join-focus p-4 sm:p-7" 
+          style={{ 
+            width: '100%', 
+            maxWidth: '650px', 
+            maxHeight: '94vh', 
+            overflowY: 'auto',
+            textAlign: 'left',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '20px', 
+            borderBottom: '1px solid var(--panel-border)',
+            paddingBottom: '15px'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                AI Quiz Generator
+              </span>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>Autogenerate Questions</h2>
+            </div>
+            <button 
+              type="button"
+              onClick={() => {
+                setIsGenModalOpen(false);
+                setGenError('');
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+            >
+              ✕
+            </button>
+          </div>
+
+          {isGenerateDisabled && (
+            <div style={{ 
+              background: 'rgba(245, 158, 11, 0.1)', 
+              border: '1px solid rgba(245, 158, 11, 0.3)', 
+              color: '#d97706', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              marginBottom: 20
+            }}>
+              ⚠️ Required fields missing: {missingFields.join(', ')}
+            </div>
+          )}
+
+          {genError && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              color: '#ff4b60', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              marginBottom: 20
+            }}>
+              ⚠️ {genError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{
+              background: 'rgba(93, 107, 130, 0.05)',
+              border: '1px solid rgba(93, 107, 130, 0.1)',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '16px',
+              fontSize: '0.9rem'
+            }}>
+              <div>
+                <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>Language:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{language}</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>CEFR Level:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{cefrLevel}</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>Subject:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{subject}</strong>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label className="form-label" style={{ margin: 0 }}>
+                  Custom Prompt or Source Text (Optional)
+                </label>
+                <span style={{ fontSize: '0.8rem', color: genPrompt.length > 100000 ? '#ff4b60' : 'var(--text-secondary)' }}>
+                  {genPrompt.length.toLocaleString()} / 100,000 chars
+                </span>
+              </div>
+              <textarea
+                className="form-input"
+                placeholder="e.g. Paste a reading passage, specific grammar exercises, sample quiz, or custom prompts like 'make it holiday themed'..."
+                value={genPrompt}
+                onChange={(e) => setGenPrompt(e.target.value)}
+                disabled={genLoading}
+                rows={6}
+                maxLength={100000}
+                style={{
+                  fontFamily: 'inherit',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5'
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="form-label" style={{ marginBottom: '10px', display: 'block' }}>
+                Question Types & Counts
+              </label>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Multiple Choice</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={genMcCount}
+                    onChange={(e) => setGenMcCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={genLoading}
+                    className="form-input"
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Sorting</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={genSortingCount}
+                    onChange={(e) => setGenSortingCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={genLoading}
+                    className="form-input"
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Categorization</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={genCategorizeCount}
+                    onChange={(e) => setGenCategorizeCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={genLoading}
+                    className="form-input"
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Drag & Drop</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={genDragDropCount}
+                    onChange={(e) => setGenDragDropCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={genLoading}
+                    className="form-input"
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Drop Down</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={genDropDownCount}
+                    onChange={(e) => setGenDropDownCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={genLoading}
+                    className="form-input"
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 10 }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setIsGenModalOpen(false);
+                  setGenError('');
+                }} 
+                disabled={genLoading} 
+                style={{ width: 'auto', minWidth: 100 }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                className="btn btn-primary" 
+                onClick={handleGenerateQuestions}
+                disabled={genLoading || isGenerateDisabled} 
+                style={{ 
+                  width: 'auto', 
+                  minWidth: 150,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {genLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-200 border-l-rose-300 rounded-full animate-spin inline-block mr-2"></span>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    ✨ Generate Questions
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderBulkImportBuilder = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2143,7 +2663,26 @@ export function TeacherDashboard({
         </div>
 
         <div className="form-group">
-          <label className="form-label">Markdown Text</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsGenModalOpen(true)}
+              disabled={isGenerateDisabled}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
+              }}
+              title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
+            >
+              ✨ Autogenerate Questions
+            </button>
+          </div>
           <textarea 
             className="form-input" 
             placeholder={`# MULTIPLE_CHOICE
@@ -2537,6 +3076,7 @@ Sort these numbers from lowest to highest.
             </div>
           </form>
         </div>
+        {renderGenerateModal()}
       </div>
     );
   }
@@ -2927,7 +3467,26 @@ Sort these numbers from lowest to highest.
 
           <form onSubmit={saveImportedQuestions}>
             <div className="form-group">
-              <label className="form-label">Markdown Text</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setIsGenModalOpen(true)}
+                  disabled={isGenerateDisabled}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
+                  }}
+                  title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
+                >
+                  ✨ Autogenerate Questions
+                </button>
+              </div>
               <textarea 
                 className="form-input" 
                 placeholder={`# MULTIPLE_CHOICE
@@ -2961,6 +3520,7 @@ Sort these numbers from lowest to highest.
             </div>
           </form>
         </div>
+        {renderGenerateModal()}
       </div>
     );
   }

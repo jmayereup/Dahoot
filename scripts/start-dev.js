@@ -1,11 +1,30 @@
 import { spawn } from 'child_process';
 import net from 'net';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+
+// Helper to load .env variables
+function loadEnv() {
+  const envPath = path.join(rootDir, '.env');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split('\n').forEach(line => {
+      const parts = line.split('=');
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        const value = parts.slice(1).join('=').trim().replace(/(^['"]|['"]$)/g, '');
+        if (key && !key.startsWith('#')) {
+          process.env[key] = value;
+        }
+      }
+    });
+  }
+}
 
 // Check if port is already in use
 function isPortInUse(port) {
@@ -27,6 +46,7 @@ function isPortInUse(port) {
 }
 
 async function start() {
+  loadEnv();
   const pbPort = 8090;
   const pbRunning = await isPortInUse(pbPort);
   
@@ -40,7 +60,8 @@ async function start() {
     const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
     pbProcess = spawn(pbExecutable, ['serve'], {
       cwd: rootDir,
-      stdio: 'inherit'
+      stdio: 'inherit',
+      env: process.env
     });
 
     pbProcess.on('error', (err) => {
