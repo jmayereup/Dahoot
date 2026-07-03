@@ -66,7 +66,7 @@ export function AuthView({ onSuccess, onCancel }) {
         onSuccess?.();
       } else {
         // Registration Mode
-        if (!inviteCode.trim()) {
+        if (!inviteCode.trim().toLocaleUpperCase()) {
           throw new Error("Invite code is required.");
         }
         if (!validateEmail(email)) {
@@ -300,8 +300,9 @@ export function AuthView({ onSuccess, onCancel }) {
                 className={`form-input ${isFieldInvalid('inviteCode', inviteCode, val => !!val.trim()) ? 'user-invalid-fallback' : ''}`}
                 placeholder="Required invite code"
                 value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                 onBlur={() => handleBlur('inviteCode')}
+                style={{ textTransform: 'uppercase' }}
                 disabled={loading}
                 required
               />
