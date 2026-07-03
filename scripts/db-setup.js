@@ -29,6 +29,7 @@ function loadEnv() {
 loadEnv();
 
 const isLive = process.argv.includes('--live') || process.argv.includes('--prod');
+const isErase = process.argv.includes('--erase');
 const isDev = !isLive;
 const pbUrl = isDev
   ? (process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090')
@@ -90,6 +91,49 @@ const DEFAULT_QUESTIONS = [
       ]
     },
     correct_option_index: 0
+  }
+];
+
+const SAMPLE_GAMES = [
+  {
+    title: "General Tech Trivia",
+    description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
+    subject: "Technology",
+    cefr_level: "B1",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "World Capitals Challenge",
+    description: "Test your geography knowledge by identifying capital cities from around the world.",
+    subject: "Geography",
+    cefr_level: "A2",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "Basic Spanish Vocabulary",
+    description: "Learn essential Spanish words and phrases for everyday conversations.",
+    subject: "Foreign Languages",
+    cefr_level: "A1",
+    language: "Spanish",
+    creator: "System"
+  },
+  {
+    title: "Ancient History Quiz",
+    description: "Explore the fascinating world of ancient civilizations from Egypt to Rome.",
+    subject: "History",
+    cefr_level: "B2",
+    language: "English",
+    creator: "System"
+  },
+  {
+    title: "Math Fundamentals",
+    description: "Practice basic arithmetic, algebra, and geometry concepts.",
+    subject: "Math",
+    cefr_level: "A2",
+    language: "English",
+    creator: "System"
   }
 ];
 
@@ -219,9 +263,9 @@ async function runSetup() {
     }
   }
 
-  // Delete existing collections first if it is local/development and not in production mode
-  if (isLocalUrl(pbUrl) && !isProd) {
-    console.log("[Dahoot DB] Clearing old tables (if any)...");
+  // Delete existing collections only if --erase flag is provided
+  if (isErase) {
+    console.log("[Dahoot DB] --erase flag detected. Clearing old tables (if any)...");
     
     // Temporarily remove dahoot_info field from users to avoid constraint conflicts during reset
     try {
@@ -263,8 +307,13 @@ async function runSetup() {
       await pb.collections.delete('dahoot_options');
       console.log("[Dahoot DB] Deleted existing 'dahoot_options' collection.");
     } catch (e) {}
+
+    try {
+      await pb.collections.delete('dahoot_settings');
+      console.log("[Dahoot DB] Deleted existing 'dahoot_settings' collection.");
+    } catch (e) {}
   } else {
-    console.log("[Dahoot DB] Non-local or Production target: Skipping deletion of existing collections.");
+    console.log("[Dahoot DB] No --erase flag: Updating collections non-destructively (existing data preserved).");
   }
 
   // 1. Setup 'dahoot_user_info' collection
@@ -437,8 +486,8 @@ async function runSetup() {
     deleteRule: ''
   });
 
-  // 7. Seed default game, questions, and options (skip in production or non-local)
-  if (isLocalUrl(pbUrl) && !isProd) {
+  // 7. Seed default game, questions, and options (only with --erase flag)
+  if (isErase) {
     try {
       console.log("[Dahoot DB] Seeding default options...");
       const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other'];
@@ -455,29 +504,25 @@ async function runSetup() {
         await pb.collection('dahoot_options').create({ type: 'language', value: lang });
       }
 
-      console.log("[Dahoot DB] Seeding default game...");
-      const defaultGame = await pb.collection('dahoot_games').create({
-        title: "General Tech Trivia",
-        description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
-        creator: "Dahoot Team",
-        language: "English",
-        cefr_level: "B2",
-        subject: "Science"
-      });
-
-      console.log("[Dahoot DB] Seeding default questions...");
-      for (const q of DEFAULT_QUESTIONS) {
-        await pb.collection('dahoot_questions').create({
-          ...q,
-          game_id: defaultGame.id
-        });
+      console.log("[Dahoot DB] Seeding default games...");
+      for (const gameData of SAMPLE_GAMES) {
+        const newGame = await pb.collection('dahoot_games').create(gameData);
+        console.log(`[Dahoot DB] Created game: ${newGame.title}`);
+        
+        console.log(`[Dahoot DB] Seeding questions for ${newGame.title}...`);
+        for (const q of DEFAULT_QUESTIONS) {
+          await pb.collection('dahoot_questions').create({
+            ...q,
+            game_id: newGame.id
+          });
+        }
       }
-      console.log("\x1b[32m[Dahoot DB] Default game, questions, and options seeded successfully!\x1b[0m");
+      console.log("\x1b[32m[Dahoot DB] Default games, questions, and options seeded successfully!\x1b[0m");
     } catch (err) {
       console.error("[Dahoot DB] Error seeding default game/questions:", err.message);
     }
   } else {
-    console.log("[Dahoot DB] Non-local or Production target: Skipping database seeding.");
+    console.log("[Dahoot DB] No --erase flag: Skipping database seeding.");
   }
 
   console.log('\n\x1b[32m🎉 [Dahoot DB] Programmatic database setup complete!\x1b[0m');

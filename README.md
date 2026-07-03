@@ -50,7 +50,14 @@ Before running the app, provision your database collections and populate default
    ```bash
    npm run db:setup
    ```
-*This script logs into your local PocketBase instance as a superuser, creates the required schemas for `rooms`, `players`, and `questions`, and seeds default demo questions representing all five question types.*
+   *This script logs into your local PocketBase instance as a superuser, creates the required schemas for `rooms`, `players`, and `questions`, and seeds default demo questions representing all five question types.*
+
+   **Non-destructive by default**: Running `npm run db:setup` will create missing collections and add new fields without deleting existing data.
+
+   **Full reset**: To delete all `dahoot_*` collections and reseed default data, use the `--erase` flag:
+   ```bash
+   npm run db:setup -- --erase
+   ```
 
 ---
 

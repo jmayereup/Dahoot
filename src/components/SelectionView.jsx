@@ -156,11 +156,6 @@ export function SelectionView({
     });
   }, [gamesList, filterSubject, filterCefr]);
 
-  // Find currently selected game details to display metadata below dropdown
-  const selectedGameDetails = useMemo(() => {
-    return gamesList.find(g => g.id === selectedGameId) || null;
-  }, [gamesList, selectedGameId]);
-
   // Automatically update selected game when the filtered list changes
   useEffect(() => {
     if (gamesList.length === 0) return;
@@ -411,7 +406,7 @@ export function SelectionView({
               </div>
             )}
 
-            {/* Scrollable Game List */}
+            {/* Game Cards Grid */}
             {gamesList.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 20px' }}>
                 No games found. Click "Reset & Seed Demo Questions" to create one.
@@ -422,54 +417,48 @@ export function SelectionView({
               </p>
             ) : (
               <>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
                   Showing {searchedGames.length} of {gamesList.length} games
                 </p>
-                <div className="game-list" style={{ marginBottom: '16px' }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   {searchedGames.map(g => {
                     const isSelected = g.id === selectedGameId;
                     return (
                       <div
                         key={g.id}
-                        className={`game-list-item${isSelected ? ' selected' : ''}`}
                         onClick={() => setSelectedGameId(g.id)}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'border-rose-300 bg-rose-50/50 shadow-md' 
+                            : 'border-slate-200 bg-white hover:border-rose-200 hover:shadow-sm'
+                        }`}
                       >
-                        <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b' }}>
-                          {g.title}
-                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm mb-1.5">{g.title}</h3>
                         {g.description && (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {g.description}
-                          </div>
+                          <p className="text-xs text-slate-600 mb-2 line-clamp-2">{g.description}</p>
                         )}
-                        <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem', marginTop: '2px', color: 'var(--text-secondary)' }}>
-                          {g.subject && <span>📚 {g.subject}</span>}
-                          {g.cefr_level && <span>🎓 {g.cefr_level}</span>}
-                          {g.creator && <span>👤 {g.creator}</span>}
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.subject && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              📚 {g.subject}
+                            </span>
+                          )}
+                          {g.cefr_level && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              🎓 {g.cefr_level}
+                            </span>
+                          )}
+                          {g.creator && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              👤 {g.creator}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </>
-            )}
-
-            {/* Selected Game Metadata Badges */}
-            {selectedGameDetails && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 2px', marginBottom: '12px' }}>
-                {selectedGameDetails.subject && (
-                  <span className="game-tag">📚 {selectedGameDetails.subject}</span>
-                )}
-                {selectedGameDetails.cefr_level && (
-                  <span className="game-tag">🎓 {selectedGameDetails.cefr_level}</span>
-                )}
-                {selectedGameDetails.language && (
-                  <span className="game-tag">🗣️ {selectedGameDetails.language}</span>
-                )}
-                {selectedGameDetails.creator && (
-                  <span className="game-tag">👤 {selectedGameDetails.creator}</span>
-                )}
-              </div>
             )}
 
             {selectedGameId && gameQuestions.length > 0 && (
