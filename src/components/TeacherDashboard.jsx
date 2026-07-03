@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
-import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 import { pb } from '../pb';
+import { QuestionInteraction } from './QuestionInteraction';
 
 export function TeacherDashboard({
   // Games List State & Handlers
@@ -112,13 +112,8 @@ export function TeacherDashboard({
   // Interactive preview answering states
   const [previewAnswered, setPreviewAnswered] = useState(false);
   const [previewIsCorrect, setPreviewIsCorrect] = useState(false);
-  const [selectedOptionIdx, setSelectedOptionIdx] = useState(null);
-  const [sortingItems, setSortingItems] = useState([]);
-  const [placedWords, setPlacedWords] = useState([]);
-  const [activeBlankIdx, setActiveBlankIdx] = useState(0);
-  const [dropdownSelections, setDropdownSelections] = useState([]);
-  const [categorizeIdx, setCategorizeIdx] = useState(0);
-  const [categoryAssignments, setCategoryAssignments] = useState({});
+  const [previewPlayerAnswer, setPreviewPlayerAnswer] = useState(null);
+  const [previewCategorizeIdx, setPreviewCategorizeIdx] = useState(0);
 
   // Admin Panel states
   const [userRole, setUserRole] = useState('TEACHER');
@@ -912,43 +907,11 @@ export function TeacherDashboard({
     );
   };
 
-  const initPreviewQuestionStates = (question) => {
+  const initPreviewQuestionStates = () => {
     setPreviewAnswered(false);
     setPreviewIsCorrect(false);
-    setSelectedOptionIdx(null);
-    
-    const type = question.type || 'MULTIPLE_CHOICE';
-    if (type === 'SORTING' && Array.isArray(question.options)) {
-      setSortingItems([...question.options].sort(() => 0.5 - Math.random()));
-    } else {
-      setSortingItems([]);
-    }
-
-    if (type === 'DRAG_DROP') {
-      const totalBlanks = typeof question.options === 'object' && question.options.correct
-        ? question.options.correct.length
-        : 0;
-      setPlacedWords(Array(totalBlanks).fill(null));
-      setActiveBlankIdx(0);
-    } else {
-      setPlacedWords([]);
-    }
-
-    if (type === 'DROP_DOWN') {
-      const totalDropdowns = typeof question.options === 'object' && question.options.dropdowns
-        ? question.options.dropdowns.length
-        : 0;
-      setDropdownSelections(Array(totalDropdowns).fill(''));
-    } else {
-      setDropdownSelections([]);
-    }
-
-    if (type === 'CATEGORIZE') {
-      setCategorizeIdx(0);
-      setCategoryAssignments({});
-    } else {
-      setCategoryAssignments({});
-    }
+    setPreviewPlayerAnswer(null);
+    setPreviewCategorizeIdx(0);
   };
 
   const startPreviewGame = async (game) => {
@@ -958,7 +921,6 @@ export function TeacherDashboard({
     setPreviewCurrentIdx(0);
     setPreviewAnswered(false);
     setPreviewIsCorrect(false);
-    setSelectedOptionIdx(null);
     try {
       const qList = await pb.collection('dahoot_questions').getFullList({
         filter: `game_id = "${game.id}"`,
@@ -966,7 +928,7 @@ export function TeacherDashboard({
       });
       setPreviewQuestions(qList);
       if (qList.length > 0) {
-        initPreviewQuestionStates(qList[0]);
+        initPreviewQuestionStates();
       }
     } catch (err) {
       console.error(err);
@@ -982,7 +944,8 @@ export function TeacherDashboard({
     setPreviewCurrentIdx(0);
     setPreviewAnswered(false);
     setPreviewIsCorrect(false);
-    setSelectedOptionIdx(null);
+    setPreviewPlayerAnswer(null);
+    setPreviewCategorizeIdx(0);
   };
 
   const submitPreviewAnswer = (userAnswer) => {
@@ -993,7 +956,6 @@ export function TeacherDashboard({
     const type = activeQuestion.type || 'MULTIPLE_CHOICE';
 
     if (type === 'MULTIPLE_CHOICE') {
-      setSelectedOptionIdx(userAnswer);
       isCorrect = userAnswer === activeQuestion.correct_option_index;
     } else if (type === 'SORTING') {
       isCorrect = Array.isArray(userAnswer) && 
@@ -1015,6 +977,7 @@ export function TeacherDashboard({
                   correctItems.every(item => userAnswer[item.name] === item.category);
     }
 
+    setPreviewPlayerAnswer(userAnswer);
     setPreviewIsCorrect(isCorrect);
     setPreviewAnswered(true);
   };
@@ -1023,666 +986,64 @@ export function TeacherDashboard({
     if (previewCurrentIdx + 1 < previewQuestions.length) {
       const nextIdx = previewCurrentIdx + 1;
       setPreviewCurrentIdx(nextIdx);
-      initPreviewQuestionStates(previewQuestions[nextIdx]);
+      initPreviewQuestionStates();
     } else {
       alert("You have previewed all questions in this Dahoot!");
       closePreviewGame();
     }
   };
 
-  const renderMcInteraction = (activeQuestion) => {
-    if (!Array.isArray(activeQuestion.options)) return null;
-
-    const letters = ['A', 'B', 'C', 'D'];
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
-        {activeQuestion.options.map((opt, idx) => {
-          const isCorrect = idx === activeQuestion.correct_option_index;
-          const isSelected = idx === selectedOptionIdx;
-          
-          let buttonStyle = {
-            padding: '14px 16px',
-            fontSize: '0.95rem',
-            fontWeight: '600',
-            width: '100%',
-            transition: 'all 0.2s ease',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            borderRadius: '12px',
-            color: 'var(--text-primary)',
-            textAlign: 'left',
-            cursor: previewAnswered ? 'default' : 'pointer',
-            boxShadow: 'var(--shadow-sm)'
-          };
-
-          let badgeStyle = {
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: '700',
-            fontSize: '0.8rem',
-            transition: 'all 0.2s ease',
-            flexShrink: 0
-          };
-
-          if (previewAnswered) {
-            if (isCorrect) {
-              buttonStyle.background = 'rgba(16, 185, 129, 0.1)';
-              buttonStyle.borderColor = '#10b981';
-              buttonStyle.boxShadow = '0 0 20px rgba(16, 185, 129, 0.2)';
-              
-              badgeStyle.background = '#10b981';
-              badgeStyle.borderColor = '#10b981';
-              badgeStyle.color = '#ffffff';
-            } else if (isSelected) {
-              buttonStyle.background = 'rgba(239, 68, 68, 0.1)';
-              buttonStyle.borderColor = '#ff4b60';
-              buttonStyle.boxShadow = '0 0 20px rgba(255, 75, 96, 0.2)';
-              
-              badgeStyle.background = '#ff4b60';
-              badgeStyle.borderColor = '#ff4b60';
-              badgeStyle.color = '#ffffff';
-            } else {
-              buttonStyle.opacity = 0.45;
-              buttonStyle.background = 'rgba(255, 255, 255, 0.01)';
-            }
-          }
-
-          return (
-            <button
-              key={idx}
-              type="button"
-              className={previewAnswered ? '' : 'preview-mc-option'}
-              style={buttonStyle}
-              onClick={() => submitPreviewAnswer(idx)}
-              disabled={previewAnswered}
-            >
-              <div className="preview-mc-badge" style={badgeStyle}>
-                {letters[idx]}
-              </div>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between' }}>
-                <span>{opt}</span>
-                {previewAnswered && isCorrect && (
-                  <span style={{ 
-                    background: '#10b981', 
-                    borderRadius: '50%', 
-                    width: 22, 
-                    height: 22, 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontSize: '0.85rem',
-                    color: '#ffffff',
-                    boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
-                    flexShrink: 0
-                  }}>
-                    ✓
-                  </span>
-                )}
-                {previewAnswered && isSelected && !isCorrect && (
-                  <span style={{ 
-                    background: '#ff4b60', 
-                    borderRadius: '50%', 
-                    width: 22, 
-                    height: 22, 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontSize: '0.85rem',
-                    color: '#ffffff',
-                    boxShadow: '0 0 10px rgba(255, 75, 96, 0.5)',
-                    flexShrink: 0
-                  }}>
-                    ✗
-                  </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderSortingInteraction = () => {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-        {sortingItems.map((item, idx) => (
-          <div 
-            key={idx} 
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid var(--panel-border)',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ 
-                background: 'var(--accent-glow)', 
-                color: 'var(--accent-light)', 
-                fontWeight: 700, 
-                width: 24, 
-                height: 24, 
-                borderRadius: '50%', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '0.8rem' 
-              }}>
-                {idx + 1}
-              </span>
-              <span style={{ color: 'var(--text-primary)' }}>{item}</span>
-            </div>
-            {!previewAnswered && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    if (idx === 0) return;
-                    const updated = [...sortingItems];
-                    const temp = updated[idx];
-                    updated[idx] = updated[idx - 1];
-                    updated[idx - 1] = temp;
-                    setSortingItems(updated);
-                  }}
-                  disabled={idx === 0}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ▲
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    if (idx === sortingItems.length - 1) return;
-                    const updated = [...sortingItems];
-                    const temp = updated[idx];
-                    updated[idx] = updated[idx + 1];
-                    updated[idx + 1] = temp;
-                    setSortingItems(updated);
-                  }}
-                  disabled={idx === sortingItems.length - 1}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ▼
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-        
-        {!previewAnswered && (
-          <button
-            onClick={() => submitPreviewAnswer(sortingItems)}
-            className="btn btn-primary"
-            style={{ marginTop: 16 }}
-          >
-            Submit Order
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const renderDragDropInteraction = (activeQuestion) => {
-    if (!activeQuestion.options) return null;
-
-    const renderBlanks = (sentence) => {
-      const parts = splitBracketTokens(sentence);
-      return parts.map((part, idx) => {
-        const numericIdx = getBlankIndex(part);
-        const inner = getBracketInner(part);
-        if (numericIdx !== null) {
-          const blankIdx = numericIdx;
-          const word = placedWords[blankIdx];
-          const isActive = blankIdx === activeBlankIdx;
-          
-          let blankStyle = {
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '90px',
-            height: '32px',
-            borderBottom: '2px solid var(--accent-light)',
-            margin: '0 6px',
-            padding: '0 8px',
-            cursor: previewAnswered ? 'default' : 'pointer',
-            color: word ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: word ? '700' : 'normal',
-            transition: 'all 0.15s ease',
-            backgroundColor: isActive ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
-            borderRadius: '4px'
-          };
-
-          return (
-            <span 
-              key={idx} 
-              onClick={() => {
-                if (previewAnswered) return;
-                if (word) {
-                  const updated = [...placedWords];
-                  updated[blankIdx] = null;
-                  setPlacedWords(updated);
-                  setActiveBlankIdx(blankIdx);
-                } else {
-                  setActiveBlankIdx(blankIdx);
-                }
-              }}
-              style={blankStyle}
-            >
-              {word || '_____'}
-            </span>
-          );
-        }
-        if (inner) {
-          // No numeric index: try to map this token to a blank index based on correct array
-          let mappedIdx = -1;
-          if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
-          const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
-          const word = placedWords[blankIdx];
-          const isActive = blankIdx === activeBlankIdx;
-          let blankStyle = {
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '90px',
-            height: '32px',
-            borderBottom: '2px solid var(--accent-light)',
-            margin: '0 6px',
-            padding: '0 8px',
-            cursor: previewAnswered ? 'default' : 'pointer',
-            color: word ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: word ? '700' : 'normal',
-            transition: 'all 0.15s ease',
-            backgroundColor: isActive ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
-            borderRadius: '4px'
-          };
-
-          return (
-            <span 
-              key={idx}
-              onClick={() => {
-                if (previewAnswered) return;
-                if (word) {
-                  const updated = [...placedWords];
-                  updated[blankIdx] = null;
-                  setPlacedWords(updated);
-                  setActiveBlankIdx(blankIdx);
-                } else {
-                  setActiveBlankIdx(blankIdx);
-                }
-              }}
-              style={blankStyle}
-            >
-              {word || '_____'}
-            </span>
-          );
-        }
-        return <span key={idx}>{part}</span>;
-      });
-    };
-
-    return (
-      <div style={{ width: '100%' }}>
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-          lineHeight: '2.5rem',
-          fontSize: '1.1rem',
-          marginBottom: 20
-        }}>
-          {renderBlanks(activeQuestion.options.sentence)}
-        </div>
-
-        {!previewAnswered && (
-          <>
-            <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex gap-2 flex-wrap justify-center min-h-[80px] mb-5">
-              {activeQuestion.options.choices?.map((choice, idx) => {
-                const isPlaced = placedWords.includes(choice);
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      if (isPlaced) return;
-                      let fillIdx = activeBlankIdx;
-                      if (placedWords[fillIdx] !== null) {
-                        fillIdx = placedWords.indexOf(null);
-                      }
-                      if (fillIdx !== -1) {
-                        const updated = [...placedWords];
-                        updated[fillIdx] = choice;
-                        setPlacedWords(updated);
-                        const nextEmpty = updated.indexOf(null);
-                        if (nextEmpty !== -1) {
-                          setActiveBlankIdx(nextEmpty);
-                        }
-                      }
-                    }}
-                    className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                    disabled={isPlaced}
-                  >
-                    {choice}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => submitPreviewAnswer(placedWords)}
-              className="btn btn-primary"
-              disabled={placedWords.includes(null)}
-            >
-              Submit Blanks
-            </button>
-          </>
-        )}
-      </div>
-    );
-  };
-
-  const renderDropDownInteraction = (activeQuestion) => {
-    if (!activeQuestion.options || !Array.isArray(activeQuestion.options.dropdowns)) return null;
-
-    const renderDropdowns = (sentence, dropdowns) => {
-      const parts = splitCurlyTokens(sentence);
-      return parts.map((part, idx) => {
-        const dropIdx = getCurlyIndex(part);
-        const inner = getCurlyInner(part);
-        if (dropIdx !== null) {
-          const config = dropdowns[dropIdx] || { choices: [] };
-          return (
-            <select
-              key={idx}
-              value={dropdownSelections[dropIdx] || ''}
-              onChange={(e) => {
-                const updated = [...dropdownSelections];
-                updated[dropIdx] = e.target.value;
-                setDropdownSelections(updated);
-              }}
-              disabled={previewAnswered}
-              className="player-sentence-select"
-            >
-              <option value="">-- Choose --</option>
-              {config.choices.map((choice, cIdx) => (
-                <option key={cIdx} value={choice}>{choice}</option>
-              ))}
-            </select>
-          );
-        }
-        if (inner) {
-          // Map inner to dropdown config when possible, otherwise fall back to sequential mapping
-          let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
-          const idxToUse = mappedIdx !== -1 ? mappedIdx : 0;
-          const config = dropdowns[idxToUse] || { choices: [inner], correct: inner };
-          return (
-            <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
-              <option value={config.correct || inner}>{config.correct || inner}</option>
-            </select>
-          );
-        }
-        return <span key={idx}>{part}</span>;
-      });
-    };
-
-    return (
-      <div style={{ width: '100%' }}>
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-          lineHeight: '2.8rem',
-          fontSize: '1.1rem',
-          marginBottom: 20
-        }}>
-          {renderDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-        </div>
-
-        {!previewAnswered && (
-          <button
-            onClick={() => submitPreviewAnswer(dropdownSelections)}
-            className="btn btn-primary"
-            disabled={dropdownSelections.includes('')}
-          >
-            Submit Answers
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const renderCategorizeInteraction = (activeQuestion) => {
-    if (!activeQuestion.options) return null;
-    const totalItems = activeQuestion.options.items?.length || 0;
-    const allCategorized = categorizeIdx >= totalItems;
-
-    return (
-      <div style={{ width: '100%' }}>
-        {!allCategorized ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <div 
-              style={{
-                background: 'var(--accent-glow)',
-                border: '1px solid var(--panel-border-focus)',
-                boxShadow: 'var(--shadow-glow)',
-                borderRadius: '12px',
-                padding: '32px 16px',
-                width: '100%',
-                maxWidth: '340px',
-                textAlign: 'center',
-                fontSize: '1.4rem',
-                fontWeight: 700
-              }}
-            >
-              {activeQuestion.options.items[categorizeIdx]?.name}
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: activeQuestion.options.categories?.length > 2 ? '1fr 1fr' : '1fr',
-              gap: 12,
-              width: '100%',
-              maxWidth: '340px',
-              marginTop: 12
-            }}>
-              {activeQuestion.options.categories?.map((cat, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => {
-                    const itemName = activeQuestion.options.items[categorizeIdx].name;
-                    const updated = { ...categoryAssignments };
-                    updated[itemName] = cat;
-                    setCategoryAssignments(updated);
-                    setCategorizeIdx(prev => prev + 1);
-                  }}
-                  style={{ padding: '12px 16px', fontSize: '0.95rem' }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div>
-            <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-              Review Categorizations
-            </h3>
-            <div style={{ 
-              maxHeight: '180px', 
-              overflowY: 'auto', 
-              background: 'rgba(0, 0, 0, 0.2)', 
-              borderRadius: '8px', 
-              padding: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              marginBottom: 20
-            }}>
-              {Object.keys(categoryAssignments).map((item, idx) => (
-                <div 
-                  key={idx}
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    fontSize: '0.9rem',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                    paddingBottom: 4
-                  }}
-                >
-                  <span style={{ color: 'var(--text-primary)' }}>{item}</span>
-                  <span style={{ color: 'var(--accent-light)', fontWeight: 600 }}>{categoryAssignments[item]}</span>
-                </div>
-              ))}
-            </div>
-
-            {!previewAnswered && (
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => {
-                    setCategorizeIdx(0);
-                    setCategoryAssignments({});
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  Reset
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
-                  onClick={() => submitPreviewAnswer(categoryAssignments)}
-                  style={{ flex: 2 }}
-                >
-                  Submit
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderPreviewFeedbackArea = (activeQuestion) => {
-    if (!previewAnswered) return null;
-
-    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
-
-    let correctAnswerExplanation = '';
-    if (type === 'MULTIPLE_CHOICE') {
-      correctAnswerExplanation = `Correct option is Option ${activeQuestion.correct_option_index + 1}: "${activeQuestion.options[activeQuestion.correct_option_index]}"`;
-    } else if (type === 'SORTING') {
-      correctAnswerExplanation = `Correct sequence: ${activeQuestion.options.join(' ➔ ')}`;
-    } else if (type === 'DRAG_DROP') {
-      correctAnswerExplanation = `Correct words: ${activeQuestion.options.correct?.join(', ')}`;
-    } else if (type === 'DROP_DOWN') {
-      correctAnswerExplanation = `Correct selections: ${activeQuestion.options.dropdowns?.map((d, i) => `[${i+1}] ${d.correct}`).join(', ')}`;
-    } else if (type === 'CATEGORIZE') {
-      correctAnswerExplanation = `Correct classifications: ${activeQuestion.options.items?.map(item => `${item.name} ➔ ${item.category}`).join(', ')}`;
-    }
-
-    return (
-      <div style={{
-        marginTop: '20px',
-        borderTop: '1px solid var(--panel-border)',
-        paddingTop: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16
-      }}>
-        <div style={{
-          background: previewIsCorrect ? 'rgba(76, 175, 80, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid ' + (previewIsCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(239, 68, 68, 0.3)'),
-          borderRadius: '8px',
-          padding: '16px',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ 
-            color: previewIsCorrect ? '#4caf50' : '#ff4b60', 
-            margin: '0 0 6px 0', 
-            fontSize: '1.2rem',
-            fontWeight: 700,
-            textShadow: previewIsCorrect ? '0 0 10px rgba(76, 175, 80, 0.3)' : '0 0 10px rgba(255, 75, 96, 0.3)'
-          }}>
-            {previewIsCorrect ? '🎉 Correct!' : '❌ Incorrect'}
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-            {correctAnswerExplanation}
-          </p>
-        </div>
-
-        <button 
-          className="btn btn-primary" 
-          onClick={nextPreviewQuestion}
-          style={{ width: '100%' }}
-        >
-          {previewCurrentIdx + 1 < previewQuestions.length ? 'Next Question ➔' : 'Finish Preview'}
-        </button>
-      </div>
-    );
-  };
-
   const renderPreviewQuestionBody = () => {
     const activeQuestion = previewQuestions[previewCurrentIdx];
     if (!activeQuestion) return null;
-    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: '10px',
-            fontSize: '0.85rem'
-          }}>
-            <span className="game-tag text-rose-500 border-rose-100 bg-rose-50/50 font-bold px-2.5 py-0.5">
-              Question {previewCurrentIdx + 1} of {previewQuestions.length}
-            </span>
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-              {type.replace('_', ' ')}
-            </span>
-          </div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: '1.6' }}>
-            {activeQuestion.text}
-          </div>
-        </div>
+        {!previewAnswered ? (
+          <QuestionInteraction
+            question={activeQuestion}
+            questionNumber={previewCurrentIdx + 1}
+            totalQuestions={previewQuestions.length}
+            mode="interactive"
+            onSubmit={submitPreviewAnswer}
+            categorizeIdx={previewCategorizeIdx}
+            onCategorizeIdxChange={setPreviewCategorizeIdx}
+          />
+        ) : (
+          <>
+            <div style={{
+              background: previewIsCorrect ? 'rgba(76, 175, 80, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid ' + (previewIsCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(239, 68, 68, 0.3)'),
+              borderRadius: '8px',
+              padding: '16px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{
+                color: previewIsCorrect ? '#4caf50' : '#ff4b60',
+                margin: '0 0 6px 0',
+                fontSize: '1.2rem',
+                fontWeight: 700,
+                textShadow: previewIsCorrect ? '0 0 10px rgba(76, 175, 80, 0.3)' : '0 0 10px rgba(255, 75, 96, 0.3)'
+              }}>
+                {previewIsCorrect ? '🎉 Correct!' : '❌ Incorrect'}
+              </h3>
+            </div>
 
-        <div style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: '10px 0' }}>
-          {type === 'MULTIPLE_CHOICE' && renderMcInteraction(activeQuestion)}
-          {type === 'SORTING' && renderSortingInteraction()}
-          {type === 'DRAG_DROP' && renderDragDropInteraction(activeQuestion)}
-          {type === 'DROP_DOWN' && renderDropDownInteraction(activeQuestion)}
-          {type === 'CATEGORIZE' && renderCategorizeInteraction(activeQuestion)}
-        </div>
+            <QuestionInteraction
+              question={activeQuestion}
+              mode="review"
+              playerAnswer={previewPlayerAnswer}
+            />
 
-        {renderPreviewFeedbackArea(activeQuestion)}
+            <button
+              className="btn btn-primary"
+              onClick={nextPreviewQuestion}
+              style={{ width: '100%', marginTop: '16px' }}
+            >
+              {previewCurrentIdx + 1 < previewQuestions.length ? 'Next Question ➔' : 'Finish Preview'}
+            </button>
+          </>
+        )}
       </div>
     );
   };

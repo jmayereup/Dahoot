@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
-import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
+import React, { useState } from 'react';
+import { QuestionInteraction } from './QuestionInteraction';
 
 export function PracticeView({
   practiceState,
@@ -24,494 +23,8 @@ export function PracticeView({
   exitPractice
 }) {
   const activeQuestion = questionsQueue[currentQuestionIdx];
-  const type = activeQuestion?.type || 'MULTIPLE_CHOICE';
-
-  // ----------------------------------------------------
-  // LOCAL STATES FOR VARIOUS QUESTION TYPES
-  // ----------------------------------------------------
-  const [sortingPool, setSortingPool] = useState([]);
-  const [sortedItems, setSortedItems] = useState([]);
-  const [placedWords, setPlacedWords] = useState([]);
-  const [activeBlankIdx, setActiveBlankIdx] = useState(0);
-  const [dropdownSelections, setDropdownSelections] = useState([]);
-  const [categorizeIdx, setCategorizeIdx] = useState(0);
-  const [categoryAssignments, setCategoryAssignments] = useState({});
   const [localNickname, setLocalNickname] = useState(nickname || 'Student');
- 
-  // Reset inputs when active question changes
-  useEffect(() => {
-    if (!activeQuestion) return;
- 
-    if (type === 'SORTING' && Array.isArray(activeQuestion.options)) {
-      setSortingPool([...activeQuestion.options].sort(() => 0.5 - Math.random()));
-      setSortedItems([]);
-    } else if (type === 'DRAG_DROP' && activeQuestion.options) {
-      const correctLen = activeQuestion.options.correct ? activeQuestion.options.correct.length : 0;
-      setPlacedWords(Array(correctLen).fill(null));
-      setActiveBlankIdx(0);
-    } else if (type === 'DROP_DOWN' && activeQuestion.options) {
-      const dropLen = activeQuestion.options.dropdowns ? activeQuestion.options.dropdowns.length : 0;
-      setDropdownSelections(Array(dropLen).fill(''));
-    } else if (type === 'CATEGORIZE' && activeQuestion.options) {
-      setCategorizeIdx(0);
-      setCategoryAssignments({});
-    }
-  }, [activeQuestion, type]);
- 
-  // ----------------------------------------------------
-  // SORTING HANDLERS
-  // ----------------------------------------------------
-  const handlePoolItemClick = (item) => {
-    if (sortedItems.includes(item)) return;
-    setSortedItems([...sortedItems, item]);
-  };
- 
-  const handleSortedItemClick = (item) => {
-    setSortedItems(sortedItems.filter(i => i !== item));
-  };
 
-  // ----------------------------------------------------
-  // DRAG & DROP HANDLERS
-  // ----------------------------------------------------
-  const handlePoolWordTap = (word) => {
-    if (placedWords.includes(word)) return;
-
-    let fillIdx = activeBlankIdx;
-    if (placedWords[fillIdx] !== null) {
-      fillIdx = placedWords.indexOf(null);
-    }
-
-    if (fillIdx !== -1) {
-      const updated = [...placedWords];
-      updated[fillIdx] = word;
-      setPlacedWords(updated);
-
-      const nextEmpty = updated.indexOf(null);
-      if (nextEmpty !== -1) {
-        setActiveBlankIdx(nextEmpty);
-      }
-    }
-  };
-
-  const handleBlankTap = (blankIdx) => {
-    if (placedWords[blankIdx] !== null) {
-      const updated = [...placedWords];
-      updated[blankIdx] = null;
-      setPlacedWords(updated);
-      setActiveBlankIdx(blankIdx);
-    } else {
-      setActiveBlankIdx(blankIdx);
-    }
-  };
-
-  const renderPlayerSentenceBlanks = (sentence) => {
-    if (!sentence) return '';
-    const parts = splitBracketTokens(sentence);
-    let sequentialBlank = 0;
-    return parts.map((part, idx) => {
-      const numericIdx = getBlankIndex(part);
-      const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
-        const word = placedWords[blankIdx];
-        const isActive = blankIdx === activeBlankIdx;
-        return (
-          <span 
-            key={idx} 
-            onClick={() => handleBlankTap(blankIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
-          >
-            {word || '_____'}
-          </span>
-        );
-      }
-      if (inner) {
-        // No numeric index provided: try to map by value order, otherwise render an interactive blank slot
-        let mappedIdx = -1;
-        if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
-        const blankIdx = mappedIdx !== -1 ? mappedIdx : activeQuestion?.options?.correct ? activeQuestion.options.correct.indexOf(inner) : -1;
-        const displayIdx = blankIdx !== -1 ? blankIdx : 0;
-        const word = placedWords[displayIdx];
-        const isActive = displayIdx === activeBlankIdx;
-        return (
-          <span 
-            key={idx}
-            onClick={() => handleBlankTap(displayIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
-          >
-            {word || '_____'}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  // ----------------------------------------------------
-  // DROP DOWN HANDLERS
-  // ----------------------------------------------------
-  const handleDropdownChange = (idx, val) => {
-    const updated = [...dropdownSelections];
-    updated[idx] = val;
-    setDropdownSelections(updated);
-  };
-
-  const renderPlayerSentenceDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = splitCurlyTokens(sentence);
-    let sequentialDrop = 0;
-    return parts.map((part, idx) => {
-      const dropIdx = getCurlyIndex(part);
-      const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const config = dropdowns[dropIdx] || { choices: [] };
-        return (
-          <select
-            key={idx}
-            className="player-sentence-select"
-            value={dropdownSelections[dropIdx] || ''}
-            onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-          >
-            <option value="">-- Choose --</option>
-            {config.choices.map((choice, cIdx) => (
-              <option key={cIdx} value={choice}>{choice}</option>
-            ))}
-          </select>
-        );
-      }
-      if (inner) {
-        // Map inner to dropdown by correct value, otherwise map sequentially
-        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
-        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
-        if (mappedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { choices: [inner], correct: inner };
-        return (
-          <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
-            <option value={config.correct || inner}>{config.correct || inner}</option>
-          </select>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  // ----------------------------------------------------
-  // CATEGORIZE HANDLERS
-  // ----------------------------------------------------
-  const handleCategorizeChoice = (itemName, category) => {
-    const updated = { ...categoryAssignments };
-    updated[itemName] = category;
-    setCategoryAssignments(updated);
-    setCategorizeIdx(prev => prev + 1);
-  };
-
-  const handleCategorizeReset = () => {
-    setCategorizeIdx(0);
-    setCategoryAssignments({});
-  };
-
-  const allCategorized = categorizeIdx >= (activeQuestion?.options?.items?.length || 0);
-
-  // ----------------------------------------------------
-  // FEEDBACK RENDER HELPERS (Duplicated/adapted from PlayerFeedback)
-  // ----------------------------------------------------
-  const renderFeedbackSentenceBlanks = (sentence, correct, playerAnswer) => {
-    if (!sentence) return '';
-    const parts = splitBracketTokens(sentence);
-    let sequentialBlank = 0;
-    return parts.map((part, idx) => {
-      const numericIdx = getBlankIndex(part);
-      const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
-        const playerWord = playerAnswer ? playerAnswer[blankIdx] : null;
-        const correctWord = correct ? correct[blankIdx] : '';
-        const isCorrect = playerWord === correctWord;
-        
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-            style={{ cursor: 'default' }}
-          >
-            {playerWord ? (
-              <span>
-                {playerWord} {isCorrect ? '✓' : `(Correct: ${correctWord})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctWord})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        let valIdx = -1;
-        if (Array.isArray(correct)) valIdx = correct.findIndex(c => c === inner);
-        let blankIdx;
-        let usedSequential = false;
-        if (valIdx !== -1) {
-          blankIdx = valIdx;
-        } else {
-          blankIdx = sequentialBlank;
-          usedSequential = true;
-        }
-        // advance the sequential counter if we consumed a sequential mapping
-        if (usedSequential) sequentialBlank += 1;
-
-        const correctWord = Array.isArray(correct) ? correct[blankIdx] : inner;
-        const playerWord = (playerAnswer && Array.isArray(playerAnswer)) ? playerAnswer[blankIdx] : null;
-        const isCorrect = playerWord === correctWord;
-
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-            style={{ cursor: 'default' }}
-          >
-            {playerWord ? (
-              <span>
-                {playerWord} {isCorrect ? '✓' : `(Correct: ${correctWord})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctWord})</span>
-            )}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = splitCurlyTokens(sentence);
-    let sequentialDrop = 0;
-    return parts.map((part, idx) => {
-      const dropIdx = getCurlyIndex(part);
-      const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const config = dropdowns[dropIdx];
-        const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
-        const correctChoice = config.correct;
-        const isCorrect = playerChoice === correctChoice;
-
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>
-                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctChoice})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        const guessedIdx = dropdowns.findIndex(d => d.correct === inner);
-        const idxToUse = guessedIdx !== -1 ? guessedIdx : sequentialDrop;
-        if (guessedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { correct: inner };
-        const playerChoice = playerAnswer && idxToUse !== -1 ? playerAnswer[idxToUse] : '';
-        const correctChoice = config?.correct || inner;
-        const isCorrect = playerChoice === correctChoice;
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>
-                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctChoice})</span>
-            )}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  const renderQuestionReview = () => {
-    return (
-      <div style={{ marginTop: 24, textAlign: 'left' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Question Review:
-        </h3>
-        
-        <div className="question-card" style={{ padding: '16px', marginBottom: 16 }}>
-          <div className="question-title" style={{ fontSize: '1.1rem', lineHeight: '1.6rem' }}>
-            {activeQuestion.text}
-          </div>
-        </div>
-
-        {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
-          <div className="options-grid">
-            {activeQuestion.options.map((item, idx) => {
-              const isCorrectAnswer = idx === activeQuestion.correct_option_index;
-              const isPlayerChoice = idx === playerSelectedIdx;
-              
-              let cardClass = "";
-              if (isCorrectAnswer) {
-                cardClass = "correct-feedback";
-              } else if (isPlayerChoice && !isCorrectAnswer) {
-                cardClass = "incorrect-feedback";
-              } else {
-                cardClass = "muted-feedback";
-              }
-
-              return (
-                <div 
-                  key={idx} 
-                  className={`option-card ${cardClass}`}
-                >
-                  <div className="option-icon">
-                    {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : ['A', 'B', 'C', 'D'][idx])}
-                  </div>
-                  <span>{item}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 2. SORTING */}
-        {type === 'SORTING' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-            {playerSelectedIdx && Array.isArray(playerSelectedIdx) ? (
-              playerSelectedIdx.map((item, idx) => {
-                const isItemCorrect = item === activeQuestion.options[idx];
-                return (
-                  <div 
-                    key={idx} 
-                    className="player-sorting-card"
-                    style={{
-                      background: isItemCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                      border: isItemCorrect ? '1.5px solid #10b981' : '1.5px solid #ef4444',
-                      borderRadius: '8px',
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      color: isItemCorrect ? '#065f46' : '#991b1b'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="sorting-number" style={{
-                        background: isItemCorrect ? '#10b981' : '#ef4444',
-                        color: '#fff'
-                       }}>{idx + 1}</span>
-                      <span style={{ fontWeight: 600 }}>{item}</span>
-                    </div>
-                    <span style={{ fontWeight: 800 }}>{isItemCorrect ? '✓' : '✗'}</span>
-                  </div>
-                );
-              })
-            ) : (
-              activeQuestion.options.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  className="player-sorting-card"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1.5px solid var(--panel-border)',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <span className="sorting-number">{idx + 1}</span>
-                  <span style={{ fontWeight: 600 }}>{item} (Correct)</span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* 3. DRAG & DROP */}
-        {type === 'DRAG_DROP' && activeQuestion.options && (
-          <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-            lineHeight: '2.5rem',
-            fontSize: '1.15rem'
-          }}>
-            {renderFeedbackSentenceBlanks(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.correct, 
-              playerSelectedIdx
-            )}
-          </div>
-        )}
-
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-            lineHeight: '2.8rem',
-            fontSize: '1.15rem'
-          }}>
-            {renderFeedbackSentenceDropdowns(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.dropdowns, 
-              playerSelectedIdx
-            )}
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
-        {type === 'CATEGORIZE' && activeQuestion.options && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {activeQuestion.options.items?.map((item, idx) => {
-              const playerCat = playerSelectedIdx ? playerSelectedIdx[item.name] : null;
-              const correctCat = item.category;
-              const isCorrect = playerCat === correctCat;
-              
-              return (
-                <div 
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    background: playerCat ? (isCorrect ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)') : 'rgba(245, 158, 11, 0.05)',
-                    border: playerCat ? (isCorrect ? '1px solid #10b981' : '1px solid #ef4444') : '1px dashed #f59e0b',
-                    color: playerCat ? (isCorrect ? '#065f46' : '#991b1b') : '#78350f'
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>{item.name}</span>
-                  <div style={{ fontSize: '0.85rem' }}>
-                    {playerCat ? (
-                      <span>
-                        Chosen: <strong>{playerCat}</strong> {isCorrect ? '✓' : `(Correct: ${correctCat})`}
-                      </span>
-                    ) : (
-                      <span>Not answered (Correct: {correctCat})</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-      </div>
-    );
-  };
-
-  // ----------------------------------------------------
-  // SUB-PAGES RENDERS BY STATE
-  // ----------------------------------------------------
-  
-  // 1. INTRO VIEW
   if (practiceState === 'INTRO') {
     return (
       <div className="app-container">
@@ -588,13 +101,10 @@ export function PracticeView({
     );
   }
 
-  // Calculate mastery values
   const masteryPercentage = Math.round((masteredCount / totalCount) * 100);
 
-  // 2. QUESTION & FEEDBACK COMBINED CONTAINER VIEW
   return (
     <div className="app-container">
-      {/* Session Progress Header */}
       <div style={{ 
         width: '100%', 
         maxWidth: '720px', 
@@ -627,7 +137,6 @@ export function PracticeView({
           </button>
         </div>
 
-        {/* Progress Tracker Bar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255, 255, 255, 0.4)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.03)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 'bold' }}>
             <span style={{ color: 'var(--text-secondary)' }}>
@@ -637,7 +146,6 @@ export function PracticeView({
               Mastery: {masteredCount} / {totalCount} ({masteryPercentage}%)
             </span>
           </div>
-          {/* Progress bar */}
           <div style={{ width: '100%', height: '8px', background: 'rgba(93, 107, 130, 0.08)', borderRadius: '999px', overflow: 'hidden', display: 'flex' }}>
             <div 
               style={{ 
@@ -653,326 +161,17 @@ export function PracticeView({
 
       <div className="panel panel-large animate-fade-in">
         
-        {/* QUESTION VIEW */}
         {practiceState === 'QUESTION' && activeQuestion && (
-          <div>
-            <div className="game-layout">
-              {/* Question card */}
-              <div className="question-card" style={{ padding: '24px', marginBottom: '24px' }}>
-                <span className="question-number" style={{ 
-                  background: 'rgba(255,183,178,0.2)', 
-                  color: 'var(--accent-light)',
-                  padding: '4px 12px',
-                  borderRadius: '999px',
-                  fontSize: '0.78rem',
-                  fontWeight: 'bold',
-                  display: 'inline-block',
-                  marginBottom: '12px'
-                }}>
-                  ROUND {roundNumber} • QUESTION {currentQuestionIdx + 1}
-                </span>
-                <div className="question-title" style={{ fontSize: '1.4rem', lineHeight: '2rem', fontWeight: '700' }}>
-                  {activeQuestion.text}
-                </div>
-              </div>
-
-              {/* Instructions tag */}
-              <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '16px', letterSpacing: '0.05em' }}>
-                {type === 'MULTIPLE_CHOICE' && 'Select the correct option:'}
-                {type === 'SORTING' && 'Sort items in order (top is first):'}
-                {type === 'DRAG_DROP' && 'Tap words to fill the blanks:'}
-                {type === 'DROP_DOWN' && 'Select words from dropdowns:'}
-                {type === 'CATEGORIZE' && `Classify items (${categorizeIdx}/${activeQuestion.options?.items?.length || 0}):`}
-              </div>
-
-              {error && <p style={{ color: '#ff4b60', marginBottom: 12, fontSize: '0.9rem' }}>{error}</p>}
-
-              {/* RENDER INPUT AREA BY TYPE */}
-              <div className="player-input-area" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                
-                {/* 1. MULTIPLE CHOICE */}
-                {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
-                  <div className="options-grid">
-                    {activeQuestion.options.map((option, idx) => (
-                      <button 
-                        key={idx} 
-                        className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
-                        onClick={() => submitAnswer(idx)}
-                      >
-                        <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
-                        <span>{option}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* 2. SORTING */}
-                {type === 'SORTING' && (
-                  <div className="w-full flex flex-col">
-                    {/* Sorted items container */}
-                    <div className="player-sorting-container bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-5 flex flex-col gap-3 min-h-[120px] transition-all justify-center">
-                      {sortedItems.length === 0 ? (
-                        <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none">
-                          Tap items below to rank them in order...
-                        </div>
-                      ) : (
-                        sortedItems.map((item, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleSortedItemClick(item)}
-                            className="flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
-                                {idx + 1}
-                              </span>
-                              <span className="font-bold text-slate-700">{item}</span>
-                            </div>
-                            <span className="text-slate-400 font-bold text-sm">✕</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Pool of unsorted options */}
-                    <div className="text-left mb-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Options to rank:</span>
-                    </div>
-                    <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                      {sortingPool.map((item, idx) => {
-                        const isPlaced = sortedItems.includes(item);
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handlePoolItemClick(item)}
-                            className={`px-4.5 py-2.5 rounded-xl border text-sm font-bold shadow-xs transition-all ${
-                              isPlaced 
-                                ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95' 
-                                : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50/50 hover:border-blue-300 hover:scale-105 active:scale-95 cursor-pointer'
-                            }`}
-                            disabled={isPlaced}
-                          >
-                            {item}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      onClick={() => submitAnswer(sortedItems)}
-                      className="btn btn-primary"
-                      disabled={sortedItems.length < sortingPool.length}
-                      style={{ marginTop: 16 }}
-                    >
-                      Submit Order
-                    </button>
-                  </div>
-                )}
-
-                {/* 3. DRAG & DROP */}
-                {type === 'DRAG_DROP' && activeQuestion.options && (() => {
-                  const isScramble = typeof activeQuestion.options === 'object' && 
-                    activeQuestion.options.sentence && 
-                    !activeQuestion.options.sentence.replace(/\[blank\d+\]/g, '').trim();
-                  return (
-                    <div style={{ width: '100%' }}>
-                      {/* Sentence Container */}
-                      <div 
-                        className={isScramble 
-                          ? "player-sentence-container bg-white border-2 border-dashed border-[#BFFCC6] rounded-2xl p-6 relative shadow-xs text-slate-800 flex flex-wrap items-center justify-center gap-2 min-h-[90px] mb-6 transition-all"
-                          : "player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-slate-800"
-                        }
-                        style={!isScramble ? {
-                          lineHeight: '2.8rem',
-                          fontSize: '1.2rem',
-                          marginBottom: 20
-                        } : undefined}
-                      >
-                        {isScramble ? (
-                          placedWords.every(w => w === null) ? (
-                            <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none py-1.5">
-                              Click words below to form the sentence...
-                            </div>
-                          ) : (
-                            placedWords.map((word, blankIdx) => {
-                              if (word === null) return null;
-                              return (
-                                <button
-                                  key={blankIdx}
-                                  type="button"
-                                  onClick={() => handleBlankTap(blankIdx)}
-                                  className="inline-flex items-center justify-center bg-white border border-[#BFFCC6] text-[#2E6930] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-4 py-2 rounded-xl font-bold shadow-xs cursor-pointer transition-all"
-                                >
-                                  {word}
-                                </button>
-                              );
-                            })
-                          )
-                        ) : (
-                          renderPlayerSentenceBlanks(activeQuestion.options.sentence)
-                        )}
-                      </div>
-
-                      {/* Choices Pool */}
-                      <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                        {activeQuestion.options.choices?.map((choice, idx) => {
-                          const isPlaced = placedWords.includes(choice);
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handlePoolWordTap(choice)}
-                              className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                              disabled={isPlaced}
-                            >
-                              {choice}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <button
-                        onClick={() => submitAnswer(placedWords)}
-                        className="btn btn-primary"
-                        disabled={placedWords.includes(null)}
-                      >
-                        {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* 4. DROP DOWN */}
-                {type === 'DROP_DOWN' && activeQuestion.options && (
-                  <div style={{ width: '100%' }}>
-                    <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-slate-800" style={{
-                      lineHeight: '3rem',
-                      fontSize: '1.2rem',
-                      marginBottom: 20
-                    }}>
-                      {renderPlayerSentenceDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-                    </div>
-
-                    <button
-                      onClick={() => submitAnswer(dropdownSelections)}
-                      className="btn btn-primary"
-                      disabled={dropdownSelections.includes('')}
-                    >
-                      Submit Answers
-                    </button>
-                  </div>
-                )}
-
-                {/* 5. CATEGORIZE */}
-                {type === 'CATEGORIZE' && activeQuestion.options && (
-                  <div style={{ width: '100%' }}>
-                    {!allCategorized ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                        <div 
-                          className="categorize-deck-card bg-slate-50 border border-slate-200 p-8 rounded-2xl font-bold text-xl shadow-md w-full max-w-sm text-center"
-                          style={{ animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                        >
-                          {activeQuestion.options.items[categorizeIdx]?.name}
-                        </div>
-
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: activeQuestion.options.categories?.length > 2 ? '1fr 1fr' : '1fr',
-                          gap: 12,
-                          width: '100%',
-                          maxWidth: '380px',
-                          marginTop: 12
-                        }}>
-                          {activeQuestion.options.categories?.map((cat, idx) => {
-                            const colorSet = BUCKET_COLORS[idx % BUCKET_COLORS.length];
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                className="btn"
-                                onClick={() => handleCategorizeChoice(activeQuestion.options.items[categorizeIdx].name, cat)}
-                                style={{
-                                  background: colorSet.background,
-                                  border: colorSet.border,
-                                  color: colorSet.color,
-                                  boxShadow: colorSet.shadow,
-                                  padding: '16px 20px',
-                                  fontSize: '1rem',
-                                  borderRadius: '16px',
-                                  fontWeight: '700'
-                                }}
-                              >
-                                {cat}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                          Review Assignments
-                        </h3>
-                        <div style={{ 
-                          maxHeight: '200px', 
-                          overflowY: 'auto', 
-                          background: 'rgba(0, 0, 0, 0.03)', 
-                          border: '1px solid rgba(0,0,0,0.06)',
-                          borderRadius: '12px', 
-                          padding: '16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 10,
-                          marginBottom: 20
-                        }}>
-                          {Object.keys(categoryAssignments).map((item, idx) => (
-                            <div 
-                              key={idx}
-                              style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                fontSize: '0.95rem',
-                                borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
-                                paddingBottom: 6
-                              }}
-                            >
-                              <span>{item}</span>
-                              <span style={{ color: 'var(--accent-light)', fontWeight: 'bold' }}>{categoryAssignments[item]}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 12 }}>
-                          <button 
-                            type="button" 
-                            className="btn btn-secondary" 
-                            onClick={handleCategorizeReset}
-                            style={{ flex: 1 }}
-                          >
-                            Reset
-                          </button>
-                          <button 
-                            type="button" 
-                            className="btn btn-primary" 
-                            onClick={() => submitAnswer(categoryAssignments)}
-                            style={{ flex: 2 }}
-                          >
-                            Submit
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-            </div>
-          </div>
+          <QuestionInteraction
+            question={activeQuestion}
+            questionNumber={currentQuestionIdx + 1}
+            totalQuestions={questionsQueue.length}
+            roundNumber={roundNumber}
+            mode="interactive"
+            onSubmit={submitAnswer}
+          />
         )}
 
-        {/* FEEDBACK & REVIEW VIEW */}
         {practiceState === 'FEEDBACK' && playerFeedback && (
           <div className="feedback-screen animate-fade-in">
             {playerFeedback.correct ? (
@@ -993,7 +192,11 @@ export function PracticeView({
               </div>
             )}
 
-            {renderQuestionReview()}
+            <QuestionInteraction
+              question={activeQuestion}
+              mode="review"
+              playerAnswer={playerSelectedIdx}
+            />
 
             <button 
               onClick={nextQuestion} 
@@ -1005,7 +208,6 @@ export function PracticeView({
           </div>
         )}
 
-        {/* ROUND COMPLETE VIEW */}
         {practiceState === 'ROUND_COMPLETE' && (
           <div className="animate-fade-in" style={{ padding: '24px' }}>
             <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>🔄</span>
@@ -1040,7 +242,6 @@ export function PracticeView({
           </div>
         )}
 
-        {/* FINISHED / MASTERED VIEW */}
         {practiceState === 'FINISHED' && (
           <div className="animate-fade-in" style={{ padding: '32px 16px' }}>
             <span style={{ fontSize: '4.5rem', display: 'block', marginBottom: '16px', animation: 'bounce-slow 3s infinite ease-in-out' }}>🏆</span>
@@ -1051,7 +252,6 @@ export function PracticeView({
               Outstanding, {nickname}! You've successfully answered every single question correctly!
             </p>
 
-            {/* Performance Stats Cards */}
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr', 
