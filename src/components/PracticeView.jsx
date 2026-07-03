@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 
 export function PracticeView({
   practiceState,
@@ -105,17 +106,37 @@ export function PracticeView({
 
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    const parts = splitBracketTokens(sentence);
+    let sequentialBlank = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
-        const blankIdx = parseInt(match[1]);
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const blankIdx = numericIdx;
         const word = placedWords[blankIdx];
         const isActive = blankIdx === activeBlankIdx;
         return (
           <span 
             key={idx} 
             onClick={() => handleBlankTap(blankIdx)}
+            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
+          >
+            {word || '_____'}
+          </span>
+        );
+      }
+      if (inner) {
+        // No numeric index provided: try to map by value order, otherwise render an interactive blank slot
+        let mappedIdx = -1;
+        if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
+        const blankIdx = mappedIdx !== -1 ? mappedIdx : activeQuestion?.options?.correct ? activeQuestion.options.correct.indexOf(inner) : -1;
+        const displayIdx = blankIdx !== -1 ? blankIdx : 0;
+        const word = placedWords[displayIdx];
+        const isActive = displayIdx === activeBlankIdx;
+        return (
+          <span 
+            key={idx}
+            onClick={() => handleBlankTap(displayIdx)}
             className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
           >
             {word || '_____'}
@@ -137,12 +158,13 @@ export function PracticeView({
 
   const renderPlayerSentenceDropdowns = (sentence, dropdowns) => {
     if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
+    let sequentialDrop = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
+      const dropIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (dropIdx !== null) {
+        const config = dropdowns[dropIdx] || { choices: [] };
         return (
           <select
             key={idx}
@@ -154,6 +176,18 @@ export function PracticeView({
             {config.choices.map((choice, cIdx) => (
               <option key={cIdx} value={choice}>{choice}</option>
             ))}
+          </select>
+        );
+      }
+      if (inner) {
+        // Map inner to dropdown by correct value, otherwise map sequentially
+        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
+        if (mappedIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { choices: [inner], correct: inner };
+        return (
+          <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
+            <option value={config.correct || inner}>{config.correct || inner}</option>
           </select>
         );
       }
@@ -183,15 +217,51 @@ export function PracticeView({
   // ----------------------------------------------------
   const renderFeedbackSentenceBlanks = (sentence, correct, playerAnswer) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    const parts = splitBracketTokens(sentence);
+    let sequentialBlank = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
-        const blankIdx = parseInt(match[1]);
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const blankIdx = numericIdx;
         const playerWord = playerAnswer ? playerAnswer[blankIdx] : null;
         const correctWord = correct ? correct[blankIdx] : '';
         const isCorrect = playerWord === correctWord;
         
+        return (
+          <span 
+            key={idx} 
+            className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
+            style={{ cursor: 'default' }}
+          >
+            {playerWord ? (
+              <span>
+                {playerWord} {isCorrect ? '✓' : `(Correct: ${correctWord})`}
+              </span>
+            ) : (
+              <span>_____ (Correct: {correctWord})</span>
+            )}
+          </span>
+        );
+      }
+      if (inner) {
+        let valIdx = -1;
+        if (Array.isArray(correct)) valIdx = correct.findIndex(c => c === inner);
+        let blankIdx;
+        let usedSequential = false;
+        if (valIdx !== -1) {
+          blankIdx = valIdx;
+        } else {
+          blankIdx = sequentialBlank;
+          usedSequential = true;
+        }
+        // advance the sequential counter if we consumed a sequential mapping
+        if (usedSequential) sequentialBlank += 1;
+
+        const correctWord = Array.isArray(correct) ? correct[blankIdx] : inner;
+        const playerWord = (playerAnswer && Array.isArray(playerAnswer)) ? playerAnswer[blankIdx] : null;
+        const isCorrect = playerWord === correctWord;
+
         return (
           <span 
             key={idx} 
@@ -214,16 +284,40 @@ export function PracticeView({
 
   const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
     if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
+    let sequentialDrop = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
+      const dropIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (dropIdx !== null) {
         const config = dropdowns[dropIdx];
         const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
         const correctChoice = config.correct;
         const isCorrect = playerChoice === correctChoice;
-        
+
+        return (
+          <span 
+            key={idx} 
+            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
+          >
+            {playerChoice ? (
+              <span>
+                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
+              </span>
+            ) : (
+              <span>_____ (Correct: {correctChoice})</span>
+            )}
+          </span>
+        );
+      }
+      if (inner) {
+        const guessedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const idxToUse = guessedIdx !== -1 ? guessedIdx : sequentialDrop;
+        if (guessedIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { correct: inner };
+        const playerChoice = playerAnswer && idxToUse !== -1 ? playerAnswer[idxToUse] : '';
+        const correctChoice = config?.correct || inner;
+        const isCorrect = playerChoice === correctChoice;
         return (
           <span 
             key={idx} 

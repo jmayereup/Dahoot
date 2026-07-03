@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 import { pb } from '../pb';
 
 export function TeacherDashboard({
@@ -1254,11 +1255,12 @@ export function TeacherDashboard({
     if (!activeQuestion.options) return null;
 
     const renderBlanks = (sentence) => {
-      const parts = sentence.split(/(\[blank\d+\])/g);
+      const parts = splitBracketTokens(sentence);
       return parts.map((part, idx) => {
-        const match = part.match(/\[blank(\d+)\]/);
-        if (match) {
-          const blankIdx = parseInt(match[1]);
+        const numericIdx = getBlankIndex(part);
+        const inner = getBracketInner(part);
+        if (numericIdx !== null) {
+          const blankIdx = numericIdx;
           const word = placedWords[blankIdx];
           const isActive = blankIdx === activeBlankIdx;
           
@@ -1282,6 +1284,50 @@ export function TeacherDashboard({
           return (
             <span 
               key={idx} 
+              onClick={() => {
+                if (previewAnswered) return;
+                if (word) {
+                  const updated = [...placedWords];
+                  updated[blankIdx] = null;
+                  setPlacedWords(updated);
+                  setActiveBlankIdx(blankIdx);
+                } else {
+                  setActiveBlankIdx(blankIdx);
+                }
+              }}
+              style={blankStyle}
+            >
+              {word || '_____'}
+            </span>
+          );
+        }
+        if (inner) {
+          // No numeric index: try to map this token to a blank index based on correct array
+          let mappedIdx = -1;
+          if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
+          const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
+          const word = placedWords[blankIdx];
+          const isActive = blankIdx === activeBlankIdx;
+          let blankStyle = {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '90px',
+            height: '32px',
+            borderBottom: '2px solid var(--accent-light)',
+            margin: '0 6px',
+            padding: '0 8px',
+            cursor: previewAnswered ? 'default' : 'pointer',
+            color: word ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: word ? '700' : 'normal',
+            transition: 'all 0.15s ease',
+            backgroundColor: isActive ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+            borderRadius: '4px'
+          };
+
+          return (
+            <span 
+              key={idx}
               onClick={() => {
                 if (previewAnswered) return;
                 if (word) {
@@ -1364,12 +1410,12 @@ export function TeacherDashboard({
     if (!activeQuestion.options || !Array.isArray(activeQuestion.options.dropdowns)) return null;
 
     const renderDropdowns = (sentence, dropdowns) => {
-      const parts = sentence.split(/(\{\{\d+\}\})/g);
+      const parts = splitCurlyTokens(sentence);
       return parts.map((part, idx) => {
-        const match = part.match(/\{\{(\d+)\}\}/);
-        if (match) {
-          const dropIdx = parseInt(match[1]);
-          const config = dropdowns[dropIdx];
+        const dropIdx = getCurlyIndex(part);
+        const inner = getCurlyInner(part);
+        if (dropIdx !== null) {
+          const config = dropdowns[dropIdx] || { choices: [] };
           return (
             <select
               key={idx}
@@ -1386,6 +1432,17 @@ export function TeacherDashboard({
               {config.choices.map((choice, cIdx) => (
                 <option key={cIdx} value={choice}>{choice}</option>
               ))}
+            </select>
+          );
+        }
+        if (inner) {
+          // Map inner to dropdown config when possible, otherwise fall back to sequential mapping
+          let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+          const idxToUse = mappedIdx !== -1 ? mappedIdx : 0;
+          const config = dropdowns[idxToUse] || { choices: [inner], correct: inner };
+          return (
+            <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
+              <option value={config.correct || inner}>{config.correct || inner}</option>
             </select>
           );
         }

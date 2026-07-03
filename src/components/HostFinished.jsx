@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BUCKET_COLORS } from '../constants';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
 
 export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
@@ -82,18 +83,31 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
     if (type === 'DRAG_DROP') {
       const sentence = q.options.sentence || '';
       const correctAnswers = q.options.correct || [];
-      const parts = sentence.split(/(\[blank\d+\])/g);
+      const parts = splitBracketTokens(sentence);
+      let sequential = 0;
       return (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
           <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
             {parts.map((part, idx) => {
-              const match = part.match(/\[blank(\d+)\]/);
-              if (match) {
-                const valIdx = parseInt(match[1]);
+              const numericIdx = part && part.match(/\[blank(\d+)\]/i);
+              const inner = getBracketInner(part);
+              if (numericIdx) {
+                const valIdx = parseInt(numericIdx[1]);
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
                     {correctAnswers[valIdx] || '???'}
+                  </strong>
+                );
+              }
+              if (inner) {
+                let mapped = -1;
+                if (Array.isArray(correctAnswers)) mapped = correctAnswers.findIndex(c => c === inner);
+                const valIdx = mapped !== -1 ? mapped : sequential;
+                if (mapped === -1) sequential += 1;
+                return (
+                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
+                    {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : (inner || '???')}
                   </strong>
                 );
               }
@@ -110,18 +124,29 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
       const parts = sentence.split(/(\\{\\{\\d+\\}\\}|\\{\\{\\d+\\}\\}|\\{\\d+\\})/g);
       // Wait, let's make sure the regex works for both standard bracket and curly braces
       // Let's use simple match for drop down sentence template:
-      const partsDropdown = sentence.split(/(\{\{\d+\}\})/g);
-      return (
+        const partsDropdown = splitCurlyTokens(sentence);
+        let sequential = 0;
+        return (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
           <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
             {partsDropdown.map((part, idx) => {
-              const match = part.match(/\{\{(\d+)\}\}/);
-              if (match) {
-                const valIdx = parseInt(match[1]);
+              const valIdx = getCurlyIndex(part);
+              const inner = getCurlyInner(part);
+              if (valIdx !== null) {
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
                     {dropdowns[valIdx]?.correct || '???'}
+                  </strong>
+                );
+              }
+              if (inner) {
+                let mapped = dropdowns.findIndex(d => d.correct === inner);
+                const idxToUse = mapped !== -1 ? mapped : sequential;
+                if (mapped === -1) sequential += 1;
+                return (
+                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
+                    {dropdowns[idxToUse]?.correct || inner}
                   </strong>
                 );
               }

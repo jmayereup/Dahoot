@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { deterministicShuffle } from '../utils/shuffle';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 
 export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, playerSelectedIdx, roomCode }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
@@ -12,15 +13,50 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
 
   const renderFeedbackSentenceBlanks = (sentence, correct, playerAnswer) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    const parts = splitBracketTokens(sentence);
+    let sequentialBlank = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
-        const blankIdx = parseInt(match[1]);
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const blankIdx = numericIdx;
         const playerWord = playerAnswer ? playerAnswer[blankIdx] : null;
         const correctWord = correct ? correct[blankIdx] : '';
         const isCorrect = playerWord === correctWord;
-        
+
+        return (
+          <span 
+            key={idx} 
+            className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
+            style={{ cursor: 'default' }}
+          >
+            {playerWord ? (
+              <span>
+                {playerWord} {isCorrect ? '✓' : `(Correct: ${correctWord})`}
+              </span>
+            ) : (
+              <span>_____ (Correct: {correctWord})</span>
+            )}
+          </span>
+        );
+      }
+      if (inner) {
+        let valIdx = -1;
+        if (Array.isArray(correct)) valIdx = correct.findIndex(c => c === inner);
+        let blankIdx;
+        let usedSequential = false;
+        if (valIdx !== -1) {
+          blankIdx = valIdx;
+        } else {
+          blankIdx = sequentialBlank;
+          usedSequential = true;
+        }
+        if (usedSequential) sequentialBlank += 1;
+
+        const correctWord = Array.isArray(correct) ? correct[blankIdx] : inner;
+        const playerWord = (playerAnswer && Array.isArray(playerAnswer)) ? playerAnswer[blankIdx] : null;
+        const isCorrect = playerWord === correctWord;
+
         return (
           <span 
             key={idx} 
@@ -43,16 +79,45 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
 
   const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
     if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
+    let sequentialDrop = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
+      const dropIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (dropIdx !== null) {
         const config = dropdowns[dropIdx];
         const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
-        const correctChoice = config.correct;
+        const correctChoice = config?.correct;
         const isCorrect = playerChoice === correctChoice;
-        
+
+        return (
+          <span 
+            key={idx} 
+            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
+          >
+            {playerChoice ? (
+              <span>
+                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
+              </span>
+            ) : (
+              <span>_____ (Correct: {correctChoice})</span>
+            )}
+          </span>
+        );
+      }
+      if (inner) {
+        // If token contains explicit text, try to map to a dropdown by correct value; otherwise map sequentially
+        let guessedIdx = dropdowns.findIndex(d => d.correct === inner);
+        let usedSequential = false;
+        if (guessedIdx === -1) {
+          guessedIdx = sequentialDrop;
+          usedSequential = true;
+        }
+        if (usedSequential) sequentialDrop += 1;
+        const config = guessedIdx !== -1 ? dropdowns[guessedIdx] : null;
+        const playerChoice = playerAnswer && guessedIdx !== -1 ? playerAnswer[guessedIdx] : '';
+        const correctChoice = config?.correct || inner;
+        const isCorrect = playerChoice === correctChoice;
         return (
           <span 
             key={idx} 

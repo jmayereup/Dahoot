@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 
 export function PlayerQuestion({
   qIndex,
@@ -163,11 +164,30 @@ export function PlayerQuestion({
 
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    const parts = splitBracketTokens(sentence);
+    let sequentialBlank = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
-        const blankIdx = parseInt(match[1]);
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const blankIdx = numericIdx;
+        const word = placedWords[blankIdx];
+        const isActive = blankIdx === activeBlankIdx;
+        return (
+          <span 
+            key={idx} 
+            onClick={() => handleBlankTap(blankIdx)}
+            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
+          >
+            {word || '_____'}
+          </span>
+        );
+      }
+      if (inner) {
+        let mappedIdx = -1;
+        if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
+        const blankIdx = mappedIdx !== -1 ? mappedIdx : sequentialBlank;
+        if (mappedIdx === -1) sequentialBlank += 1;
         const word = placedWords[blankIdx];
         const isActive = blankIdx === activeBlankIdx;
         return (
@@ -186,12 +206,13 @@ export function PlayerQuestion({
 
   const renderPlayerSentenceDropdowns = (sentence, dropdowns) => {
     if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
+    let sequentialDrop = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
+      const dropIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (dropIdx !== null) {
+        const config = dropdowns[dropIdx] || { choices: [] };
         return (
           <select
             key={idx}
@@ -204,6 +225,17 @@ export function PlayerQuestion({
             {config.choices.map((choice, cIdx) => (
               <option key={cIdx} value={choice}>{choice}</option>
             ))}
+          </select>
+        );
+      }
+      if (inner) {
+        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
+        if (mappedIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { choices: [inner] };
+        return (
+          <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
+            <option value={config.correct || inner}>{config.correct || inner}</option>
           </select>
         );
       }

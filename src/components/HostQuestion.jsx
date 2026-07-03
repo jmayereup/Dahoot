@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
+import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex } from '../utils/blankParsing';
 
 export function HostQuestion({
   qIndex,
@@ -32,14 +33,18 @@ export function HostQuestion({
   // Helper to parse drag and drop sentences
   const renderSentenceWithBlanks = (sentence) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    const parts = splitBracketTokens(sentence);
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
         return (
-          <span key={idx} className="host-sentence-blank">
-            ?
-          </span>
+          <span key={idx} className="host-sentence-blank">?</span>
+        );
+      }
+      if (inner) {
+        return (
+          <span key={idx} className="host-sentence-blank">?</span>
         );
       }
       return <span key={idx}>{part}</span>;
@@ -49,14 +54,13 @@ export function HostQuestion({
   // Helper to parse dropdown sentences
   const renderSentenceWithDropdowns = (sentence) => {
     if (!sentence) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
+      const numIdx = getCurlyIndex(part);
+      const inner = getCurlyIndex(part) === null ? getCurlyInner(part) : null;
+      if (numIdx !== null || inner) {
         return (
-          <span key={idx} className="host-sentence-dropdown-placeholder">
-            [ Select ▾ ]
-          </span>
+          <span key={idx} className="host-sentence-dropdown-placeholder">[ Select ▾ ]</span>
         );
       }
       return <span key={idx}>{part}</span>;

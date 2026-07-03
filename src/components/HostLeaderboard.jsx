@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 
 export function HostLeaderboard({
   qIndex,
@@ -26,12 +27,14 @@ export function HostLeaderboard({
 
   // Helper to fill blanks in Drag & Drop sentence
   const fillSentenceBlanks = (sentence, correctAnswers) => {
-    if (!sentence || !Array.isArray(correctAnswers)) return '';
-    const parts = sentence.split(/(\[blank\d+\])/g);
+    if (!sentence) return '';
+    const parts = splitBracketTokens(sentence);
+    let sequential = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\[blank(\d+)\]/);
-      if (match) {
-        const valIdx = parseInt(match[1]);
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const valIdx = numericIdx;
         return (
           <span key={idx} style={{ 
             color: 'var(--accent-light)', 
@@ -40,7 +43,24 @@ export function HostLeaderboard({
             padding: '0 6px', 
             margin: '0 4px' 
           }}>
-            {correctAnswers[valIdx] || '???'}
+            {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : '???'}
+          </span>
+        );
+      }
+      if (inner) {
+        let mapped = -1;
+        if (Array.isArray(correctAnswers)) mapped = correctAnswers.findIndex(c => c === inner);
+        const valIdx = mapped !== -1 ? mapped : sequential;
+        if (mapped === -1) sequential += 1;
+        return (
+          <span key={idx} style={{ 
+            color: 'var(--accent-light)', 
+            fontWeight: 700, 
+            borderBottom: '2px solid var(--accent-light)', 
+            padding: '0 6px', 
+            margin: '0 4px' 
+          }}>
+            {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : (inner || '???')}
           </span>
         );
       }
@@ -51,11 +71,12 @@ export function HostLeaderboard({
   // Helper to fill dropdowns in Drop Down sentence
   const fillSentenceDropdowns = (sentence, dropdowns) => {
     if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
+    const parts = splitCurlyTokens(sentence);
+    let sequential = 0;
     return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const valIdx = parseInt(match[1]);
+      const valIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (valIdx !== null) {
         return (
           <span key={idx} style={{ 
             color: 'var(--accent-light)', 
@@ -65,6 +86,23 @@ export function HostLeaderboard({
             margin: '0 4px' 
           }}>
             {dropdowns[valIdx]?.correct || '???'}
+          </span>
+        );
+      }
+      if (inner) {
+        // If the token contains explicit text, try to map to dropdown by correct value, otherwise use sequential mapping
+        let mapped = dropdowns.findIndex(d => d.correct === inner);
+        const idxToUse = mapped !== -1 ? mapped : sequential;
+        if (mapped === -1) sequential += 1;
+        return (
+          <span key={idx} style={{ 
+            color: 'var(--accent-light)', 
+            fontWeight: 700, 
+            borderBottom: '2px solid var(--accent-light)', 
+            padding: '0 6px', 
+            margin: '0 4px' 
+          }}>
+            {dropdowns[idxToUse]?.correct || inner}
           </span>
         );
       }

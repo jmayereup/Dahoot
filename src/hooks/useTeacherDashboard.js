@@ -414,9 +414,10 @@ export function useTeacherDashboard(view, currentUser) {
         setError('All 4 choices must be filled out.');
         return;
       }
-      const numBlanks = (dragSentence.match(/\[blank\d+\]/g) || []).length;
+      // Accept either numeric placeholders like [blank0] or bracketed tokens like [word]
+      const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
       if (numBlanks === 0) {
-        setError('The sentence must contain at least one blank placeholder (e.g. [blank0]).');
+        setError('The sentence must contain at least one blank placeholder (e.g. [blank0] or [word]).');
         return;
       }
       optionsPayload = {
@@ -586,9 +587,9 @@ export function useTeacherDashboard(view, currentUser) {
         setError('All 4 choices must be filled out.');
         return false;
       }
-      const numBlanks = (dragSentence.match(/\[blank\d+\]/g) || []).length;
+      const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
       if (numBlanks === 0) {
-        setError('The sentence must contain at least one blank placeholder (e.g. [blank0]).');
+        setError('The sentence must contain at least one blank placeholder (e.g. [blank0] or [word]).');
         return false;
       }
       optionsPayload = {
