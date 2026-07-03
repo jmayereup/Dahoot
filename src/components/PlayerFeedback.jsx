@@ -41,37 +41,6 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
     });
   };
 
-  const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
-        const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
-        const correctChoice = config.correct;
-        const isCorrect = playerChoice === correctChoice;
-        
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>
-                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctChoice})</span>
-            )}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
   const renderQuestionReview = () => {
     return (
       <div style={{ marginTop: 24, textAlign: 'left' }}>
@@ -187,21 +156,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
           </div>
         )}
 
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-            lineHeight: '2.8rem',
-            fontSize: '1.15rem'
-          }}>
-            {renderFeedbackSentenceDropdowns(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.dropdowns, 
-              playerSelectedIdx
-            )}
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
+        {/* 4. CATEGORIZE */}
         {type === 'CATEGORIZE' && activeQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeQuestion.options.items?.map((item, idx) => {

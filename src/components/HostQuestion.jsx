@@ -46,23 +46,6 @@ export function HostQuestion({
     });
   };
 
-  // Helper to parse dropdown sentences
-  const renderSentenceWithDropdowns = (sentence) => {
-    if (!sentence) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        return (
-          <span key={idx} className="host-sentence-dropdown-placeholder">
-            [ Select ▾ ]
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
   return (
     <div className="game-layout flex flex-col items-center w-full animate-fade-in">
       <div className="question-card w-full text-center mb-6">
@@ -175,21 +158,7 @@ export function HostQuestion({
           </div>
         )}
 
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-            <div className="host-sentence-container bg-white border border-slate-200/60 rounded-2xl shadow-sm text-slate-800" style={{
-              padding: '28px',
-              fontSize: '1.4rem',
-              lineHeight: '2rem',
-              display: 'inline-block'
-            }}>
-              {renderSentenceWithDropdowns(activeQuestion.options.sentence)}
-            </div>
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
+        {/* 4. CATEGORIZE */}
         {type === 'CATEGORIZE' && activeQuestion.options && (
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
             <div style={{

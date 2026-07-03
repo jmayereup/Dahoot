@@ -64,18 +64,6 @@ const DEFAULT_QUESTIONS = [
     correct_option_index: 0
   },
   {
-    text: "Select the correct protocols for web communication.",
-    type: "DROP_DOWN",
-    options: {
-      sentence: "For secure website browsing we use {{0}}, while real-time bidirectional message channels use {{1}} protocol.",
-      dropdowns: [
-        { choices: ["HTTPS", "HTTP", "FTP"], correct: "HTTPS" },
-        { choices: ["WebSockets", "SMTP", "DNS"], correct: "WebSockets" }
-      ]
-    },
-    correct_option_index: 0
-  },
-  {
     text: "Categorize these technologies into their respective layers.",
     type: "CATEGORIZE",
     options: {
@@ -426,7 +414,7 @@ async function runSetup() {
       { name: 'text', type: 'text', required: true },
       { name: 'options', type: 'json', required: true },
       { name: 'correct_option_index', type: 'number', required: false, noDecimal: true },
-      { name: 'type', type: 'select', required: true, maxSelect: 1, values: ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'] },
+      { name: 'type', type: 'select', required: true, maxSelect: 1, values: ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'CATEGORIZE'] },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],

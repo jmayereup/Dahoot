@@ -105,30 +105,6 @@ export function PlayerQuestion({
   };
 
   // ----------------------------------------------------
-  // DROP DOWN STATE & HANDLERS
-  // ----------------------------------------------------
-  const [dropdownSelections, setDropdownSelections] = useState([]);
-  const totalDropdowns = typeof activeQuestion.options === 'object' && activeQuestion.options.dropdowns
-    ? activeQuestion.options.dropdowns.length
-    : 0;
-
-  useEffect(() => {
-    if (type === 'DROP_DOWN') {
-      setDropdownSelections(Array(totalDropdowns).fill(''));
-    }
-  }, [activeQuestion.id, totalDropdowns, type]);
-
-  const handleDropdownChange = (idx, val) => {
-    const updated = [...dropdownSelections];
-    updated[idx] = val;
-    setDropdownSelections(updated);
-  };
-
-  const handleDropdownSubmit = () => {
-    submitAnswer(dropdownSelections);
-  };
-
-  // ----------------------------------------------------
   // CATEGORIZE STATE & HANDLERS
   // ----------------------------------------------------
   const [categorizeIdx, setCategorizeIdx] = useState(0);
@@ -184,33 +160,6 @@ export function PlayerQuestion({
     });
   };
 
-  const renderPlayerSentenceDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
-        return (
-          <select
-            key={idx}
-            className="player-sentence-select"
-            value={dropdownSelections[dropIdx] || ''}
-            onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-            disabled={isTimeUp}
-          >
-            <option value="">-- Choose --</option>
-            {config.choices.map((choice, cIdx) => (
-              <option key={cIdx} value={choice}>{choice}</option>
-            ))}
-          </select>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
   // Helper to check if categorization is fully complete
   const allCategorized = categorizeIdx >= totalCategorizeItems;
 
@@ -234,7 +183,6 @@ export function PlayerQuestion({
               {type === 'MULTIPLE_CHOICE' && 'Select the correct option:'}
               {type === 'SORTING' && 'Sort items in order (top is first):'}
               {type === 'DRAG_DROP' && 'Tap words to fill the blanks:'}
-              {type === 'DROP_DOWN' && 'Select words from dropdowns:'}
               {type === 'CATEGORIZE' && `Classify items (${categorizeIdx}/${totalCategorizeItems}):`}
             </span>
           </div>
@@ -400,29 +348,7 @@ export function PlayerQuestion({
               );
             })()}
 
-            {/* 4. DROP DOWN */}
-            {type === 'DROP_DOWN' && activeQuestion.options && (
-              <div style={{ width: '100%' }}>
-                {/* Sentence Container */}
-                <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-                  lineHeight: '2.8rem',
-                  fontSize: '1.15rem',
-                  marginBottom: 20
-                }}>
-                  {renderPlayerSentenceDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-                </div>
-
-                <button
-                  onClick={handleDropdownSubmit}
-                  className="btn btn-primary"
-                  disabled={dropdownSelections.includes('') || isTimeUp}
-                >
-                  Submit Answers
-                </button>
-              </div>
-            )}
-
-            {/* 5. CATEGORIZE */}
+            {/* 4. CATEGORIZE */}
             {type === 'CATEGORIZE' && activeQuestion.options && (
               <div style={{ width: '100%' }}>
                 {!allCategorized ? (

@@ -28,18 +28,6 @@ export const DEFAULT_QUESTIONS = [
     type: "DRAG_DROP"
   },
   {
-    text: "Select the correct technologies from the dropdowns to complete the statement.",
-    options: {
-      sentence: "PocketBase is written in {{0}} and uses {{1}} as its default embedded database engine.",
-      dropdowns: [
-        { choices: ["Go", "Rust", "JavaScript"], correct: "Go" },
-        { choices: ["SQLite", "PostgreSQL", "MongoDB"], correct: "SQLite" }
-      ]
-    },
-    correct_option_index: 0,
-    type: "DROP_DOWN"
-  },
-  {
     text: "Classify these technologies into their correct category.",
     options: {
       categories: ["Languages", "Frameworks"],

@@ -199,12 +199,6 @@ function App() {
         dragChoices={teacherDashboard.dragChoices}
         updateDragChoice={teacherDashboard.updateDragChoice}
 
-        // Drop Down
-        dropdownSentence={teacherDashboard.dropdownSentence}
-        setDropdownSentence={teacherDashboard.setDropdownSentence}
-        dropdownOptions={teacherDashboard.dropdownOptions}
-        updateDropdownOption={teacherDashboard.updateDropdownOption}
-
         // Categorize
         categorizeCategories={teacherDashboard.categorizeCategories}
         setCategorizeCategories={teacherDashboard.setCategorizeCategories}

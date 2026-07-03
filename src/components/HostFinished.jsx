@@ -104,34 +104,6 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
       );
     }
 
-    if (type === 'DROP_DOWN') {
-      const sentence = q.options.sentence || '';
-      const dropdowns = q.options.dropdowns || [];
-      const parts = sentence.split(/(\\{\\{\\d+\\}\\}|\\{\\{\\d+\\}\\}|\\{\\d+\\})/g);
-      // Wait, let's make sure the regex works for both standard bracket and curly braces
-      // Let's use simple match for drop down sentence template:
-      const partsDropdown = sentence.split(/(\{\{\d+\}\})/g);
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
-          <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
-            {partsDropdown.map((part, idx) => {
-              const match = part.match(/\{\{(\d+)\}\}/);
-              if (match) {
-                const valIdx = parseInt(match[1]);
-                return (
-                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {dropdowns[valIdx]?.correct || '???'}
-                  </strong>
-                );
-              }
-              return <span key={idx}>{part}</span>;
-            })}
-          </div>
-        </div>
-      );
-    }
-
     if (type === 'CATEGORIZE') {
       const categories = q.options.categories || [];
       const items = q.options.items || [];

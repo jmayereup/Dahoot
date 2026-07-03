@@ -232,11 +232,6 @@ export function usePlayerGame(view, setView) {
       isCorrect = Array.isArray(userAnswer) && 
                   userAnswer.length === correctArr.length &&
                   userAnswer.every((val, i) => val === correctArr[i]);
-    } else if (type === 'DROP_DOWN') {
-      const dropdowns = activeQuestion.options.dropdowns || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === dropdowns.length &&
-                  userAnswer.every((val, i) => val === dropdowns[i]?.correct);
     } else if (type === 'CATEGORIZE') {
       const correctItems = activeQuestion.options.items || [];
       isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&

@@ -48,30 +48,6 @@ export function HostLeaderboard({
     });
   };
 
-  // Helper to fill dropdowns in Drop Down sentence
-  const fillSentenceDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const valIdx = parseInt(match[1]);
-        return (
-          <span key={idx} style={{ 
-            color: 'var(--accent-light)', 
-            fontWeight: 700, 
-            borderBottom: '2px solid var(--accent-light)', 
-            padding: '0 6px', 
-            margin: '0 4px' 
-          }}>
-            {dropdowns[valIdx]?.correct || '???'}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
   // Helper to get categorized items
   const categorizedMap = React.useMemo(() => {
     if (type !== 'CATEGORIZE' || !activeQuestion.options) return {};
@@ -137,14 +113,7 @@ export function HostLeaderboard({
           </div>
         )}
 
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div style={{ fontSize: '1.2rem', lineHeight: '1.8rem', color: 'var(--text-primary)' }}>
-            {fillSentenceDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
+        {/* 4. CATEGORIZE */}
         {type === 'CATEGORIZE' && activeQuestion.options && (
           <div style={{ 
             display: 'grid', 

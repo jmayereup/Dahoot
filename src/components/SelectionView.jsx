@@ -37,7 +37,6 @@ export function SelectionView({
     'MULTIPLE_CHOICE',
     'SORTING',
     'DRAG_DROP',
-    'DROP_DOWN',
     'CATEGORIZE'
   ]);
   const [maxQuestions, setMaxQuestions] = useState('');
@@ -59,7 +58,7 @@ export function SelectionView({
       if (isMounted) {
         setGameQuestions(res);
         setMaxQuestions(res.length.toString());
-        setSelectedQuestionTypes(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
+        setSelectedQuestionTypes(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'CATEGORIZE']);
       }
     })
     .catch(err => {
@@ -110,7 +109,6 @@ export function SelectionView({
       MULTIPLE_CHOICE: 'Multiple Choice',
       SORTING: 'Sorting Order',
       DRAG_DROP: 'Drag & Drop (Blanks)',
-      DROP_DOWN: 'Drop-Down (Select Blanks)',
       CATEGORIZE: 'Categorization Groups'
     };
     return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');

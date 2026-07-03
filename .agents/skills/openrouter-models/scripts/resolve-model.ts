@@ -7,7 +7,7 @@ const STOP_WORDS = new Set([
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .split(/[\s\-_\/:.]+/)
+    .split(/[\s\-_/:.]+/)
     .filter((t) => t.length > 0);
 }
 
@@ -16,7 +16,7 @@ function removeStopWords(tokens: string[]): string[] {
 }
 
 function collapse(text: string): string {
-  return text.toLowerCase().replace(/[\s\-_\/:.]+/g, "");
+  return text.toLowerCase().replace(/[\s\-_/:.]+/g, "");
 }
 
 function bigrams(text: string): Set<string> {

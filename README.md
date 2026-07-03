@@ -9,7 +9,6 @@ Dahoot is a premium, self-hosted educational quiz platform similar to Kahoot. It
   - **Multiple Choice**: Speed-based points answering.
   - **Sorting**: Arrange options in correct sequence.
   - **Drag & Drop**: Tap-to-place words in blank spaces (Duolingo style).
-  - **Drop-Down**: Fill sentences by selecting options from dropdown selections.
   - **Categorize**: Tinder-style deck categorizer where students classify elements into custom groups.
 - **Lobby Management**: Automated game codes, live student registration badges, clickable links, and scannable QR codes for seamless student entry.
 - **Projector & Leaderboards**: Real-time timer count, skip capabilities, correctness distributions, and top-5 leaderboard animations.

@@ -32,7 +32,6 @@ export function PracticeView({
   const [sortedItems, setSortedItems] = useState([]);
   const [placedWords, setPlacedWords] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
-  const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
   const [localNickname, setLocalNickname] = useState(nickname || 'Student');
@@ -48,9 +47,6 @@ export function PracticeView({
       const correctLen = activeQuestion.options.correct ? activeQuestion.options.correct.length : 0;
       setPlacedWords(Array(correctLen).fill(null));
       setActiveBlankIdx(0);
-    } else if (type === 'DROP_DOWN' && activeQuestion.options) {
-      const dropLen = activeQuestion.options.dropdowns ? activeQuestion.options.dropdowns.length : 0;
-      setDropdownSelections(Array(dropLen).fill(''));
     } else if (type === 'CATEGORIZE' && activeQuestion.options) {
       setCategorizeIdx(0);
       setCategoryAssignments({});
@@ -127,41 +123,6 @@ export function PracticeView({
   };
 
   // ----------------------------------------------------
-  // DROP DOWN HANDLERS
-  // ----------------------------------------------------
-  const handleDropdownChange = (idx, val) => {
-    const updated = [...dropdownSelections];
-    updated[idx] = val;
-    setDropdownSelections(updated);
-  };
-
-  const renderPlayerSentenceDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
-        return (
-          <select
-            key={idx}
-            className="player-sentence-select"
-            value={dropdownSelections[dropIdx] || ''}
-            onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-          >
-            <option value="">-- Choose --</option>
-            {config.choices.map((choice, cIdx) => (
-              <option key={cIdx} value={choice}>{choice}</option>
-            ))}
-          </select>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  // ----------------------------------------------------
   // CATEGORIZE HANDLERS
   // ----------------------------------------------------
   const handleCategorizeChoice = (itemName, category) => {
@@ -204,37 +165,6 @@ export function PracticeView({
               </span>
             ) : (
               <span>_____ (Correct: {correctWord})</span>
-            )}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
-    const parts = sentence.split(/(\{\{\d+\}\})/g);
-    return parts.map((part, idx) => {
-      const match = part.match(/\{\{(\d+)\}\}/);
-      if (match) {
-        const dropIdx = parseInt(match[1]);
-        const config = dropdowns[dropIdx];
-        const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
-        const correctChoice = config.correct;
-        const isCorrect = playerChoice === correctChoice;
-        
-        return (
-          <span 
-            key={idx} 
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>
-                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctChoice})</span>
             )}
           </span>
         );
@@ -357,21 +287,7 @@ export function PracticeView({
           </div>
         )}
 
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-            lineHeight: '2.8rem',
-            fontSize: '1.15rem'
-          }}>
-            {renderFeedbackSentenceDropdowns(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.dropdowns, 
-              playerSelectedIdx
-            )}
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
+        {/* 4. CATEGORIZE */}
         {type === 'CATEGORIZE' && activeQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeQuestion.options.items?.map((item, idx) => {
@@ -587,7 +503,6 @@ export function PracticeView({
                 {type === 'MULTIPLE_CHOICE' && 'Select the correct option:'}
                 {type === 'SORTING' && 'Sort items in order (top is first):'}
                 {type === 'DRAG_DROP' && 'Tap words to fill the blanks:'}
-                {type === 'DROP_DOWN' && 'Select words from dropdowns:'}
                 {type === 'CATEGORIZE' && `Classify items (${categorizeIdx}/${activeQuestion.options?.items?.length || 0}):`}
               </div>
 
@@ -750,28 +665,7 @@ export function PracticeView({
                   );
                 })()}
 
-                {/* 4. DROP DOWN */}
-                {type === 'DROP_DOWN' && activeQuestion.options && (
-                  <div style={{ width: '100%' }}>
-                    <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-slate-800" style={{
-                      lineHeight: '3rem',
-                      fontSize: '1.2rem',
-                      marginBottom: 20
-                    }}>
-                      {renderPlayerSentenceDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-                    </div>
-
-                    <button
-                      onClick={() => submitAnswer(dropdownSelections)}
-                      className="btn btn-primary"
-                      disabled={dropdownSelections.includes('')}
-                    >
-                      Submit Answers
-                    </button>
-                  </div>
-                )}
-
-                {/* 5. CATEGORIZE */}
+                {/* 4. CATEGORIZE */}
                 {type === 'CATEGORIZE' && activeQuestion.options && (
                   <div style={{ width: '100%' }}>
                     {!allCategorized ? (

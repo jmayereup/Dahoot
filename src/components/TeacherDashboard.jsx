@@ -66,12 +66,6 @@ export function TeacherDashboard({
   dragChoices,
   updateDragChoice,
 
-  // Drop Down
-  dropdownSentence,
-  setDropdownSentence,
-  dropdownOptions,
-  updateDropdownOption,
-
   // Categorize
   categorizeCategories,
   setCategorizeCategories,
@@ -115,7 +109,6 @@ export function TeacherDashboard({
   const [sortingItems, setSortingItems] = useState([]);
   const [placedWords, setPlacedWords] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
-  const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
 
@@ -159,7 +152,6 @@ export function TeacherDashboard({
   const [genSortingCount, setGenSortingCount] = useState(3);
   const [genCategorizeCount, setGenCategorizeCount] = useState(2);
   const [genDragDropCount, setGenDragDropCount] = useState(5);
-  const [genDropDownCount, setGenDropDownCount] = useState(5);
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState('');
 
@@ -933,15 +925,6 @@ export function TeacherDashboard({
       setPlacedWords([]);
     }
 
-    if (type === 'DROP_DOWN') {
-      const totalDropdowns = typeof question.options === 'object' && question.options.dropdowns
-        ? question.options.dropdowns.length
-        : 0;
-      setDropdownSelections(Array(totalDropdowns).fill(''));
-    } else {
-      setDropdownSelections([]);
-    }
-
     if (type === 'CATEGORIZE') {
       setCategorizeIdx(0);
       setCategoryAssignments({});
@@ -1003,11 +986,6 @@ export function TeacherDashboard({
       isCorrect = Array.isArray(userAnswer) && 
                   userAnswer.length === correctArr.length &&
                   userAnswer.every((val, i) => val === correctArr[i]);
-    } else if (type === 'DROP_DOWN') {
-      const dropdowns = activeQuestion.options.dropdowns || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === dropdowns.length &&
-                  userAnswer.every((val, i) => val === dropdowns[i]?.correct);
     } else if (type === 'CATEGORIZE') {
       const correctItems = activeQuestion.options.items || [];
       isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&
@@ -1360,62 +1338,6 @@ export function TeacherDashboard({
     );
   };
 
-  const renderDropDownInteraction = (activeQuestion) => {
-    if (!activeQuestion.options || !Array.isArray(activeQuestion.options.dropdowns)) return null;
-
-    const renderDropdowns = (sentence, dropdowns) => {
-      const parts = sentence.split(/(\{\{\d+\}\})/g);
-      return parts.map((part, idx) => {
-        const match = part.match(/\{\{(\d+)\}\}/);
-        if (match) {
-          const dropIdx = parseInt(match[1]);
-          const config = dropdowns[dropIdx];
-          return (
-            <select
-              key={idx}
-              value={dropdownSelections[dropIdx] || ''}
-              onChange={(e) => {
-                const updated = [...dropdownSelections];
-                updated[dropIdx] = e.target.value;
-                setDropdownSelections(updated);
-              }}
-              disabled={previewAnswered}
-              className="player-sentence-select"
-            >
-              <option value="">-- Choose --</option>
-              {config.choices.map((choice, cIdx) => (
-                <option key={cIdx} value={choice}>{choice}</option>
-              ))}
-            </select>
-          );
-        }
-        return <span key={idx}>{part}</span>;
-      });
-    };
-
-    return (
-      <div style={{ width: '100%' }}>
-        <div className="bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
-          lineHeight: '2.8rem',
-          fontSize: '1.1rem',
-          marginBottom: 20
-        }}>
-          {renderDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
-        </div>
-
-        {!previewAnswered && (
-          <button
-            onClick={() => submitPreviewAnswer(dropdownSelections)}
-            className="btn btn-primary"
-            disabled={dropdownSelections.includes('')}
-          >
-            Submit Answers
-          </button>
-        )}
-      </div>
-    );
-  };
-
   const renderCategorizeInteraction = (activeQuestion) => {
     if (!activeQuestion.options) return null;
     const totalItems = activeQuestion.options.items?.length || 0;
@@ -1543,8 +1465,6 @@ export function TeacherDashboard({
       correctAnswerExplanation = `Correct sequence: ${activeQuestion.options.join(' ➔ ')}`;
     } else if (type === 'DRAG_DROP') {
       correctAnswerExplanation = `Correct words: ${activeQuestion.options.correct?.join(', ')}`;
-    } else if (type === 'DROP_DOWN') {
-      correctAnswerExplanation = `Correct selections: ${activeQuestion.options.dropdowns?.map((d, i) => `[${i+1}] ${d.correct}`).join(', ')}`;
     } else if (type === 'CATEGORIZE') {
       correctAnswerExplanation = `Correct classifications: ${activeQuestion.options.items?.map(item => `${item.name} ➔ ${item.category}`).join(', ')}`;
     }
@@ -1621,7 +1541,6 @@ export function TeacherDashboard({
           {type === 'MULTIPLE_CHOICE' && renderMcInteraction(activeQuestion)}
           {type === 'SORTING' && renderSortingInteraction()}
           {type === 'DRAG_DROP' && renderDragDropInteraction(activeQuestion)}
-          {type === 'DROP_DOWN' && renderDropDownInteraction(activeQuestion)}
           {type === 'CATEGORIZE' && renderCategorizeInteraction(activeQuestion)}
         </div>
 
@@ -1780,7 +1699,6 @@ export function TeacherDashboard({
             <option value="MULTIPLE_CHOICE">Multiple Choice</option>
             <option value="SORTING">Sorting Order</option>
             <option value="DRAG_DROP">Drag & Drop (Blanks)</option>
-            <option value="DROP_DOWN">Drop-Down (Select Blanks)</option>
             <option value="CATEGORIZE">Categorization Groups</option>
           </select>
         </div>
@@ -1944,57 +1862,7 @@ export function TeacherDashboard({
           </div>
         )}
 
-        {/* 4. DROP DOWN */}
-        {questionType === 'DROP_DOWN' && (
-          <div>
-            <div className="form-group">
-              <label className="form-label">Sentence with Dropdown slots</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
-                Write a sentence using placeholders like <code>{"{{0}}"}</code>, <code>{"{{1}}"}</code> for the dropdowns.
-              </p>
-              <textarea 
-                className="form-input" 
-                placeholder="e.g. PocketBase is written in {{0}} and uses {{1}} database."
-                rows={2}
-                value={dropdownSentence}
-                onChange={(e) => setDropdownSentence(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Dropdown Selections Config</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Define comma-separated options. **The first option in the list is the correct answer**.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
-              {dropdownOptions.map((choiceLine, idx) => {
-                const isDropdownUsed = dropdownSentence.includes(`{{${idx}}}`);
-                if (!isDropdownUsed && idx > 0) return null; // Show at least one config input
-                return (
-                  <div key={idx} className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem', color: isDropdownUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                      {isDropdownUsed ? `Dropdown {{${idx}}} Options (Correct, Option2, Option3...)` : `Unused Dropdown Config`}
-                    </label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Go, Rust, JavaScript, Python"
-                      value={choiceLine}
-                      onChange={(e) => updateDropdownOption(idx, e.target.value)}
-                      disabled={loading}
-                      onKeyDown={preventSubmitOnEnter}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 5. CATEGORIZE */}
+        {/* 4. CATEGORIZE */}
         {questionType === 'CATEGORIZE' && (
           <div>
             <div className="form-group">
@@ -2099,7 +1967,6 @@ export function TeacherDashboard({
                   {q.type === 'MULTIPLE_CHOICE' && `Options: ${q.options.join(', ')}`}
                   {q.type === 'SORTING' && `Items: ${q.options.join(' → ')}`}
                   {q.type === 'DRAG_DROP' && `Sentence: ${q.options.sentence}`}
-                  {q.type === 'DROP_DOWN' && `Sentence: ${q.options.sentence}`}
                   {q.type === 'CATEGORIZE' && `Categories: ${q.options.categories.join(', ')}`}
                 </span>
               </div>
@@ -2165,7 +2032,6 @@ Generate the following question counts (adjust based on user source content if p
 - Sorting (SORTING): ${genSortingCount} questions
 - Categorization (CATEGORIZE): ${genCategorizeCount} questions
 - Drag & Drop (DRAG_DROP): ${genDragDropCount} questions
-- Drop Down (DROP_DOWN): ${genDropDownCount} questions
 
 Each question must be formatted EXACTLY as follows. Do not add any extra text or conversational chatter between the markdown question blocks.
 
@@ -2224,38 +2090,7 @@ sentence: The quick brown [fox] jumps over the lazy [dog].
 - cat
 - horse
 
-4. DROP_DOWN
-Format:
-# DROP_DOWN
-<Instruction text here>
-sentence: <Sentence text with correct answers inside bracket placeholders [dropdown1] and [dropdown2]>
-dropdown
-- *<Correct Option for dropdown1> (prefixed with *)
-- <Option 2>
-- <Option 3>
-- <Option 4>
-dropdown
-- *<Correct Option for dropdown2> (prefixed with *)
-- <Option 2>
-- <Option 3>
-- <Option 4>
-
-Example:
-# DROP_DOWN
-Choose the correct verb conjugation.
-sentence: Yesterday I [dropdown1] to school and [dropdown2] my friend.
-dropdown
-- *went
-- go
-- gone
-- goes
-dropdown
-- *saw
-- see
-- seen
-- sees
-
-5. CATEGORIZE
+4. CATEGORIZE
 Format:
 # CATEGORIZE
 <Instruction text here>
@@ -2567,20 +2402,6 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                     max="50"
                     value={genDragDropCount}
                     onChange={(e) => setGenDragDropCount(Math.max(0, parseInt(e.target.value) || 0))}
-                    disabled={genLoading}
-                    className="form-input"
-                    style={{ textAlign: 'center' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Drop Down</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="50"
-                    value={genDropDownCount}
-                    onChange={(e) => setGenDropDownCount(Math.max(0, parseInt(e.target.value) || 0))}
                     disabled={genLoading}
                     className="form-input"
                     style={{ textAlign: 'center' }}
@@ -3681,17 +3502,6 @@ Sort these numbers from lowest to highest.
                           </p>
                           <p style={{ margin: 0 }}>
                             Blanks: <strong style={{ color: 'var(--accent-light)' }}>{question.options.correct?.join(', ')}</strong>
-                          </p>
-                        </div>
-                      )}
-
-                      {type === 'DROP_DOWN' && question.options && (
-                        <div>
-                          <p style={{ margin: '0 0 6px 0', fontStyle: 'italic', color: 'var(--text-muted)' }}>
-                            {question.options.sentence}
-                          </p>
-                          <p style={{ margin: 0 }}>
-                            Dropdown Correct Answers: <strong style={{ color: 'var(--accent-light)' }}>{question.options.dropdowns?.map(d => d.correct).join(', ')}</strong>
                           </p>
                         </div>
                       )}

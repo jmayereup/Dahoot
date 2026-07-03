@@ -1,6 +1,6 @@
 export function parseMarkdownQuestions(text) {
   const questions = [];
-  const sections = text.split(/#\s+(MULTIPLE_CHOICE|SORTING|DRAG_DROP|DROP_DOWN|CATEGORIZE)/i);
+  const sections = text.split(/#\s+(MULTIPLE_CHOICE|SORTING|DRAG_DROP|CATEGORIZE)/i);
   
   for (let i = 1; i < sections.length; i += 2) {
     const type = sections[i].toUpperCase();
@@ -106,51 +106,6 @@ export function parseMarkdownQuestions(text) {
           sentence,
           choices: choices.slice(0, 4),
           correct
-        },
-        correct_option_index: 0
-      });
-    } 
-    
-    else if (type === 'DROP_DOWN') {
-      let sentence = '';
-      const dropdowns = [];
-      let currentDropdown = null;
-      
-      for (const line of lines) {
-        if (line.toLowerCase().startsWith('sentence:')) {
-          sentence = line.substring(9).trim();
-        } else if (line.toLowerCase().startsWith('dropdown')) {
-          if (currentDropdown) {
-            dropdowns.push(currentDropdown);
-          }
-          currentDropdown = { choices: [], correct: '' };
-        } else if (line.startsWith('-') && currentDropdown) {
-          let value = line.substring(1).trim();
-          const isCorrect = value.startsWith('*');
-          if (isCorrect) {
-            value = value.substring(1).trim();
-            currentDropdown.correct = value;
-          }
-          currentDropdown.choices.push(value);
-        } else {
-          if (!textPrompt) {
-            textPrompt = line;
-          } else {
-            textPrompt += '\n' + line;
-          }
-        }
-      }
-      
-      if (currentDropdown) {
-        dropdowns.push(currentDropdown);
-      }
-      
-      questions.push({
-        type,
-        text: textPrompt.trim(),
-        options: {
-          sentence,
-          dropdowns
         },
         correct_option_index: 0
       });

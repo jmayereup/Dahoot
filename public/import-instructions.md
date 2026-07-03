@@ -62,29 +62,7 @@ Sentence: In React, we use the [blank0] hook to manage state, and [blank1] to pe
 
 ---
 
-### 4. Drop-Down (Select Blanks)
-*   **Header:** `# DROP_DOWN`
-*   **Sentence:** Preceded by `Sentence: ` containing dropdown slots `{{0}}`, `{{1}}`, etc.
-*   **Dropdown Groups:** Each dropdown is defined by a `Dropdown N:` header, followed by choice bullet points starting with `-`. The correct choice is prefixed with `*`.
-
-**Format Example:**
-```markdown
-# DROP_DOWN
-Fill in the blanks regarding PocketBase architecture.
-Sentence: PocketBase is written in {{0}} and uses {{1}} as its default database engine.
-Dropdown 0:
-- *Go
-- Rust
-- JavaScript
-Dropdown 1:
-- *SQLite
-- PostgreSQL
-- MongoDB
-```
-
----
-
-### 5. Categorization Groups
+### 4. Categorization Groups
 *   **Header:** `# CATEGORIZE`
 *   **Categories:** Preceded by `Categories: ` followed by a comma-separated list of categories.
 *   **Items:** Preceded by an `Items:` header, followed by bullet points mapping each item to its category in the format `- ItemName: CategoryName`.

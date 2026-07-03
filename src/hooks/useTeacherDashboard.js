@@ -43,10 +43,6 @@ export function useTeacherDashboard(view, currentUser) {
   const [dragSentence, setDragSentence] = useState('');
   const [dragChoices, setDragChoices] = useState(['', '', '', '']);
 
-  // DROP_DOWN
-  const [dropdownSentence, setDropdownSentence] = useState('');
-  const [dropdownOptions, setDropdownOptions] = useState(['', '', '', '']);
-
   // CATEGORIZE
   const [categorizeCategories, setCategorizeCategories] = useState('');
   const [categorizeItemsText, setCategorizeItemsText] = useState('');
@@ -140,8 +136,6 @@ export function useTeacherDashboard(view, currentUser) {
     setCorrectOptionIndex(0);
     setDragSentence('');
     setDragChoices(['', '', '', '']);
-    setDropdownSentence('');
-    setDropdownOptions(['', '', '', '']);
     setCategorizeCategories('');
     setCategorizeItemsText('');
   };
@@ -320,8 +314,6 @@ export function useTeacherDashboard(view, currentUser) {
     setCorrectOptionIndex(0);
     setDragSentence('');
     setDragChoices(['', '', '', '']);
-    setDropdownSentence('');
-    setDropdownOptions(['', '', '', '']);
     setCategorizeCategories('');
     setCategorizeItemsText('');
     setIsEditing(true);
@@ -345,12 +337,6 @@ export function useTeacherDashboard(view, currentUser) {
       const choices = Array.isArray(question.options?.choices) ? [...question.options.choices] : [];
       while (choices.length < 4) choices.push('');
       setDragChoices(choices);
-    } else if (type === 'DROP_DOWN') {
-      setDropdownSentence(question.options?.sentence || '');
-      const dropdowns = Array.isArray(question.options?.dropdowns) ? question.options.dropdowns : [];
-      const choiceLines = dropdowns.map(d => Array.isArray(d.choices) ? d.choices.join(', ') : '');
-      while (choiceLines.length < 4) choiceLines.push('');
-      setDropdownOptions(choiceLines);
     } else if (type === 'CATEGORIZE') {
       const cats = Array.isArray(question.options?.categories) ? question.options.categories.join(', ') : '';
       setCategorizeCategories(cats);
@@ -378,12 +364,6 @@ export function useTeacherDashboard(view, currentUser) {
     const updated = [...dragChoices];
     updated[index] = value;
     setDragChoices(updated);
-  };
-
-  const updateDropdownOption = (index, value) => {
-    const updated = [...dropdownOptions];
-    updated[index] = value;
-    setDropdownOptions(updated);
   };
 
   const saveQuestion = async (e) => {
@@ -423,42 +403,6 @@ export function useTeacherDashboard(view, currentUser) {
         sentence: dragSentence.trim(),
         choices: dragChoices.map(c => c.trim()),
         correct: dragChoices.slice(0, numBlanks).map(c => c.trim())
-      };
-    } 
-    
-    else if (questionType === 'DROP_DOWN') {
-      if (!dropdownSentence.trim()) {
-        setError('Sentence with dropdowns is required.');
-        return;
-      }
-      const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
-      if (numDropdowns === 0) {
-        setError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).');
-        return;
-      }
-      
-      const activeLines = dropdownOptions.slice(0, numDropdowns);
-      if (activeLines.some(line => !line.trim())) {
-        setError(`Please define choices for all ${numDropdowns} dropdowns.`);
-        return;
-      }
-
-      const dropdownsConfig = activeLines.map(line => {
-        const choices = line.split(',').map(c => c.trim()).filter(Boolean);
-        return {
-          choices,
-          correct: choices[0] || ''
-        };
-      });
-
-      if (dropdownsConfig.some(d => d.choices.length < 2)) {
-        setError('Each dropdown must have at least 2 comma-separated options (e.g. "Yes, No").');
-        return;
-      }
-
-      optionsPayload = {
-        sentence: dropdownSentence.trim(),
-        dropdowns: dropdownsConfig
       };
     } 
     
@@ -598,42 +542,6 @@ export function useTeacherDashboard(view, currentUser) {
       };
     } 
     
-    else if (questionType === 'DROP_DOWN') {
-      if (!dropdownSentence.trim()) {
-        setError('Sentence with dropdowns is required.');
-        return false;
-      }
-      const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
-      if (numDropdowns === 0) {
-        setError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).');
-        return false;
-      }
-      
-      const activeLines = dropdownOptions.slice(0, numDropdowns);
-      if (activeLines.some(line => !line.trim())) {
-        setError(`Please define choices for all ${numDropdowns} dropdowns.`);
-        return false;
-      }
-
-      const dropdownsConfig = activeLines.map(line => {
-        const choices = line.split(',').map(c => c.trim()).filter(Boolean);
-        return {
-          choices,
-          correct: choices[0] || ''
-        };
-      });
-
-      if (dropdownsConfig.some(d => d.choices.length < 2)) {
-        setError('Each dropdown must have at least 2 comma-separated options (e.g. "Yes, No").');
-        return false;
-      }
-
-      optionsPayload = {
-        sentence: dropdownSentence.trim(),
-        dropdowns: dropdownsConfig
-      };
-    } 
-    
     else if (questionType === 'CATEGORIZE') {
       if (!categorizeCategories.trim()) {
         setError('Categories list is required.');
@@ -703,8 +611,6 @@ export function useTeacherDashboard(view, currentUser) {
     setCorrectOptionIndex(0);
     setDragSentence('');
     setDragChoices(['', '', '', '']);
-    setDropdownSentence('');
-    setDropdownOptions(['', '', '', '']);
     setCategorizeCategories('');
     setCategorizeItemsText('');
     return true;
@@ -817,12 +723,6 @@ export function useTeacherDashboard(view, currentUser) {
     setDragSentence,
     dragChoices,
     updateDragChoice,
-
-    // Drop Down
-    dropdownSentence,
-    setDropdownSentence,
-    dropdownOptions,
-    updateDropdownOption,
 
     // Categorize
     categorizeCategories,
