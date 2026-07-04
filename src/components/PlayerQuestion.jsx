@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
-import { deterministicShuffle } from '../utils/shuffle';
+import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 
 export function PlayerQuestion({
@@ -31,7 +31,7 @@ export function PlayerQuestion({
 
   useEffect(() => {
     if (type === 'SORTING' && Array.isArray(activeQuestion.options)) {
-      setSortingPool([...activeQuestion.options].sort(() => 0.5 - Math.random()));
+      setSortingPool(shuffleArray(activeQuestion.options));
       setSortedItems([]);
     }
   }, [activeQuestion.id, activeQuestion.options, type]);

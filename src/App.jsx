@@ -27,7 +27,7 @@ function App() {
   const [availableCefrLevels, setAvailableCefrLevels] = useState(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
   const [availableLanguages, setAvailableLanguages] = useState(['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other']);
   
-  const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid);
+  const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid && !!pb.authStore.record);
   const [currentUser, setCurrentUser] = useState(pb.authStore.record);
 
   useAdSense();
@@ -35,7 +35,7 @@ function App() {
   // Sync auth state and listen to auth changes
   useEffect(() => {
     return pb.authStore.onChange((token, record) => {
-      setIsAuthenticated(pb.authStore.isValid);
+      setIsAuthenticated(pb.authStore.isValid && !!record);
       setCurrentUser(record);
     });
   }, []);

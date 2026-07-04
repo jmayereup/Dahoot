@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../pb';
+import { shuffleArray } from '../utils/shuffle';
 
 export function useMarathonPlayer(view, setView) {
   const [playerRoom, setPlayerRoom] = useState(null);
@@ -74,7 +75,7 @@ export function useMarathonPlayer(view, setView) {
         localStorage.setItem('dahoot_marathon_player_id', player.id);
       } else {
         const initialLapIds = room.randomize_questions
-          ? [...room.question_ids].sort(() => 0.5 - Math.random())
+          ? shuffleArray(room.question_ids)
           : [...room.question_ids];
 
         player = await pb.collection('dahoot_players').create({
@@ -181,13 +182,13 @@ export function useMarathonPlayer(view, setView) {
             answer_time: answerTime,
             timestamp: Date.now()
           }
-        ]
+        ].slice(-50)
       };
 
       const newIndex = playerQuestionIndex;
 
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
-        score: playerRecord.score + points,
+        score: (parseFloat(playerRecord.score) || 0) + points,
         last_answered_index: newIndex,
         answers: {
           ...playerRecord.answers,
@@ -207,7 +208,7 @@ export function useMarathonPlayer(view, setView) {
 
   const advanceToNextQuestion = async () => {
     if (isStudentPaced && playerQuestionIndex >= currentLapQuestions.length) {
-      const newIds = currentLapQuestions.map(q => q.id).sort(() => 0.5 - Math.random());
+      const newIds = shuffleArray(currentLapQuestions.map(q => q.id));
       const newLap = (playerRecord.marathon_stats?.lap || 0) + 1;
 
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {

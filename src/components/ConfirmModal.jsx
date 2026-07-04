@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export function ConfirmModal({
   isOpen,
@@ -11,6 +11,8 @@ export function ConfirmModal({
   variant = 'danger',
   icon = null
 }) {
+  const containerRef = useRef(null);
+
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e) => {
@@ -19,6 +21,37 @@ export function ConfirmModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
+
+  // Focus trap
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Tab' && containerRef.current) {
+        const focusableElements = containerRef.current.querySelectorAll(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled])'
+        );
+        if (focusableElements.length === 0) return;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -50,6 +83,7 @@ export function ConfirmModal({
 
   return (
     <div
+      ref={containerRef}
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -164,10 +198,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            onClick={onConfirm}
             className={`btn ${palette.button}`}
             style={{ flex: 1, minWidth: '120px' }}
           >

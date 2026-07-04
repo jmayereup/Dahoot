@@ -291,7 +291,7 @@ export function MarathonView({
         {marathonState === 'FINISHED' && (
           <div className="animate-fade-in" style={{ padding: '32px 16px' }}>
             <span style={{ fontSize: '4.5rem', display: 'block', marginBottom: '16px', animation: 'bounce-slow 3s infinite ease-in-out' }}>🏁</span>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: '900', background: 'linear-gradient(to right, #6366f1, #8b5cf6)', bgClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent', marginBottom: '8px' }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: '900', background: 'linear-gradient(to right, #6366f1, #8b5cf6)', backgroundClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent', marginBottom: '8px' }}>
               Marathon Complete!
             </h2>
             <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '32px', fontWeight: '500' }}>
@@ -314,7 +314,7 @@ export function MarathonView({
                 </span>
               </div>
 
-              <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129129, 0.08)', borderRadius: '16px', padding: '16px' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.08)', borderRadius: '16px', padding: '16px' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
                   Correct Answers
                 </span>

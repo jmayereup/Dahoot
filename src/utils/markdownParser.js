@@ -164,11 +164,12 @@ export function parseMarkdownQuestions(text) {
         if (line.toLowerCase().startsWith('categories:')) {
           categories = line.substring(11).split(',').map(c => c.trim()).filter(Boolean);
         } else if (line.startsWith('-')) {
-          const parts = line.substring(1).split(':');
-          if (parts.length >= 2) {
+          const content = line.substring(1);
+          const lastColonIndex = content.lastIndexOf(':');
+          if (lastColonIndex !== -1) {
             items.push({
-              name: parts[0].trim(),
-              category: parts[1].trim()
+              name: content.substring(0, lastColonIndex).trim(),
+              category: content.substring(lastColonIndex + 1).trim()
             });
           }
         } else if (line.toLowerCase().startsWith('items:')) {

@@ -39,6 +39,7 @@ export function AuthView({ onSuccess, onCancel }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setSuccessMsg('');
     setLoading(true);

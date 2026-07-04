@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
-import { deterministicShuffle } from '../utils/shuffle';
+import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -29,7 +29,7 @@ export function HostQuestion({
   // Shuffle sorting options once when question changes so they display out of order
   const shuffledSortingOptions = useMemo(() => {
     if (type !== 'SORTING' || !Array.isArray(activeQuestion.options)) return [];
-    return [...activeQuestion.options].sort(() => 0.5 - Math.random());
+    return shuffleArray(activeQuestion.options);
   }, [activeQuestion.id, activeQuestion.options, type]);
 
   // Helper to parse drag and drop sentences

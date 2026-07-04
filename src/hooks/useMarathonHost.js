@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { pb } from '../pb';
 import QRCode from 'qrcode';
+import { shuffleArray } from '../utils/shuffle';
 
 export function useMarathonHost(view, setView) {
   const [hostRoom, setHostRoom] = useState(null);
@@ -86,7 +87,7 @@ export function useMarathonHost(view, setView) {
       }
 
       if (options.randomize !== false) {
-        activeQuestions.sort(() => 0.5 - Math.random());
+        activeQuestions = shuffleArray(activeQuestions);
       }
 
       const pacingMode = options.pacingMode || 'student';

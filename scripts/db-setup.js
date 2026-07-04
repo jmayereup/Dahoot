@@ -523,7 +523,10 @@ async function runSetup() {
       process.exit(1);
     }
     const adminUserEmail = `dahoot@${schoolDomain}`;
-    const adminUserPassword = 'changeme';
+    const adminUserPassword = process.env.DAHOOT_ADMIN_PASSWORD || 'changeme';
+    if (adminUserPassword === 'changeme') {
+      console.warn('\x1b[33m[Dahoot DB] WARNING: Using default admin password "changeme". Please set DAHOOT_ADMIN_PASSWORD in your environment.\x1b[0m');
+    }
     
     try {
       const existingUser = await pb.collection('users').getFirstListItem(`email = "${adminUserEmail}"`);

@@ -103,7 +103,7 @@ export function PracticeView({
     );
   }
 
-  const masteryPercentage = Math.round((masteredCount / totalCount) * 100);
+  const masteryPercentage = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0;
 
   return (
     <div className="app-container">
@@ -243,7 +243,7 @@ export function PracticeView({
         {practiceState === 'FINISHED' && (
           <div className="animate-fade-in" style={{ padding: '32px 16px' }}>
             <span style={{ fontSize: '4.5rem', display: 'block', marginBottom: '16px', animation: 'bounce-slow 3s infinite ease-in-out' }}>🏆</span>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: '900', background: 'linear-gradient(to right, #10b981, #059669)', bgClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent', marginBottom: '8px' }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: '900', background: 'linear-gradient(to right, #10b981, #059669)', backgroundClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent', marginBottom: '8px' }}>
               Mastery Attained!
             </h2>
             <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '32px', fontWeight: '500' }}>

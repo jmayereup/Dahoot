@@ -1,16 +1,18 @@
 import { Cookie, Settings, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
 
-  const [consent, setsetConsent] = useState({
+  const [consent, setConsent] = useState({
     essential: true,
     analytics: true,
     ads: true,
   });
+
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const consentRegistered = localStorage.getItem('dahoot_cookie_consent');
@@ -19,6 +21,41 @@ export function CookieConsent() {
       return () => clearTimeout(timer);
     }
   }, []);
+
+  // Escape key and focus trap
+  useEffect(() => {
+    if (!showBanner) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleDeclineAll();
+      }
+
+      if (e.key === 'Tab' && containerRef.current) {
+        const focusableElements = containerRef.current.querySelectorAll(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled])'
+        );
+        if (focusableElements.length === 0) return;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showBanner, consent]);
 
   const handleAcceptAll = () => {
     const preference = {
@@ -55,6 +92,9 @@ export function CookieConsent() {
     <AnimatePresence>
       {showBanner && (
         <motion.div
+          ref={containerRef}
+          role="dialog"
+          aria-modal="true"
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
@@ -158,7 +198,7 @@ export function CookieConsent() {
                     type="checkbox"
                     checked={consent.analytics}
                     onChange={(e) =>
-                      setsetConsent({ ...consent, analytics: e.target.checked })
+                      setConsent({ ...consent, analytics: e.target.checked })
                     }
                     className="w-4 h-4 text-rose-500 focus:ring-rose-500 border-slate-300 rounded cursor-pointer"
                   />
@@ -177,7 +217,7 @@ export function CookieConsent() {
                     type="checkbox"
                     checked={consent.ads}
                     onChange={(e) =>
-                      setsetConsent({ ...consent, ads: e.target.checked })
+                      setConsent({ ...consent, ads: e.target.checked })
                     }
                     className="w-4 h-4 text-rose-500 focus:ring-rose-500 border-slate-300 rounded cursor-pointer"
                   />

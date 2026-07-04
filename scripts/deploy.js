@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync, spawn } from 'child_process';
+import { execSync, execFileSync, spawn } from 'child_process';
 import PocketBase from 'pocketbase';
 import net from 'net';
 
@@ -292,7 +292,7 @@ async function deploy() {
   // Step 2: Ensure target directory exists on VPS
   console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 2: Preparing remote directories...\x1b[0m');
   try {
-    execSync(`ssh -o ConnectTimeout=10 ${connectionString} "mkdir -p ${targetPath}/pocketbase"`, { stdio: 'inherit' });
+    execFileSync('ssh', ['-o', 'ConnectTimeout=10', connectionString, `mkdir -p ${targetPath}/pocketbase`], { stdio: 'inherit' });
     console.log('\x1b[32m[Dahoot Deploy] Remote directories are ready.\x1b[0m');
   } catch (err) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Failed to connect to server via SSH.\x1b[0m');
@@ -303,7 +303,7 @@ async function deploy() {
   // Step 3: Deploy frontend files
   console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 3: Uploading frontend static assets (dist/)...\x1b[0m');
   try {
-    execSync(`rsync -avz --delete -e ssh "${path.join(rootDir, 'dist')}/" "${connectionString}:${targetPath}/dist/"`, { stdio: 'inherit' });
+    execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${path.join(rootDir, 'dist')}/`, `${connectionString}:${targetPath}/dist/`], { stdio: 'inherit' });
     console.log('\x1b[32m[Dahoot Deploy] Frontend assets uploaded successfully.\x1b[0m');
   } catch (err) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync frontend assets.\x1b[0m', err.message);
@@ -315,7 +315,7 @@ async function deploy() {
   if (fs.existsSync(localMigrationsDir)) {
     console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase migrations...\x1b[0m');
     try {
-      execSync(`rsync -avz --delete -e ssh "${localMigrationsDir}/" "${connectionString}:${targetPath}/pocketbase/pb_migrations/"`, { stdio: 'inherit' });
+      execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localMigrationsDir}/`, `${connectionString}:${targetPath}/pocketbase/pb_migrations/`], { stdio: 'inherit' });
       console.log('\x1b[32m[Dahoot Deploy] PocketBase migrations uploaded successfully.\x1b[0m');
     } catch (err) {
       console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync migrations.\x1b[0m', err.message);
@@ -328,7 +328,7 @@ async function deploy() {
   if (fs.existsSync(localHooksDir)) {
     console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
     try {
-      execSync(`rsync -avz --delete -e ssh "${localHooksDir}/" "${connectionString}:${hooksPath}/"`, { stdio: 'inherit' });
+      execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localHooksDir}/`, `${connectionString}:${hooksPath}/`], { stdio: 'inherit' });
       console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
     } catch (err) {
       console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
@@ -339,7 +339,7 @@ async function deploy() {
   // Step 5: Restart the systemd service on remote server
   console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 5: Restarting systemd service (${serviceName})...\x1b[0m`);
   try {
-    execSync(`ssh ${connectionString} "systemctl restart ${serviceName}"`, { stdio: 'inherit' });
+    execFileSync('ssh', [connectionString, `systemctl restart ${serviceName}`], { stdio: 'inherit' });
     console.log(`\x1b[32m[Dahoot Deploy] Service '${serviceName}' restarted successfully on remote server.\x1b[0m`);
   } catch (err) {
     console.warn(`\x1b[33m[Dahoot Deploy] Warning: Failed to restart '${serviceName}' on the server.\x1b[0m`);

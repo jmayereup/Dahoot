@@ -23,7 +23,7 @@ export function deterministicShuffle(array, seed) {
   // A simple seedable LCG to generate pseudo-random numbers
   const nextRandom = () => {
     state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 0xffffffff;
+    return state / 0x100000000;
   };
 
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -33,5 +33,15 @@ export function deterministicShuffle(array, seed) {
     shuffled[r] = temp;
   }
 
+  return shuffled;
+}
+
+export function shuffleArray(array) {
+  if (!Array.isArray(array)) return [];
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return shuffled;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
+import { shuffleArray } from '../utils/shuffle';
 
 export function QuestionInteraction({
   question,
@@ -30,7 +31,7 @@ export function QuestionInteraction({
   useEffect(() => {
     if (!question) return;
     if (type === 'SORTING' && Array.isArray(question.options)) {
-      setSortingPool([...question.options].sort(() => 0.5 - Math.random()));
+      setSortingPool(shuffleArray(question.options));
       setSortedItems([]);
     } else if (type === 'DRAG_DROP' && question.options) {
       const correctLen = question.options.correct ? question.options.correct.length : 0;

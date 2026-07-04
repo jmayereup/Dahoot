@@ -273,7 +273,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       };
 
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
-        score: playerRecord.score + points,
+        score: (parseFloat(playerRecord.score) || 0) + points,
         last_answered_index: qIndex,
         answers: newAnswers
       });

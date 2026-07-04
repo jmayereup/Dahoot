@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { pb } from '../pb';
+import { shuffleArray } from '../utils/shuffle';
 
 export function usePracticeGame(view, setView) {
   const [practiceState, setPracticeState] = useState('INTRO'); // 'INTRO' | 'QUESTION' | 'FEEDBACK' | 'ROUND_COMPLETE' | 'FINISHED'
@@ -55,7 +56,7 @@ export function usePracticeGame(view, setView) {
       }
 
       if (options.randomize) {
-        activeQuestions.sort(() => 0.5 - Math.random());
+        activeQuestions = shuffleArray(activeQuestions);
       } else {
         activeQuestions.sort((a, b) => a.created.localeCompare(b.created));
       }

@@ -203,32 +203,43 @@ export function TeacherDashboard({
 
   // Fetch current user's role from dahoot_user_info
   useEffect(() => {
+    let active = true;
     if (currentUser && currentUser.dahoot_info) {
       pb.collection('dahoot_user_info').getOne(currentUser.dahoot_info)
         .then(record => {
-          if (record && record.role) {
+          if (active && record && record.role) {
             setUserRole(record.role);
           }
         })
         .catch(err => {
-          console.error("Error fetching user role:", err);
+          if (active) {
+            console.error("Error fetching user role:", err);
+          }
         });
     }
+    return () => {
+      active = false;
+    };
   }, [currentUser]);
 
   // Load Admin Data when Admin Panel opens or tab changes
   useEffect(() => {
+    let active = true;
     if (isAdminPanelOpen) {
       if (adminPanelTab === 'invite') {
         pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"')
           .then(record => {
-            setInviteCodeSettingRecord(record);
-            setInviteCodeValue(record.value);
-            setInviteError('');
+            if (active) {
+              setInviteCodeSettingRecord(record);
+              setInviteCodeValue(record.value);
+              setInviteError('');
+            }
           })
           .catch(err => {
-            console.error("Error fetching invite code:", err);
-            setInviteError("Failed to load invite code.");
+            if (active) {
+              console.error("Error fetching invite code:", err);
+              setInviteError("Failed to load invite code.");
+            }
           });
       } else if (adminPanelTab === 'teachers') {
         setIsLoadingTeachers(true);
@@ -238,29 +249,40 @@ export function TeacherDashboard({
           sort: 'created'
         })
           .then(list => {
-            setTeachers(list);
-            setIsLoadingTeachers(false);
+            if (active) {
+              setTeachers(list);
+              setIsLoadingTeachers(false);
+            }
           })
           .catch(err => {
-            console.error("Error fetching users:", err);
-            setTeachersError("Failed to load teachers list.");
-            setIsLoadingTeachers(false);
+            if (active) {
+              console.error("Error fetching users:", err);
+              setTeachersError("Failed to load teachers list.");
+              setIsLoadingTeachers(false);
+            }
           });
       } else if (adminPanelTab === 'filters') {
         setIsLoadingOptions(true);
         setOptionsError('');
         pb.collection('dahoot_options').getFullList()
           .then(list => {
-            setOptionsList(list);
-            setIsLoadingOptions(false);
+            if (active) {
+              setOptionsList(list);
+              setIsLoadingOptions(false);
+            }
           })
           .catch(err => {
-            console.error("Error fetching options:", err);
-            setOptionsError("Failed to load filter options.");
-            setIsLoadingOptions(false);
+            if (active) {
+              console.error("Error fetching options:", err);
+              setOptionsError("Failed to load filter options.");
+              setIsLoadingOptions(false);
+            }
           });
       }
     }
+    return () => {
+      active = false;
+    };
   }, [isAdminPanelOpen, adminPanelTab]);
 
   const handleAddOption = async (type, value) => {
@@ -1785,7 +1807,7 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
       if (match) {
         try {
           const jsonObj = JSON.parse(match[1]);
-          aiDescription = jsonObj.description || '';
+          aiDescription = jsonObj?.description || '';
           markdownText = choice.replace(match[0], '').trim();
         } catch (e) {
           console.error("Failed to parse AI description JSON:", e);
@@ -1796,7 +1818,7 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
           const possibleJson = choice.substring(endJsonIndex);
           try {
             const jsonObj = JSON.parse(possibleJson);
-            aiDescription = jsonObj.description || '';
+            aiDescription = jsonObj?.description || '';
             markdownText = choice.substring(0, endJsonIndex).trim();
           } catch (e) {
             // Ignore

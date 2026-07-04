@@ -7,16 +7,16 @@
 
 ## Executive Summary
 
-| Severity | Count | Key Themes |
-|----------|-------|------------|
-| 🔴 Critical | 7 | Open DB rules, no server-side validation, unauthenticated AI endpoint, XSS, confirm bypass |
-| 🟠 High | 12 | Answers exposed, subscription leaks, missing imports → crashes, auth bugs |
-| 🟡 Medium | 27 | Filter injection, timer drift, a11y gaps, double-submits, biased shuffle |
-| 🟢 Low | 20 | Code organization, minor a11y, dead code, informational |
+| Severity | Count | Status | Key Themes |
+|----------|-------|--------|------------|
+| 🔴 Critical | 7 | ✅ Addressed | Open DB rules, no server-side validation, unauthenticated AI endpoint, XSS, confirm bypass |
+| 🟠 High | 12 | ✅ Addressed | Answers exposed, subscription leaks, missing imports → crashes, auth bugs |
+| 🟡 Medium | 27 | ✅ Addressed | Filter injection, timer drift, a11y gaps, double-submits, biased shuffle |
+| 🟢 Low | 20 | ⏳ Open | Code organization, minor a11y, dead code, informational |
 
 ---
 
-## 🔴 Critical Issues
+## 🔴 Critical Issues (✅ Addressed)
 
 ### C1 — Completely Open PocketBase Collection Rules
 **File:** [db-setup.js:337–503](file:///var/home/jmayer/Dev/Dahoot/scripts/db-setup.js#L337-L503)
@@ -122,7 +122,7 @@ The check `!inviteCode.trim().toLocaleUpperCase()` is intended to reject empty i
 
 ---
 
-## 🟠 High Issues
+## 🟠 High Issues (✅ Addressed)
 
 ### H1 — Correct Answers Exposed to Players
 **File:** [SelectionView.jsx:180–220](file:///var/home/jmayer/Dev/Dahoot/src/components/SelectionView.jsx#L180-L220)
@@ -270,7 +270,7 @@ Drag-and-drop question reordering uses `key={index}`. React incorrectly reconcil
 
 ---
 
-## 🟡 Medium Issues
+## 🟡 Medium Issues (✅ Addressed)
 
 | # | File | Cat | Issue | Fix |
 |---|------|-----|-------|-----|

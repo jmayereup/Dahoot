@@ -286,15 +286,15 @@ export function useTeacherDashboard(view, currentUser) {
         sort: 'created'
       });
 
-      for (const q of qList) {
-        await pb.collection('dahoot_questions').create({
+      await Promise.all(qList.map(q => 
+        pb.collection('dahoot_questions').create({
           game_id: copiedGame.id,
           text: q.text,
           options: q.options,
           correct_option_index: q.correct_option_index,
           type: q.type
-        });
-      }
+        })
+      ));
 
       await fetchGames();
     } catch (err) {
@@ -734,15 +734,15 @@ export function useTeacherDashboard(view, currentUser) {
         throw new Error('Could not parse any valid questions. Check formatting.');
       }
 
-      for (const q of parsed) {
-        await pb.collection('dahoot_questions').create({
+      await Promise.all(parsed.map(q => 
+        pb.collection('dahoot_questions').create({
           game_id: selectedGame.id,
           text: q.text,
           options: q.options,
           correct_option_index: q.correct_option_index,
           type: q.type
-        });
-      }
+        })
+      ));
 
       setIsImporting(false);
       setImportText('');
