@@ -24,5 +24,7 @@ dist-ssr
 *.sw?
 
 # PocketBase local development
-pocketbase/
+pocketbase/pocketbase
+pocketbase/pb_data/
+pocketbase/pb_migrations/
 .env
