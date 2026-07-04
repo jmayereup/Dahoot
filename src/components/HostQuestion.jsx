@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
-import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex } from '../utils/blankParsing';
+import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
 
 export function HostQuestion({

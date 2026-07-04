@@ -55,7 +55,7 @@ export function SelectionView({
 
     let isMounted = true;
     pb.collection('dahoot_questions').getFullList({
-      filter: `game_id = "${selectedGameId}"`
+      filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameId })
     })
     .then(res => {
       if (isMounted) {

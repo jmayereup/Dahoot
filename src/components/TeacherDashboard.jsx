@@ -304,7 +304,11 @@ export function TeacherDashboard({
   };
 
   const handleDeleteOption = async (option) => {
-    if (!confirm(`Are you sure you want to delete "${option.value}"?`)) return;
+    const confirmed = await confirm({
+      title: "Delete Option",
+      message: `Are you sure you want to delete "${option.value}"?`
+    });
+    if (!confirmed) return;
     
     setOptionsError('');
     try {
@@ -392,9 +396,11 @@ export function TeacherDashboard({
       alert("You cannot delete yourself!");
       return;
     }
-    if (!confirm(`Are you sure you want to delete user ${user.email || user.username}?`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Delete User",
+      message: `Are you sure you want to delete user ${user.email || user.username}?`
+    });
+    if (!confirmed) return;
     setTeachersError('');
     try {
       await pb.collection('users').delete(user.id);
@@ -430,14 +436,23 @@ export function TeacherDashboard({
         school: newTeacherSchool.trim() || undefined
       });
       
-      await pb.collection('users').create({
-        email: newTeacherEmail.trim(),
-        password: newTeacherPassword,
-        passwordConfirm: newTeacherPassword,
-        username: newTeacherEmail.trim().split('@')[0] + Math.floor(Math.random() * 10000),
-        name: newTeacherName.trim() || undefined,
-        dahoot_info: info.id
-      });
+      try {
+        await pb.collection('users').create({
+          email: newTeacherEmail.trim(),
+          password: newTeacherPassword,
+          passwordConfirm: newTeacherPassword,
+          username: newTeacherEmail.trim().split('@')[0] + Math.floor(Math.random() * 10000),
+          name: newTeacherName.trim() || undefined,
+          dahoot_info: info.id
+        });
+      } catch (userErr) {
+        try {
+          await pb.collection('dahoot_user_info').delete(info.id);
+        } catch (delErr) {
+          console.error("Failed to delete orphaned user info record:", delErr);
+        }
+        throw userErr;
+      }
       
       setCreateTeacherSuccess("New teacher account created successfully!");
       setNewTeacherName('');
@@ -964,7 +979,7 @@ export function TeacherDashboard({
     setPreviewIsCorrect(false);
     try {
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${game.id}"`,
+        filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
         sort: 'created'
       });
       setPreviewQuestions(qList);

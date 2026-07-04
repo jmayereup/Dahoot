@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BUCKET_COLORS } from '../constants';
-import { splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
+import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBracketInner } from '../utils/blankParsing';
 
 export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);

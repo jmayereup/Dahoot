@@ -69,7 +69,7 @@ export function useMarathonHost(view, setView) {
       const game = await pb.collection('dahoot_games').getOne(gameId);
 
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId })
       });
 
       if (qList.length === 0) {
@@ -155,7 +155,7 @@ export function useMarathonHost(view, setView) {
     if (!hostRoom) return;
     try {
       const players = await pb.collection('dahoot_players').getFullList({
-        filter: `room_id = "${hostRoom.id}"`,
+        filter: pb.filter("room_id = {:roomId}", { roomId: hostRoom.id }),
         sort: '-score'
       });
       setHostPlayers(players);

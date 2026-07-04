@@ -1,6 +1,31 @@
 // pb_hooks/generate.pb.js
 
 routerAdd("POST", "/api/generate-questions", (e) => {
+    // 1. Check if auth record is present
+    const authRecord = e.auth;
+    if (!authRecord) {
+        return e.json(401, { error: "Authentication required" });
+    }
+
+    // 2. Verify that the user has TEACHER or ADMIN role
+    const infoId = authRecord.get("dahoot_info");
+    if (!infoId) {
+        return e.json(403, { error: "Access denied. User info missing." });
+    }
+    
+    try {
+        const infoRecord = $app.dao().findRecordById("dahoot_user_info", infoId);
+        if (!infoRecord) {
+            return e.json(403, { error: "Access denied. User info not found." });
+        }
+        const role = infoRecord.get("role");
+        if (role !== "TEACHER" && role !== "ADMIN") {
+            return e.json(403, { error: "Access denied. Only teachers or admins can generate questions." });
+        }
+    } catch (err) {
+        return e.json(403, { error: "Access denied. Error verifying role: " + String(err) });
+    }
+
     // Read and parse request JSON body
     const data = e.requestInfo().body;
 
@@ -9,6 +34,11 @@ routerAdd("POST", "/api/generate-questions", (e) => {
 
     if (!systemPrompt || !userPromptContent) {
         return e.json(400, { error: "Missing required fields: systemPrompt or userPromptContent" });
+    }
+
+    // 3. Validate prompt lengths
+    if (systemPrompt.length > 5000 || userPromptContent.length > 10000) {
+        return e.json(400, { error: "Request payload too large. Keep prompts under length limits." });
     }
 
     // Access the environment variable securely on the server
@@ -55,4 +85,4 @@ routerAdd("POST", "/api/generate-questions", (e) => {
     }
 
     return e.json(200, res.json);
-});
+}, $apis.requireAuth());

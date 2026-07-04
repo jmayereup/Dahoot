@@ -54,6 +54,10 @@ async function start() {
   const pbPort = 8090;
   const vitePort = 5173;
 
+  // Kill any processes holding onto the ports
+  killProcessOnPort(pbPort);
+  killProcessOnPort(vitePort);
+
   console.log(`\x1b[35m[Dahoot]\x1b[0m Starting PocketBase server...`);
   
   const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');

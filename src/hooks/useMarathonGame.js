@@ -45,7 +45,7 @@ export function useMarathonGame(view, setView) {
       const game = await pb.collection('dahoot_games').getOne(gameId);
       
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId })
       });
 
       if (qList.length === 0) {

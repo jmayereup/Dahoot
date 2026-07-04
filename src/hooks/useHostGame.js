@@ -58,7 +58,7 @@ export function useHostGame(view, setView) {
     const fetchPlayers = async () => {
       try {
         const list = await pb.collection('dahoot_players').getFullList({
-          filter: `room_id = "${hostRoom.id}"`,
+          filter: pb.filter("room_id = {:roomId}", { roomId: hostRoom.id }),
           sort: '-score'
         });
         setHostPlayers(list);
@@ -155,7 +155,7 @@ export function useHostGame(view, setView) {
     setLoading(true);
     try {
       let qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId })
       });
       
       if (qList.length === 0) {

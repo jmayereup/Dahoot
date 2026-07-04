@@ -38,7 +38,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       const room = await pb.collection('dahoot_rooms').getOne(roomId);
       const player = await pb.collection('dahoot_players').getOne(playerId);
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${room.game_id}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId: room.game_id })
       });
       
       let finalQuestions = qList;
@@ -150,7 +150,9 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     try {
       let room;
       try {
-        room = await pb.collection('dahoot_rooms').getFirstListItem(`code = "${joinPin.trim()}"`);
+        room = await pb.collection('dahoot_rooms').getFirstListItem(
+          pb.filter("code = {:code}", { code: joinPin.trim() })
+        );
       } catch (err) {
         throw new Error('Room not found. Check the code.');
       }
@@ -166,7 +168,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       }
 
       const existing = await pb.collection('dahoot_players').getList(1, 1, {
-        filter: `room_id = "${room.id}" && name = "${playerName.trim()}"`
+        filter: pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName.trim() })
       });
       if (existing.totalItems > 0) {
         throw new Error('Name taken in this room. Choose another.');
@@ -181,7 +183,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       });
 
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${room.game_id}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId: room.game_id })
       });
       
       let finalQuestions = qList;

@@ -64,7 +64,7 @@ export function useTeacherDashboard(view, currentUser) {
       const gamesWithCounts = await Promise.all(games.map(async (game) => {
         try {
           const questions = await pb.collection('dahoot_questions').getList(1, 1, {
-            filter: `game_id = "${game.id}"`
+            filter: pb.filter("game_id = {:gameId}", { gameId: game.id })
           });
           return {
             ...game,
@@ -94,7 +94,7 @@ export function useTeacherDashboard(view, currentUser) {
     setError('');
     try {
       const list = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`,
+        filter: pb.filter("game_id = {:gameId}", { gameId }),
         sort: 'created'
       });
       setQuestionsList(list);
@@ -282,7 +282,7 @@ export function useTeacherDashboard(view, currentUser) {
 
       // Get all questions
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${game.id}"`,
+        filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
         sort: 'created'
       });
 

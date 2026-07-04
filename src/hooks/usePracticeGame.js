@@ -37,7 +37,7 @@ export function usePracticeGame(view, setView) {
       
       // Fetch questions
       const qList = await pb.collection('dahoot_questions').getFullList({
-        filter: `game_id = "${gameId}"`
+        filter: pb.filter("game_id = {:gameId}", { gameId })
       });
 
       if (qList.length === 0) {

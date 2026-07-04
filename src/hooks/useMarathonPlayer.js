@@ -33,7 +33,7 @@ export function useMarathonPlayer(view, setView) {
   const loadAllQuestions = useCallback(async (questionIds) => {
     if (!questionIds || questionIds.length === 0) return;
     try {
-      const filter = questionIds.map(id => `id = "${id}"`).join(' || ');
+      const filter = questionIds.map(id => pb.filter("id = {:id}", { id })).join(' || ');
       const questions = await pb.collection('dahoot_questions').getFullList({
         filter,
         sort: 'created'
@@ -50,7 +50,9 @@ export function useMarathonPlayer(view, setView) {
     setError('');
     setLoading(true);
     try {
-      const room = await pb.collection('dahoot_rooms').getFirstListItem(`code = "${pin}" && marathon_mode = true`);
+      const room = await pb.collection('dahoot_rooms').getFirstListItem(
+        pb.filter("code = {:code} && marathon_mode = true", { code: pin })
+      );
 
       if (!room) {
         throw new Error('Invalid marathon PIN or room not found.');
@@ -60,11 +62,9 @@ export function useMarathonPlayer(view, setView) {
         throw new Error('This marathon has already ended.');
       }
 
-      let existingPlayer = null;
+      const playerFilter = pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName });
       try {
-        existingPlayer = await pb.collection('dahoot_players').getFirstListItem(
-          `room_id = "${room.id}" && name = "${playerName}"`
-        );
+        existingPlayer = await pb.collection('dahoot_players').getFirstListItem(playerFilter);
       } catch (_e) {
       }
 
@@ -219,7 +219,7 @@ export function useMarathonPlayer(view, setView) {
         }
       });
 
-      const filter = newIds.map(id => `id = "${id}"`).join(' || ');
+      const filter = newIds.map(id => pb.filter("id = {:id}", { id })).join(' || ');
       const questions = await pb.collection('dahoot_questions').getFullList({ filter });
       const ordered = newIds.map(id => questions.find(q => q.id === id)).filter(Boolean);
 

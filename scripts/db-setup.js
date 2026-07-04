@@ -178,6 +178,17 @@ async function getOrCreateCollection(name, config) {
     // Non-destructive update: check for any new fields and append them.
     // Also update existing fields if properties mismatch. We never delete fields.
     let updated = false;
+
+    // Sync collection rules
+    const ruleKeys = ['listRule', 'viewRule', 'createRule', 'updateRule', 'deleteRule'];
+    for (const key of ruleKeys) {
+      if (col[key] !== config[key]) {
+        console.log(`[Dahoot DB] Collection '${name}': Syncing rule '${key}' ('${col[key]}' -> '${config[key]}')`);
+        col[key] = config[key];
+        updated = true;
+      }
+    }
+
     if (config.fields) {
       for (const field of config.fields) {
         const existingFieldIdx = col.fields.findIndex(f => f.name === field.name);
@@ -331,14 +342,15 @@ async function runSetup() {
     fields: [
       { name: 'role', type: 'select', required: true, values: ['TEACHER', 'ADMIN', 'STUDENT'], maxSelect: 1 },
       { name: 'school', type: 'text', required: false, max: 100 },
+      { name: 'invite_code', type: 'text', required: false, max: 100 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
-    listRule: '',
-    viewRule: '',
+    listRule: '@request.auth.dahoot_info.role = "ADMIN"',
+    viewRule: '@request.auth.id != "" && (@request.auth.dahoot_info.id = id || @request.auth.dahoot_info.role = "ADMIN" || @request.auth.dahoot_info.role = "TEACHER")',
     createRule: '',
-    updateRule: '',
-    deleteRule: ''
+    updateRule: '@request.auth.id != "" && (@request.auth.dahoot_info.id = id || @request.auth.dahoot_info.role = "ADMIN")',
+    deleteRule: '@request.auth.dahoot_info.role = "ADMIN"'
   });
 
   // Update 'users' collection to link to 'dahoot_user_info'
@@ -370,11 +382,11 @@ async function runSetup() {
       { name: 'key', type: 'text', required: true, min: 1, max: 100 },
       { name: 'value', type: 'text', required: true }
     ],
-    listRule: '',
-    viewRule: '',
-    createRule: '',
-    updateRule: '',
-    deleteRule: ''
+    listRule: '@request.auth.dahoot_info.role = "ADMIN"',
+    viewRule: '@request.auth.dahoot_info.role = "ADMIN"',
+    createRule: '@request.auth.dahoot_info.role = "ADMIN"',
+    updateRule: '@request.auth.dahoot_info.role = "ADMIN"',
+    deleteRule: '@request.auth.dahoot_info.role = "ADMIN"'
   });
 
   // Seed default 'invite_code' if not exists
@@ -405,9 +417,9 @@ async function runSetup() {
     ],
     listRule: '',
     viewRule: '',
-    createRule: '',
-    updateRule: '',
-    deleteRule: ''
+    createRule: '@request.auth.id != "" && @request.auth.dahoot_info.role = "ADMIN"',
+    updateRule: '@request.auth.id != "" && @request.auth.dahoot_info.role = "ADMIN"',
+    deleteRule: '@request.auth.id != "" && @request.auth.dahoot_info.role = "ADMIN"'
   });
 
   // 3. Setup 'dahoot_games' collection
@@ -426,9 +438,9 @@ async function runSetup() {
     ],
     listRule: '',
     viewRule: '',
-    createRule: '',
-    updateRule: '',
-    deleteRule: ''
+    createRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
+    updateRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
+    deleteRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")'
   });
 
   // 4. Setup 'dahoot_rooms' collection
@@ -498,9 +510,9 @@ async function runSetup() {
     ],
     listRule: '',
     viewRule: '',
-    createRule: '',
-    updateRule: '',
-    deleteRule: ''
+    createRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
+    updateRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
+    deleteRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")'
   });
 
   // 6b. Upsert admin user (dev-only)

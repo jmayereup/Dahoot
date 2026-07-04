@@ -66,7 +66,7 @@ export function AuthView({ onSuccess, onCancel }) {
         onSuccess?.();
       } else {
         // Registration Mode
-        if (!inviteCode.trim().toLocaleUpperCase()) {
+        if (!inviteCode.trim()) {
           throw new Error("Invite code is required.");
         }
         if (!validateEmail(email)) {
@@ -79,33 +79,31 @@ export function AuthView({ onSuccess, onCancel }) {
           throw new Error("Passwords do not match.");
         }
 
-        // Verify invite code
-        let inviteSetting;
-        try {
-          inviteSetting = await pb.collection('dahoot_settings').getFirstListItem('key = "invite_code"');
-        } catch (err) {
-          throw new Error("Could not verify invite code. Please make sure PocketBase is running.");
-        }
-        
-        if (inviteCode.trim() !== inviteSetting.value.trim()) {
-          throw new Error("Invalid invite code. Please contact an administrator.");
-        }
-
-        // 1. Create the dahoot_user_info record
+        // 1. Create the dahoot_user_info record (invite_code will be validated server-side by hook)
         const userInfo = await pb.collection('dahoot_user_info').create({
           role: 'TEACHER',
-          school: school.trim() || undefined
+          school: school.trim() || undefined,
+          invite_code: inviteCode.trim()
         });
 
-        // 2. Create the user
-        await pb.collection('users').create({
-          email: email.trim(),
-          password: password,
-          passwordConfirm: passwordConfirm,
-          username: email.trim().split('@')[0] + Math.floor(Math.random() * 10000),
-          name: name.trim() || undefined,
-          dahoot_info: userInfo.id
-        });
+        try {
+          // 2. Create the user
+          await pb.collection('users').create({
+            email: email.trim(),
+            password: password,
+            passwordConfirm: passwordConfirm,
+            username: email.trim().split('@')[0] + Math.floor(Math.random() * 10000),
+            name: name.trim() || undefined,
+            dahoot_info: userInfo.id
+          });
+        } catch (userErr) {
+          try {
+            await pb.collection('dahoot_user_info').delete(userInfo.id);
+          } catch (delErr) {
+            console.error("Failed to delete orphaned user info record:", delErr);
+          }
+          throw userErr;
+        }
 
         setSuccessMsg("Account registered successfully! Logging you in...");
         
