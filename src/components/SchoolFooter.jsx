@@ -7,7 +7,7 @@ export function SchoolFooter() {
         <span>Created for</span>
         <span className="inline-flex items-center gap-1.5 font-bold text-slate-700 bg-slate-100/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs border border-slate-200/50">
           <img 
-            src="/DDN_Logo.png" 
+            src="/logo.png" 
             alt="DDN Logo" 
             className="w-4 h-4 object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -23,6 +23,25 @@ export function SchoolFooter() {
           className="text-slate-600 hover:text-rose-400 font-bold underline transition-colors inline-flex items-center gap-1"
         >
           GitHub 🚀
+        </a>
+      </p>
+      <p className="text-xs text-slate-400 mt-3 flex flex-wrap items-center justify-center gap-3">
+        <a 
+          href="https://www.teacherjake.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:text-rose-400 transition-colors"
+        >
+          More Worksheets & Materials
+        </a>
+        <span className="text-slate-300">|</span>
+        <a 
+          href="https://www.teacherjake.com/privacy/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:text-rose-400 transition-colors"
+        >
+          Privacy Policy
         </a>
       </p>
     </footer>

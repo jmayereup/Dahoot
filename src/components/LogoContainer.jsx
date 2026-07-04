@@ -8,7 +8,7 @@ export function LogoContainer() {
       <div className="logo-container">
         {!imgFailed ? (
           <img 
-            src="/DDN_Logo.png" 
+            src="/logo.png" 
             alt="Datdaruni School Logo" 
             className="logo-img"
             onError={() => setImgFailed(true)}

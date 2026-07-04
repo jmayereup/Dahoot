@@ -254,12 +254,20 @@ async function runSetup() {
       await pb.admins.authWithPassword(adminEmail, adminPassword);
       console.log('\x1b[32m[Dahoot DB] Authenticated as Legacy Admin (v0.22 style).\x1b[0m');
     } catch (legacyErr) {
-      console.error('\x1b[31m[Dahoot DB] Authentication failed. Ensure:\x1b[0m');
-      console.error(' 1. PocketBase is running (run: npm run dev)');
-      console.error(` 2. You created a superuser with email "${adminEmail}" and your configured password in the Admin UI.`);
-      console.error('Legacy Admin Error:', legacyErr.message);
-      console.error('Superuser Error:', err.message);
-      process.exit(1);
+      try {
+        await pb.collection('_superusers').create({ email: adminEmail, password: adminPassword, passwordConfirm: adminPassword });
+        console.log('\x1b[32m[Dahoot DB] Bootstrapped superuser: ' + adminEmail + '\x1b[0m');
+        await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
+        console.log('\x1b[32m[Dahoot DB] Authenticated as Superuser (v0.30+ style).\x1b[0m');
+      } catch (bootstrapErr) {
+        console.error('\x1b[31m[Dahoot DB] Authentication failed. Ensure:\x1b[0m');
+        console.error(' 1. PocketBase is running (run: npm run dev)');
+        console.error(` 2. You created a superuser with email "${adminEmail}" and your configured password in the Admin UI.`);
+        console.error('Legacy Admin Error:', legacyErr.message);
+        console.error('Superuser Error:', err.message);
+        console.error('Bootstrap Error:', bootstrapErr.message);
+        process.exit(1);
+      }
     }
   }
 
@@ -431,11 +439,17 @@ async function runSetup() {
       { name: 'code', type: 'text', required: true, min: 4, max: 4 },
       { name: 'game_id', type: 'relation', required: false, maxSelect: 1, collectionId: gamesCol.id, cascadeDelete: true },
       { name: 'current_question_index', type: 'number', required: false, noDecimal: true },
-      { name: 'status', type: 'select', required: true, maxSelect: 1, values: ['LOBBY', 'QUESTION', 'LEADERBOARD', 'FINISHED'] },
+      { name: 'status', type: 'select', required: true, maxSelect: 1, values: ['LOBBY', 'QUESTION', 'LEADERBOARD', 'FINISHED', 'WRAP_UP'] },
       { name: 'current_question_start_time', type: 'text', required: false },
       { name: 'question_ids', type: 'json', required: false },
       { name: 'timer_duration', type: 'number', required: false, noDecimal: true },
       { name: 'pacing_mode', type: 'select', required: false, values: ['teacher', 'student'], maxSelect: 1 },
+      { name: 'marathon_mode', type: 'bool', required: false },
+      { name: 'wrap_up_timer', type: 'number', required: false, noDecimal: true },
+      { name: 'wrap_up_start_time', type: 'text', required: false },
+      { name: 'question_pool_size', type: 'number', required: false, noDecimal: true },
+      { name: 'max_questions', type: 'number', required: false, noDecimal: true },
+      { name: 'randomize_questions', type: 'bool', required: false },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
@@ -456,6 +470,9 @@ async function runSetup() {
       { name: 'score', type: 'number', required: false, noDecimal: true },
       { name: 'last_answered_index', type: 'number', required: false, noDecimal: true },
       { name: 'answers', type: 'json', required: false },
+      { name: 'marathon_stats', type: 'json', required: false },
+      { name: 'session_start_time', type: 'text', required: false },
+      { name: 'last_answer_time', type: 'text', required: false },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
@@ -485,6 +502,45 @@ async function runSetup() {
     updateRule: '',
     deleteRule: ''
   });
+
+  // 6b. Upsert admin user (dev-only)
+  if (isDev) {
+    const schoolDomain = process.env.SCHOOL_EMAIL_DOMAIN;
+    if (!schoolDomain) {
+      console.error('\x1b[31m[Dahoot DB] Error: SCHOOL_EMAIL_DOMAIN must be defined in .env for dev admin user creation\x1b[0m');
+      process.exit(1);
+    }
+    const adminUserEmail = `dahoot@${schoolDomain}`;
+    const adminUserPassword = 'changeme';
+    
+    try {
+      const existingUser = await pb.collection('users').getFirstListItem(`email = "${adminUserEmail}"`);
+      console.log(`[Dahoot DB] Admin user '${adminUserEmail}' found, updating password...`);
+      await pb.collection('users').update(existingUser.id, {
+        password: adminUserPassword,
+        passwordConfirm: adminUserPassword
+      });
+      
+      if (existingUser.dahoot_info) {
+        await pb.collection('dahoot_user_info').update(existingUser.dahoot_info, { role: 'ADMIN' });
+        console.log(`\x1b[32m[Dahoot DB] Admin user '${adminUserEmail}' role set to ADMIN.\x1b[0m`);
+      }
+    } catch (err) {
+      console.log(`[Dahoot DB] Admin user '${adminUserEmail}' not found, creating...`);
+      try {
+        const userInfoRecord = await pb.collection('dahoot_user_info').create({ role: 'ADMIN' });
+        await pb.collection('users').create({
+          email: adminUserEmail,
+          password: adminUserPassword,
+          passwordConfirm: adminUserPassword,
+          dahoot_info: userInfoRecord.id
+        });
+        console.log(`\x1b[32m[Dahoot DB] Admin user '${adminUserEmail}' created successfully.\x1b[0m`);
+      } catch (createErr) {
+        console.error(`\x1b[31m[Dahoot DB] Error creating admin user:\x1b[0m`, createErr.message);
+      }
+    }
+  }
 
   // 7. Seed default game, questions, and options (only with --erase flag)
   if (isErase) {
