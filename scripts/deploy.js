@@ -240,17 +240,15 @@ async function deploy() {
   const ip = env.DEPLOY_SERVER_IP;
   const user = env.DEPLOY_SERVER_USER;
   const targetPath = env.DEPLOY_SERVER_PATH;
-  const serviceName = env.DEPLOY_SERVICE_NAME;
   const liveUrl = env.VITE_POCKETBASE_LIVE_URL;
   const hooksPath = env.POCKETBASE_HOOKS_PATH || `${targetPath}/pocketbase/pb_hooks`;
 
-  if (!ip || !user || !targetPath || !serviceName || !liveUrl) {
+  if (!ip || !user || !targetPath || !liveUrl) {
     console.error('\x1b[31m[Dahoot Deploy] Error: Missing deployment configuration in .env file.\x1b[0m');
     console.error('Make sure the following environment variables are set in your .env file:');
     console.error(`- DEPLOY_SERVER_IP (current: ${ip || 'undefined'})`);
     console.error(`- DEPLOY_SERVER_USER (current: ${user || 'undefined'})`);
     console.error(`- DEPLOY_SERVER_PATH (current: ${targetPath || 'undefined'})`);
-    console.error(`- DEPLOY_SERVICE_NAME (current: ${serviceName || 'undefined'})`);
     console.error(`- VITE_POCKETBASE_LIVE_URL (current: ${liveUrl || 'undefined'})`);
     process.exit(1);
   }
@@ -321,17 +319,6 @@ async function deploy() {
       console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
       process.exit(1);
     }
-  }
-
-  // Step 5: Restart the systemd service on remote server
-  console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 5: Restarting systemd service (${serviceName})...\x1b[0m`);
-  try {
-    execFileSync('ssh', [connectionString, `systemctl restart ${serviceName}`], { stdio: 'inherit' });
-    console.log(`\x1b[32m[Dahoot Deploy] Service '${serviceName}' restarted successfully on remote server.\x1b[0m`);
-  } catch (err) {
-    console.warn(`\x1b[33m[Dahoot Deploy] Warning: Failed to restart '${serviceName}' on the server.\x1b[0m`);
-    console.warn('You may need to restart the service manually or check sudo/permissions on the server.');
-    console.warn(`Error details: ${err.message}`);
   }
 
   console.log('\n\x1b[32;1m🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!\x1b[0m\n');
