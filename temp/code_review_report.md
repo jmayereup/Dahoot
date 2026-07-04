@@ -12,7 +12,7 @@
 | 🔴 Critical | 7 | ✅ Addressed | Open DB rules, no server-side validation, unauthenticated AI endpoint, XSS, confirm bypass |
 | 🟠 High | 12 | ✅ Addressed | Answers exposed, subscription leaks, missing imports → crashes, auth bugs |
 | 🟡 Medium | 27 | ✅ Addressed | Filter injection, timer drift, a11y gaps, double-submits, biased shuffle |
-| 🟢 Low | 20 | ⏳ Open | Code organization, minor a11y, dead code, informational |
+| 🟢 Low | 20 | ✅ Addressed | Code organization, minor a11y, dead code, informational |
 
 ---
 
@@ -304,7 +304,7 @@ Drag-and-drop question reordering uses `key={index}`. React incorrectly reconcil
 
 ---
 
-## 🟢 Low Issues
+## 🟢 Low Issues (✅ Addressed)
 
 | # | File | Cat | Issue |
 |---|------|-----|-------|

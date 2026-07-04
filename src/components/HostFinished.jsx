@@ -149,7 +149,6 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
     if (type === 'DROP_DOWN') {
       const sentence = q.options.sentence || '';
       const dropdowns = q.options.dropdowns || [];
-      const parts = sentence.split(/(\\{\\{\\d+\\}\\}|\\{\\{\\d+\\}\\}|\\{\\d+\\})/g);
       // Wait, let's make sure the regex works for both standard bracket and curly braces
       // Let's use simple match for drop down sentence template:
         const partsDropdown = splitCurlyTokens(sentence);

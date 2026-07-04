@@ -622,40 +622,24 @@ export function SelectionView({
               </button>
               
               <button 
-                className="btn btn-secondary" 
+                className="btn btn-secondary w-full bg-[#FFB7B2]/10 hover:bg-[#FFB7B2]/20" 
                 onClick={() => startSoloPractice(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes })} 
                 disabled={loading || !selectedGameId || !totalQuestions}
                 style={{ 
-                  width: '100%',
-                  background: 'rgba(255, 183, 178, 0.1)', 
                   border: '1.5px solid var(--color-school-primary)',
                   color: 'var(--text-secondary)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 183, 178, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 183, 178, 0.1)';
                 }}
               >
                 Practice Solo (Self-Paced)
               </button>
               
               <button 
-                className="btn btn-secondary" 
+                className="btn btn-secondary w-full bg-blue-500/10 hover:bg-blue-500/20" 
                 onClick={() => startMarathonHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes, pacingMode })} 
                 disabled={loading || !selectedGameId || !totalQuestions}
                 style={{ 
-                  width: '100%',
-                  background: 'rgba(59, 130, 246, 0.1)', 
                   border: '1.5px solid #3b82f6',
                   color: 'var(--text-secondary)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
                 }}
               >
                 🏃 Host Marathon Mode

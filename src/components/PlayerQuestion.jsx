@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
+import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 

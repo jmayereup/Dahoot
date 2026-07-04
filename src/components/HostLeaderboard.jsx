@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
+import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
@@ -138,7 +138,7 @@ export function HostLeaderboard({
         {/* 1. MULTIPLE CHOICE */}
         {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && correctShuffledIdx !== -1 && (
           <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
-            <div className="option-icon">{['A', 'B', 'C', 'D'][correctShuffledIdx]}</div>
+            <div className="option-icon">{String.fromCharCode(65 + correctShuffledIdx)}</div>
             <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
           </div>
         )}

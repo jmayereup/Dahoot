@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { pb } from '../pb';
 import { SchoolFooter } from './SchoolFooter';
 
@@ -13,6 +13,13 @@ export function AuthView({ onSuccess, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   // Password complexity helper checks
   const meetsMinLength = password.length >= 8;
@@ -111,7 +118,7 @@ export function AuthView({ onSuccess, onCancel }) {
         // 3. Authenticate the newly created user
         await pb.collection('users').authWithPassword(email.trim(), password);
         
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           onSuccess?.();
         }, 1000);
       }

@@ -41,29 +41,9 @@ export function MarathonPlayerView({
       }}>
         <span>👤 {playerRecord.name} — Lap {currentLap}</span>
         <span>Score: <strong>{playerRecord.score}</strong></span>
-        <button
+        <button 
           onClick={() => setShowExitConfirm(true)}
-          style={{
-            background: 'rgba(139, 92, 246, 0.08)',
-            border: '1px solid rgba(139, 92, 246, 0.25)',
-            color: '#8B5CF6',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.8rem',
-            padding: '4px 12px',
-            borderRadius: '9999px',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = 'rgba(139, 92, 246, 0.18)';
-            e.target.style.color = '#8B5CF6';
-            e.target.style.borderColor = 'rgba(139, 92, 246, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = 'rgba(139, 92, 246, 0.08)';
-            e.target.style.color = '#8B5CF6';
-            e.target.style.borderColor = 'rgba(139, 92, 246, 0.25)';
-          }}
+          className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-semibold text-xs border border-purple-500/25 hover:border-purple-500/40 px-3 py-1 rounded-full cursor-pointer transition-all duration-200"
         >
           Exit Marathon
         </button>

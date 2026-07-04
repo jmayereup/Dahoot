@@ -2,6 +2,7 @@ import { spawn, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,20 +10,7 @@ const rootDir = path.resolve(__dirname, '..');
 
 // Helper to load .env variables
 function loadEnv() {
-  const envPath = path.join(rootDir, '.env');
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split('\n').forEach(line => {
-      const parts = line.split('=');
-      if (parts.length >= 2) {
-        const key = parts[0].trim();
-        const value = parts.slice(1).join('=').trim().replace(/(^['"]|['"]$)/g, '');
-        if (key && !key.startsWith('#')) {
-          process.env[key] = value;
-        }
-      }
-    });
-  }
+  dotenv.config({ path: path.resolve(rootDir, '.env') });
 }
 
 // Kill process using a specific port

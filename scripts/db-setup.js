@@ -3,30 +3,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import PocketBase from 'pocketbase';
 import readline from 'readline';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-// Helper to load .env variables
-function loadEnv() {
-  const envPath = path.join(rootDir, '.env');
-  if (!fs.existsSync(envPath)) return;
-  const content = fs.readFileSync(envPath, 'utf8');
-  const lines = content.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const parts = trimmed.split('=');
-    if (parts.length >= 2) {
-      const key = parts[0].trim();
-      const value = parts.slice(1).join('=').trim().replace(/^["']|["']$/g, '');
-      if (!process.env[key]) process.env[key] = value;
-    }
-  }
-}
-
-loadEnv();
+dotenv.config({ path: path.resolve(rootDir, '.env') });
 
 const isLive = process.argv.includes('--live') || process.argv.includes('--prod');
 const isErase = process.argv.includes('--erase');

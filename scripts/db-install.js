@@ -47,10 +47,17 @@ function getDownloadUrl() {
 function downloadFile(url, destPath) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath);
+    let redirectCount = 0;
+    const maxRedirects = 5;
     
     const request = (targetUrl) => {
       https.get(targetUrl, (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {
+          if (redirectCount >= maxRedirects) {
+            reject(new Error(`Too many redirects (max: ${maxRedirects})`));
+            return;
+          }
+          redirectCount++;
           // Follow redirect
           request(response.headers.location);
           return;

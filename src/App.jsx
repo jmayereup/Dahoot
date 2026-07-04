@@ -29,8 +29,16 @@ function App() {
   
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid && !!pb.authStore.record);
   const [currentUser, setCurrentUser] = useState(pb.authStore.record);
+  const [showSyncReset, setShowSyncReset] = useState(false);
 
   useAdSense();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSyncReset(true);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Sync auth state and listen to auth changes
   useEffect(() => {
@@ -399,7 +407,23 @@ function App() {
       <div className="panel">
         <div className="spinner" />
         <h2>Synchronizing...</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Setting up connection to PocketBase backend.</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Setting up connection to PocketBase backend.</p>
+        {showSyncReset && (
+          <div className="flex flex-col gap-2 mt-4 w-full">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="btn btn-primary w-full cursor-pointer"
+            >
+              Retry Connection
+            </button>
+            <button 
+              onClick={() => setView('selection')} 
+              className="btn btn-secondary w-full cursor-pointer"
+            >
+              Go to Home Screen
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

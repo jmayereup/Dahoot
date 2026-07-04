@@ -14,7 +14,6 @@ export function PlayerView({
   playerFeedback,
   error,
   submitAnswer,
-  disconnectSession,
   exitGame
 }) {
   const qIndex = playerRoom.current_question_index;
@@ -40,27 +39,7 @@ export function PlayerView({
         <span>Score: <strong>{playerRecord.score}</strong></span>
         <button 
           onClick={() => setShowLeaveConfirm(true)}
-          style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            color: '#f87171',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.8rem',
-            padding: '4px 12px',
-            borderRadius: '9999px',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = 'rgba(239, 68, 68, 0.18)';
-            e.target.style.color = '#f87171';
-            e.target.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = 'rgba(239, 68, 68, 0.08)';
-            e.target.style.color = '#f87171';
-            e.target.style.borderColor = 'rgba(239, 68, 68, 0.25)';
-          }}
+          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-xs border border-red-500/25 hover:border-red-500/40 px-3 py-1 rounded-full cursor-pointer transition-all duration-200"
         >
           Exit Game
         </button>

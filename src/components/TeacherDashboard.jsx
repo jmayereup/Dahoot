@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
+import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
 import { QuestionInteraction } from './QuestionInteraction';
 import { useConfirm } from '../hooks/useConfirm.jsx';
@@ -1173,8 +1173,8 @@ export function TeacherDashboard({
             </div>
             <button 
               onClick={closePreviewGame}
+              className="bg-white/5 hover:bg-white/10"
               style={{
-                background: 'rgba(255,255,255,0.05)',
                 border: 'none',
                 color: 'var(--text-secondary)',
                 fontSize: '1.2rem',
@@ -1187,8 +1187,6 @@ export function TeacherDashboard({
                 justifyContent: 'center',
                 transition: 'all 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
             >
               ✕
             </button>
@@ -1907,8 +1905,8 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                 setIsGenModalOpen(false);
                 setGenError('');
               }}
+              className="bg-white/5 hover:bg-white/10"
               style={{
-                background: 'rgba(255,255,255,0.05)',
                 border: 'none',
                 color: 'var(--text-secondary)',
                 fontSize: '1.2rem',
@@ -1921,8 +1919,6 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                 justifyContent: 'center',
                 transition: 'all 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
             >
               ✕
             </button>

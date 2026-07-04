@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { execSync, execFileSync, spawn } from 'child_process';
 import PocketBase from 'pocketbase';
 import net from 'net';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,22 +12,8 @@ const rootDir = path.resolve(__dirname, '..');
 
 // Helper to load .env variables
 function loadEnv() {
-  const envPath = path.join(rootDir, '.env');
-  const env = {};
-  if (!fs.existsSync(envPath)) return env;
-  const content = fs.readFileSync(envPath, 'utf8');
-  const lines = content.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const parts = trimmed.split('=');
-    if (parts.length >= 2) {
-      const key = parts[0].trim();
-      const value = parts.slice(1).join('=').trim().replace(/^["']|["']$/g, '');
-      env[key] = value;
-    }
-  }
-  return env;
+  dotenv.config({ path: path.resolve(rootDir, '.env') });
+  return process.env;
 }
 
 function isPortInUse(port) {

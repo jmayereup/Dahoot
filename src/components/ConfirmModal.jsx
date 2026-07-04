@@ -121,11 +121,11 @@ export function ConfirmModal({
           type="button"
           onClick={onClose}
           aria-label="Close"
+          className="bg-black/[0.04] hover:bg-black/[0.08]"
           style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
-            background: 'rgba(0,0,0,0.04)',
             border: 'none',
             color: 'var(--text-secondary)',
             fontSize: '1rem',
@@ -138,8 +138,6 @@ export function ConfirmModal({
             justifyContent: 'center',
             transition: 'all 0.2s'
           }}
-          onMouseEnter={(e) => e.target.style.background = 'rgba(0,0,0,0.08)'}
-          onMouseLeave={(e) => e.target.style.background = 'rgba(0,0,0,0.04)'}
         >
           ✕
         </button>

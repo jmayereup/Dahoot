@@ -172,7 +172,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
                   className={`option-card ${cardClass}`}
                 >
                   <div className="option-icon">
-                    {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : ['A', 'B', 'C', 'D'][idx])}
+                    {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : String.fromCharCode(65 + idx))}
                   </div>
                   <span>{item.item}</span>
                 </div>
@@ -292,10 +292,10 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
                   <div style={{ fontSize: '0.85rem' }}>
                     {playerCat ? (
                       <span>
-                        Chosen: <strong>{playerCat}</strong> {isCorrect ? '✓' : `(Correct: ${correctCat})`}
+                        Chosen: <strong>{playerCat}</strong> {isCorrect ? '✓ [Correct]' : `✗ [Incorrect] (Correct: ${correctCat})`}
                       </span>
                     ) : (
-                      <span>Not answered (Correct: {correctCat})</span>
+                      <span>✗ [Unanswered] (Correct: {correctCat})</span>
                     )}
                   </div>
                 </div>

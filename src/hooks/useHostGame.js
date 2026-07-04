@@ -61,6 +61,11 @@ export function useHostGame(view, setView) {
           filter: pb.filter("room_id = {:roomId}", { roomId: hostRoom.id }),
           sort: '-score'
         });
+        // Stable sort client-side: score desc, then name/id asc
+        list.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return (a.name || '').localeCompare(b.name || '') || a.id.localeCompare(b.id);
+        });
         setHostPlayers(list);
       } catch (err) {
         console.error("Error fetching players:", err);

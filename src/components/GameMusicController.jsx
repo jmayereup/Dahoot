@@ -17,6 +17,15 @@ export function GameMusicController({ gameStatus }) {
 
   const audioRef = useRef(null);
   const fadeIntervalRef = useRef(null);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handler = (e) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
   
   // Keep refs in sync with state for access in intervals without stale closures
   const currentVolumeRef = useRef(volume);
@@ -254,17 +263,18 @@ export function GameMusicController({ gameStatus }) {
             isPlaying ? 'ring-2 ring-[#FFB7B2]' : ''
           }`}
           title="Game Music Controls"
+          aria-label="Expand Game Music Controls"
         >
           {isPlaying && (
             <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFB7B2] opacity-75"></span>
+              <span className={`${prefersReducedMotion ? '' : 'animate-ping'} absolute inline-flex h-full w-full rounded-full bg-[#FFB7B2] opacity-75`}></span>
               <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#FFDAC1]"></span>
             </span>
           )}
           
           <svg
-            className={`w-6 h-6 text-slate-700 ${isPlaying ? 'animate-spin' : ''}`}
-            style={{ animationDuration: isPlaying ? '6s' : '0s' }}
+            className={`w-6 h-6 text-slate-700 ${isPlaying && !prefersReducedMotion ? 'animate-spin' : ''}`}
+            style={{ animationDuration: isPlaying && !prefersReducedMotion ? '6s' : '0s' }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
