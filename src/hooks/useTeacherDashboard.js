@@ -253,9 +253,6 @@ export function useTeacherDashboard(view, currentUser) {
 
   const deleteGame = async (id, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this game? This will also delete all its questions.")) {
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -271,9 +268,6 @@ export function useTeacherDashboard(view, currentUser) {
 
   const copyGame = async (game, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm(`Are you sure you want to copy the game "${game.title}"?`)) {
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -543,10 +537,6 @@ export function useTeacherDashboard(view, currentUser) {
   };
 
   const deleteQuestion = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this question?")) {
-      return;
-    }
-
     setLoading(true);
     setError('');
     try {

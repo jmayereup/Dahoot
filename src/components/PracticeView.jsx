@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { QuestionInteraction } from './QuestionInteraction';
+import { ConfirmModal } from './ConfirmModal';
 
 export function PracticeView({
   practiceState,
@@ -24,6 +25,7 @@ export function PracticeView({
 }) {
   const activeQuestion = questionsQueue[currentQuestionIdx];
   const [localNickname, setLocalNickname] = useState(nickname || 'Student');
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   if (practiceState === 'INTRO') {
     return (
@@ -118,11 +120,7 @@ export function PracticeView({
           <span>👤 <strong>{nickname}</strong> (Practice Mode)</span>
           <span>Score: <strong>{score}</strong></span>
           <button 
-            onClick={() => {
-              if (window.confirm("Quit practice session? Your progress will be lost.")) {
-                exitPractice();
-              }
-            }}
+            onClick={() => setShowQuitConfirm(true)}
             style={{
               background: 'none',
               border: 'none',
@@ -301,6 +299,18 @@ export function PracticeView({
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={showQuitConfirm}
+        onClose={() => setShowQuitConfirm(false)}
+        onConfirm={exitPractice}
+        title="Quit practice session?"
+        message="Your progress will be lost. Are you sure you want to return to the home screen?"
+        confirmText="Quit Session"
+        cancelText="Keep Practicing"
+        variant="warning"
+        icon="🎯"
+      />
     </div>
   );
 }

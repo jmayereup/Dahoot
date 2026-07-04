@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PlayerLobby } from './PlayerLobby';
 import { PlayerQuestion } from './PlayerQuestion';
 import { PlayerFeedback } from './PlayerFeedback';
 import { PlayerFinished } from './PlayerFinished';
+import { ConfirmModal } from './ConfirmModal';
 
 export function PlayerView({
   playerRoom,
@@ -19,6 +20,7 @@ export function PlayerView({
   const qIndex = playerRoom.current_question_index;
   const activeQuestion = playerQuestions[qIndex];
   const hasAnswered = playerRecord.last_answered_index === qIndex;
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   return (
     <div className="app-container">
@@ -37,11 +39,7 @@ export function PlayerView({
         <span>👤 {playerRecord.name}</span>
         <span>Score: <strong>{playerRecord.score}</strong></span>
         <button 
-          onClick={() => {
-            if (window.confirm("Are you sure you want to leave the game?")) {
-              exitGame();
-            }
-          }}
+          onClick={() => setShowLeaveConfirm(true)}
           style={{
             background: 'rgba(239, 68, 68, 0.08)',
             border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -108,6 +106,18 @@ export function PlayerView({
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={exitGame}
+        title="Leave the game?"
+        message="You'll be disconnected from this game session. Are you sure you want to leave?"
+        confirmText="Leave Game"
+        cancelText="Stay"
+        variant="warning"
+        icon="🚪"
+      />
     </div>
   );
 }

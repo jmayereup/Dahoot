@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ConfirmModal } from './ConfirmModal';
 
 export function HostLobby({
   hostRoom,
@@ -10,6 +11,8 @@ export function HostLobby({
   hostStartGame,
   hostEndGame
 }) {
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
   return (
     <div>
       <div className="room-header">
@@ -95,15 +98,23 @@ export function HostLobby({
         </button>
         <button 
           className="btn btn-secondary btn-lg" 
-          onClick={() => {
-            if (window.confirm("Are you sure you want to cancel and exit the game?")) {
-              hostEndGame();
-            }
-          }}
+          onClick={() => setShowCancelConfirm(true)}
         >
           Cancel Game
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={hostEndGame}
+        title="Cancel the game?"
+        message="This will end the game and disconnect all players. Are you sure you want to cancel and return to the home screen?"
+        confirmText="Cancel Game"
+        cancelText="Keep Open"
+        variant="danger"
+        icon="🛑"
+      />
     </div>
   );
 }

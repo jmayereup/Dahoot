@@ -515,11 +515,7 @@ async function runSetup() {
     
     try {
       const existingUser = await pb.collection('users').getFirstListItem(`email = "${adminUserEmail}"`);
-      console.log(`[Dahoot DB] Admin user '${adminUserEmail}' found, updating password...`);
-      await pb.collection('users').update(existingUser.id, {
-        password: adminUserPassword,
-        passwordConfirm: adminUserPassword
-      });
+      console.log(`[Dahoot DB] Admin user '${adminUserEmail}' already exists, skipping password reset.`);
       
       if (existingUser.dahoot_info) {
         await pb.collection('dahoot_user_info').update(existingUser.dahoot_info, { role: 'ADMIN' });
@@ -535,7 +531,7 @@ async function runSetup() {
           passwordConfirm: adminUserPassword,
           dahoot_info: userInfoRecord.id
         });
-        console.log(`\x1b[32m[Dahoot DB] Admin user '${adminUserEmail}' created successfully.\x1b[0m`);
+        console.log(`\x1b[32m[Dahoot DB] Admin user '${adminUserEmail}' created successfully with password 'changeme'.\x1b[0m`);
       } catch (createErr) {
         console.error(`\x1b[31m[Dahoot DB] Error creating admin user:\x1b[0m`, createErr.message);
       }

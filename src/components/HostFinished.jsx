@@ -5,6 +5,34 @@ import { splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankPa
 export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
 
+  const streakChampion = useMemo(() => {
+    if (!hostPlayers.length) return null;
+    let best = null;
+    let bestVal = 0;
+    hostPlayers.forEach(p => {
+      const s = p.marathon_stats || {};
+      if ((s.best_streak || 0) > bestVal) {
+        bestVal = s.best_streak || 0;
+        best = p;
+      }
+    });
+    return best ? { player: best, streak: bestVal } : null;
+  }, [hostPlayers]);
+
+  const mostCorrectChampion = useMemo(() => {
+    if (!hostPlayers.length) return null;
+    let best = null;
+    let bestVal = 0;
+    hostPlayers.forEach(p => {
+      const c = p.marathon_stats || {};
+      if ((c.correct_count || 0) > bestVal) {
+        bestVal = c.correct_count || 0;
+        best = p;
+      }
+    });
+    return best ? { player: best, count: bestVal } : null;
+  }, [hostPlayers]);
+
   // Compute stats for each question
   const questionStats = useMemo(() => {
     if (!questions || !hostPlayers) return [];
@@ -268,6 +296,27 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
               <div className="text-slate-400 italic text-sm my-auto">No players finished the game.</div>
             )}
           </div>
+
+          {(streakChampion || mostCorrectChampion) && (
+            <div className="w-full mt-4 space-y-2">
+              {streakChampion && (
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-amber-600">Streak Champion</span>
+                  <span className="text-sm font-bold text-amber-800">
+                    {streakChampion.player.name} — {streakChampion.streak} in a row
+                  </span>
+                </div>
+              )}
+              {mostCorrectChampion && (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-600">Most Correct</span>
+                  <span className="text-sm font-bold text-emerald-800">
+                    {mostCorrectChampion.player.name} — {mostCorrectChampion.count} correct
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <button className="btn btn-primary w-full mt-auto" onClick={hostEndGame}>
             Close Room & Return Home

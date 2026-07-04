@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 
-export function usePlayerGame(view, setView) {
+export function usePlayerGame(view, setView, onMarathonRoom) {
   const [joinPin, setJoinPin] = useState('');
   const [playerName, setPlayerName] = useState('');
   
@@ -153,6 +153,12 @@ export function usePlayerGame(view, setView) {
         room = await pb.collection('dahoot_rooms').getFirstListItem(`code = "${joinPin.trim()}"`);
       } catch (err) {
         throw new Error('Room not found. Check the code.');
+      }
+
+      if (room.marathon_mode && onMarathonRoom) {
+        setLoading(false);
+        onMarathonRoom(joinPin.trim(), playerName.trim());
+        return;
       }
 
       if (room.status !== 'LOBBY') {

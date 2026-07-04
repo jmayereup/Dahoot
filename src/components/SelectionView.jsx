@@ -17,7 +17,7 @@ export function SelectionView({
   joinGame,
   startHosting,
   startSoloPractice,
-  startMarathon,
+  startMarathonHosting,
   setHasPinFromUrl,
   setView,
   gamesList = [],
@@ -43,6 +43,7 @@ export function SelectionView({
   ]);
   const [maxQuestions, setMaxQuestions] = useState('');
   const [timerDuration, setTimerDuration] = useState(20);
+  const [pacingMode, setPacingMode] = useState('student');
 
   // Fetch questions when game is selected
   useEffect(() => {
@@ -591,6 +592,22 @@ export function SelectionView({
                     <option value={0}>No Timer (Unlimited)</option>
                   </select>
                 </div>
+
+                {/* Pacing Mode Option */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+                    Pacing Mode:
+                  </span>
+                  <select
+                    value={pacingMode}
+                    onChange={(e) => setPacingMode(e.target.value)}
+                    className="form-input"
+                    style={{ width: '250px', maxWidth: '250px', cursor: 'pointer', height: 'auto', padding: '8px 12px', fontSize: '0.95rem' }}
+                  >
+                    <option value="student">Student-Paced (Players advance independently)</option>
+                    <option value="teacher">Teacher-Paced (Host controls advancement)</option>
+                  </select>
+                </div>
               </div>
             )}
 
@@ -626,7 +643,7 @@ export function SelectionView({
               
               <button 
                 className="btn btn-secondary" 
-                onClick={() => startMarathon(selectedGameId, { randomize, questionTypes: selectedQuestionTypes })} 
+                onClick={() => startMarathonHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes, pacingMode })} 
                 disabled={loading || !selectedGameId || !totalQuestions}
                 style={{ 
                   width: '100%',
@@ -641,7 +658,7 @@ export function SelectionView({
                   e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
                 }}
               >
-                🏃 Marathon Mode (Endless)
+                🏃 Host Marathon Mode
               </button>
             </div>
           </div>

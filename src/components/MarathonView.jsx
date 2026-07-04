@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { QuestionInteraction } from './QuestionInteraction';
+import { ConfirmModal } from './ConfirmModal';
 
 export function MarathonView({
   marathonState,
@@ -26,6 +27,7 @@ export function MarathonView({
   restartMarathon
 }) {
   const [localNickname, setLocalNickname] = useState(nickname || 'Player');
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   if (marathonState === 'INTRO') {
     return (
@@ -118,11 +120,7 @@ export function MarathonView({
           <span>👤 <strong>{nickname}</strong> (Marathon Mode)</span>
           <span>⏱️ <strong>{formattedTime}</strong></span>
           <button 
-            onClick={() => {
-              if (window.confirm("Quit marathon? Your progress will be lost.")) {
-                exitMarathon();
-              }
-            }}
+            onClick={() => setShowQuitConfirm(true)}
             style={{
               background: 'none',
               border: 'none',
@@ -373,6 +371,18 @@ export function MarathonView({
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={showQuitConfirm}
+        onClose={() => setShowQuitConfirm(false)}
+        onConfirm={exitMarathon}
+        title="Quit the marathon?"
+        message="Your progress will be lost. Are you sure you want to return to the home screen?"
+        confirmText="Quit Marathon"
+        cancelText="Keep Playing"
+        variant="warning"
+        icon="🏃"
+      />
     </div>
   );
 }

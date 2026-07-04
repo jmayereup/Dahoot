@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES } from '../constants';
 import { pb } from '../pb';
 import { QuestionInteraction } from './QuestionInteraction';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 export function TeacherDashboard({
   // Games List State & Handlers
@@ -95,6 +96,46 @@ export function TeacherDashboard({
   onLogout = null,
   startHosting = null
 }) {
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const handleDeleteGame = async (id, e) => {
+    if (e) e.stopPropagation();
+    const ok = await confirm({
+      title: 'Delete this game?',
+      message: 'This will also delete all of its questions. This action cannot be undone.',
+      confirmText: 'Delete Game',
+      cancelText: 'Keep Game',
+      variant: 'danger',
+      icon: '🗑️'
+    });
+    if (ok) deleteGame(id);
+  };
+
+  const handleCopyGame = async (game, e) => {
+    if (e) e.stopPropagation();
+    const ok = await confirm({
+      title: 'Copy this game?',
+      message: `A duplicate of "${game.title}" will be created with "(Copy)" appended to its title.`,
+      confirmText: 'Copy Game',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      icon: '📋'
+    });
+    if (ok) copyGame(game);
+  };
+
+  const handleDeleteQuestion = async (id) => {
+    const ok = await confirm({
+      title: 'Delete this question?',
+      message: 'This action cannot be undone.',
+      confirmText: 'Delete Question',
+      cancelText: 'Keep Question',
+      variant: 'danger',
+      icon: '🗑️'
+    });
+    if (ok) deleteQuestion(id);
+  };
+
   // Client-side filtering state
   const [filterSubject, setFilterSubject] = useState([]);
   const [filterCefr, setFilterCefr] = useState([]);
@@ -2806,13 +2847,13 @@ Sort these numbers from lowest to highest.
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
-                        onClick={(e) => copyGame(game, e)}
+                        onClick={(e) => handleCopyGame(game, e)}
                       >
                         Copy Game
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-danger py-1.5 text-xs" 
-                        onClick={(e) => deleteGame(game.id, e)}
+                        onClick={(e) => handleDeleteGame(game.id, e)}
                       >
                         🗑️
                       </button>
@@ -3137,7 +3178,7 @@ Sort these numbers from lowest to highest.
                     </button>
                     <button 
                       className="btn btn-secondary btn-sm" 
-                      onClick={() => deleteQuestion(question.id)}
+                      onClick={() => handleDeleteQuestion(question.id)}
                       style={{ 
                         width: 'auto', 
                         padding: '8px 12px', 
@@ -3155,6 +3196,7 @@ Sort these numbers from lowest to highest.
           )}
         </div>
       </div>
+      {ConfirmDialog}
     </div>
   );
 }

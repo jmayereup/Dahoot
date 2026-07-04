@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex } from '../utils/blankParsing';
+import { ConfirmModal } from './ConfirmModal';
 
 export function HostQuestion({
   qIndex,
@@ -17,6 +18,7 @@ export function HostQuestion({
   hostEndGame
 }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
@@ -264,16 +266,24 @@ export function HostQuestion({
         )}
         <button 
           className="btn btn-danger btn-sm" 
-          onClick={() => {
-            if (window.confirm("Are you sure you want to stop and exit the game? This will end the session for all players.")) {
-              hostEndGame();
-            }
-          }}
+          onClick={() => setShowStopConfirm(true)}
           style={{ width: 'auto' }}
         >
           🛑 Stop Game
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showStopConfirm}
+        onClose={() => setShowStopConfirm(false)}
+        onConfirm={hostEndGame}
+        title="Stop the game?"
+        message="This will end the session for all players. Are you sure you want to stop and return to the home screen?"
+        confirmText="Stop Game"
+        cancelText="Keep Playing"
+        variant="danger"
+        icon="🛑"
+      />
     </div>
   );
 }

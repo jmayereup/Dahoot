@@ -5,6 +5,8 @@ import { usePlayerGame } from './hooks/usePlayerGame';
 import { useTeacherDashboard } from './hooks/useTeacherDashboard';
 import { usePracticeGame } from './hooks/usePracticeGame';
 import { useMarathonGame } from './hooks/useMarathonGame';
+import { useMarathonHost } from './hooks/useMarathonHost';
+import { useMarathonPlayer } from './hooks/useMarathonPlayer';
 import { useAdSense } from './hooks/useAdSense';
 import { SelectionView } from './components/SelectionView';
 import { HostView } from './components/HostView';
@@ -13,6 +15,8 @@ import { TeacherDashboard } from './components/TeacherDashboard';
 import { AuthView } from './components/AuthView';
 import { PracticeView } from './components/PracticeView';
 import { MarathonView } from './components/MarathonView';
+import { MarathonHostView } from './components/MarathonHostView';
+import { MarathonPlayerView } from './components/MarathonPlayerView';
 import { CookieConsent } from './components/CookieConsent';
 
 function App() {
@@ -68,10 +72,14 @@ function App() {
 
   // Initialize hooks
   const hostGame = useHostGame(view, setView);
-  const playerGame = usePlayerGame(view, setView);
+  const playerGame = usePlayerGame(view, setView, (pin, name) => {
+    marathonPlayer.joinMarathon(pin, name);
+  });
   const teacherDashboard = useTeacherDashboard(view, currentUser);
   const practiceGame = usePracticeGame(view, setView);
   const marathonGame = useMarathonGame(view, setView);
+  const marathonHost = useMarathonHost(view, setView);
+  const marathonPlayer = useMarathonPlayer(view, setView);
 
   // 1. SELECTION VIEW
   if (view === 'selection') {
@@ -93,6 +101,7 @@ function App() {
           startHosting={hostGame.startHosting}
           startSoloPractice={practiceGame.startSoloPractice}
           startMarathon={marathonGame.startMarathon}
+          startMarathonHosting={marathonHost.startMarathonHosting}
           setHasPinFromUrl={playerGame.setHasPinFromUrl}
           setView={setView}
           gamesList={hostGame.gamesList}
@@ -288,6 +297,61 @@ function App() {
           nextQuestion={practiceGame.nextQuestion}
           startNextRound={practiceGame.startNextRound}
           exitPractice={practiceGame.exitPractice}
+        />
+        <CookieConsent />
+      </>
+    );
+  }
+
+  // 6. MARATHON HOST VIEW
+  if (view === 'marathonHost' && marathonHost.hostRoom) {
+    return (
+      <>
+        <MarathonHostView
+          hostRoom={marathonHost.hostRoom}
+          hostPlayers={marathonHost.hostPlayers}
+          questions={marathonHost.questions}
+          wrapUpTimeLeft={marathonHost.wrapUpTimeLeft}
+          currentLap={marathonHost.currentLap}
+          qrCodeUrl={marathonHost.qrCodeUrl}
+          copied={marathonHost.copied}
+          joinUrl={marathonHost.joinUrl}
+          handleCopyLink={marathonHost.handleCopyLink}
+          isStudentPaced={marathonHost.isStudentPaced}
+          marathonStats={marathonHost.marathonStats}
+          hostStartMarathon={marathonHost.hostStartMarathon}
+          hostStartWrapUp={marathonHost.hostStartWrapUp}
+          hostShowLeaderboard={marathonHost.hostShowLeaderboard}
+          hostShowMarathonLeaderboard={marathonHost.hostShowMarathonLeaderboard}
+          hostNextQuestion={marathonHost.hostNextQuestion}
+          hostCancelTimer={marathonHost.hostCancelTimer}
+          hostEndMarathon={marathonHost.hostEndMarathon}
+          exitMarathon={marathonHost.exitMarathon}
+        />
+        <CookieConsent />
+      </>
+    );
+  }
+
+  // 7. MARATHON PLAYER VIEW
+  if (view === 'marathonPlayer' && marathonPlayer.playerRoom && marathonPlayer.playerRecord) {
+    return (
+      <>
+        <MarathonPlayerView
+          playerRoom={marathonPlayer.playerRoom}
+          playerRecord={marathonPlayer.playerRecord}
+          currentQuestion={marathonPlayer.currentQuestion}
+          playerQuestionIndex={marathonPlayer.playerQuestionIndex}
+          totalQuestions={marathonPlayer.allQuestions.length}
+          currentLap={marathonPlayer.currentLap}
+          playerSelectedIdx={marathonPlayer.playerSelectedIdx}
+          playerFeedback={marathonPlayer.playerFeedback}
+          isStudentPaced={marathonPlayer.isStudentPaced}
+          hasMoreQuestions={marathonPlayer.hasMoreQuestions}
+          isFinished={marathonPlayer.isFinished}
+          submitAnswer={marathonPlayer.submitAnswer}
+          advanceToNextQuestion={marathonPlayer.advanceToNextQuestion}
+          exitGame={marathonPlayer.exitMarathon}
         />
         <CookieConsent />
       </>

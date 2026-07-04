@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ConfirmModal } from './ConfirmModal';
 
 export function PlayerLobby({ playerRecord, exitGame }) {
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
   return (
     <div>
       <div className="spinner" />
@@ -10,15 +13,23 @@ export function PlayerLobby({ playerRecord, exitGame }) {
       
       <button 
         className="btn btn-secondary btn-sm" 
-        onClick={() => {
-          if (window.confirm("Are you sure you want to leave the game?")) {
-            exitGame();
-          }
-        }} 
+        onClick={() => setShowLeaveConfirm(true)} 
         style={{ marginTop: 32 }}
       >
         Leave Game
       </button>
+
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={exitGame}
+        title="Leave the game?"
+        message="You'll be disconnected from this game session. Are you sure you want to leave?"
+        confirmText="Leave Game"
+        cancelText="Stay"
+        variant="warning"
+        icon="🚪"
+      />
     </div>
   );
 }

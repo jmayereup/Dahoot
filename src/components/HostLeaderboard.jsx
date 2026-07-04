@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { OPTION_CLASSES, OPTION_SHAPES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
+import { ConfirmModal } from './ConfirmModal';
 
 export function HostLeaderboard({
   qIndex,
@@ -14,6 +15,7 @@ export function HostLeaderboard({
 }) {
   const isLastQuestion = qIndex + 1 >= questions.length;
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
@@ -243,16 +245,24 @@ export function HostLeaderboard({
         </button>
         <button 
           className="btn btn-secondary" 
-          onClick={() => {
-            if (window.confirm("Are you sure you want to stop and exit the game? This will end the session for all players.")) {
-              hostEndGame();
-            }
-          }}
+          onClick={() => setShowCancelConfirm(true)}
           style={{ minWidth: 160 }}
         >
           Cancel Game
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={hostEndGame}
+        title="Cancel the game?"
+        message="This will end the session for all players. Are you sure you want to cancel and return to the home screen?"
+        confirmText="Cancel Game"
+        cancelText="Keep Going"
+        variant="danger"
+        icon="🛑"
+      />
     </div>
   );
 }
