@@ -20,16 +20,6 @@ export function SchoolFooter({ status }) {
           />
           Datdaruni School
         </span>
-        <span className="text-slate-300">|</span>
-        <span>Want to self-host? Dahoot is open source on</span>
-        <a 
-          href="https://github.com/jmayereup/Dahoot" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-slate-600 hover:text-rose-400 font-bold underline transition-colors inline-flex items-center gap-1"
-        >
-          GitHub 🚀
-        </a>
       </p>
       <p className="text-xs text-slate-400 mt-3 flex flex-wrap items-center justify-center gap-3">
         <a 
@@ -48,6 +38,15 @@ export function SchoolFooter({ status }) {
           className="hover:text-rose-400 transition-colors"
         >
           Privacy Policy
+        </a>
+        <span className="text-slate-300">|</span>
+                <a 
+          href="https://github.com/jmayereup/Dahoot" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-slate-400 hover:text-rose-400  transition-colors inline-flex items-center gap-1"
+        >
+          Self-Hosting Available
         </a>
       </p>
       {status && (

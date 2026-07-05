@@ -70,3 +70,17 @@ npm run dev
 
 - **Open Student / Host Panel**: Navigate to `http://localhost:5173`.
 - **Open PocketBase Admin Panel**: Navigate to `http://127.0.0.1:8090/_/` and log in with your configured email and password.
+
+---
+
+## 🌊 DigitalOcean Deployment
+
+For complete instructions on self-hosting Dahoot on a DigitalOcean Ubuntu droplet, see [DIGITALOCEAN_DEPLOYMENT.md](./DIGITALOCEAN_DEPLOYMENT.md).
+
+The deployment guide covers:
+- Creating and configuring a DigitalOcean droplet
+- Installing and configuring PocketBase as a system service
+- Setting up Nginx with SSL/HTTPS
+- SSL certificate management with Let's Encrypt
+- Automated deployment from your local machine
+- Ongoing maintenance, backups, and security best practices
