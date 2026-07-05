@@ -233,6 +233,54 @@ async function compareSchemas(env) {
   console.log('\x1b[32m[Dahoot Deploy] Schema check passed! Dev and Live database schemas are identical.\x1b[0m\n');
 }
 
+async function compareVersions(connectionString, targetPath, env) {
+  console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mChecking database versions consistency...\x1b[0m');
+
+  let localVersion = null;
+  try {
+    const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
+    const out = execSync(`"${pbExecutable}" --version`, { encoding: 'utf8' }).trim();
+    const match = out.match(/version\s+([0-9.]+)/i);
+    localVersion = match ? match[1] : out;
+  } catch (err) {
+    console.error(`\x1b[31m[Dahoot Deploy] Error: Failed to determine local PocketBase version:\x1b[0m ${err.message}`);
+    process.exit(1);
+  }
+
+  // Resolve the remote PocketBase binary path from env settings or fallbacks
+  let remotePbPath;
+  if (env.DEPLOY_POCKETBASE_PATH) {
+    remotePbPath = env.DEPLOY_POCKETBASE_PATH;
+  } else if (env.POCKETBASE_HOOKS_PATH) {
+    // If hooks path is e.g. /opt/pocketbase/pb_hooks, the executable is at /opt/pocketbase/pocketbase
+    remotePbPath = path.posix.join(path.posix.dirname(env.POCKETBASE_HOOKS_PATH), 'pocketbase');
+  } else {
+    remotePbPath = path.posix.join(targetPath, 'pocketbase', 'pocketbase');
+  }
+
+  let remoteVersion = null;
+  try {
+    const out = execSync(`ssh -o ConnectTimeout=5 "${connectionString}" "${remotePbPath} --version"`, { encoding: 'utf8' }).trim();
+    const match = out.match(/version\s+([0-9.]+)/i);
+    remoteVersion = match ? match[1] : out;
+  } catch (err) {
+    console.error(`\x1b[31m[Dahoot Deploy] Error: Failed to determine remote PocketBase version at ${remotePbPath}:\x1b[0m ${err.message}`);
+    console.error('Please verify that the PocketBase binary exists on the remote server and SSH connection is working.');
+    process.exit(1);
+  }
+
+  console.log(`  Local Version:  v${localVersion}`);
+  console.log(`  Remote Version: v${remoteVersion} (at ${remotePbPath})`);
+
+  if (localVersion !== remoteVersion) {
+    console.error(`\n\x1b[31m[Dahoot Deploy] Version mismatch detected! Local version (v${localVersion}) does not match remote version (v${remoteVersion}).\x1b[0m`);
+    console.error('Please upgrade your local or remote PocketBase binary to match before deploying.');
+    process.exit(1);
+  }
+
+  console.log('\x1b[32m[Dahoot Deploy] Version check passed! Local and Remote PocketBase versions match.\x1b[0m\n');
+}
+
 async function deploy() {
   console.log('\x1b[35m[Dahoot Deploy]\x1b[0m Loading configuration...');
   const env = loadEnv();
@@ -257,7 +305,8 @@ async function deploy() {
 
   console.log(`\x1b[35m[Dahoot Deploy]\x1b[0m Deploying to \x1b[36m${connectionString}:${targetPath}\x1b[0m`);
 
-  // Step 0: Verify schema consistency before deploying
+  // Step 0: Verify version and schema consistency before deploying
+  await compareVersions(connectionString, targetPath, env);
   await compareSchemas(env);
 
   // Step 1: Build the Vite production assets

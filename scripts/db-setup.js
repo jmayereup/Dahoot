@@ -323,7 +323,7 @@ async function runSetup() {
     name: 'dahoot_user_info',
     type: 'base',
     fields: [
-      { name: 'role', type: 'select', required: true, values: ['TEACHER', 'ADMIN', 'STUDENT'], maxSelect: 1 },
+      { name: 'role', type: 'select', required: true, values: ['TEACHER', 'ADMIN', 'STUDENT', 'DISABLED'], maxSelect: 1 },
       { name: 'school', type: 'text', required: false, max: 100 },
       { name: 'invite_code', type: 'text', required: false, max: 100 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },

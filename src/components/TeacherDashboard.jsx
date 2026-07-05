@@ -47,6 +47,7 @@ export function TeacherDashboard({
   setCreationQuestionsTab,
   addPendingQuestion,
   removePendingQuestion,
+  updatePendingQuestion,
 
   // Import State & Handlers
   isImporting,
@@ -58,6 +59,7 @@ export function TeacherDashboard({
   
   // Multiple Choice & Sorting
   options,
+  setOptions,
   updateOptionValue,
   correctOptionIndex,
   setCorrectOptionIndex,
@@ -66,12 +68,14 @@ export function TeacherDashboard({
   dragSentence,
   setDragSentence,
   dragChoices,
+  setDragChoices,
   updateDragChoice,
 
   // Drop Down
   dropdownSentence,
   setDropdownSentence,
   dropdownOptions,
+  setDropdownOptions,
   updateDropdownOption,
 
   // Categorize
@@ -97,6 +101,42 @@ export function TeacherDashboard({
   startHosting = null
 }) {
   const { confirm, ConfirmDialog } = useConfirm();
+
+  const [editingPendingIndex, setEditingPendingIndex] = useState(null);
+
+  const startEditingPendingQuestion = (idx) => {
+    const q = pendingQuestions[idx];
+    setEditingPendingIndex(idx);
+    setQuestionType(q.type);
+    setQuestionText(q.text);
+    if (q.type === 'MULTIPLE_CHOICE' || q.type === 'SORTING') {
+      setOptions([...q.options]);
+      setCorrectOptionIndex(q.correct_option_index);
+    } else if (q.type === 'DRAG_DROP') {
+      setDragSentence(q.options.sentence);
+      setDragChoices([...q.options.choices]);
+    } else if (q.type === 'DROP_DOWN') {
+      setDropdownSentence(q.options.sentence);
+      setDropdownOptions(q.options.dropdowns.map(d => d.choices.join(', ')));
+    } else if (q.type === 'CATEGORIZE') {
+      setCategorizeCategories(q.options.categories.join(', '));
+      setCategorizeItemsText(q.options.items.map(item => `${item.name}: ${item.category}`).join('\n'));
+    }
+  };
+
+  const cancelEditingPendingQuestion = () => {
+    setEditingPendingIndex(null);
+    setQuestionText('');
+    setQuestionType('MULTIPLE_CHOICE');
+    setOptions(['', '', '', '']);
+    setCorrectOptionIndex(0);
+    setDragSentence('');
+    setDragChoices(['', '', '', '']);
+    setDropdownSentence('');
+    setDropdownOptions(['', '', '', '']);
+    setCategorizeCategories('');
+    setCategorizeItemsText('');
+  };
 
   const handleDeleteGame = async (id, e) => {
     if (e) e.stopPropagation();
@@ -245,12 +285,13 @@ export function TeacherDashboard({
         setIsLoadingTeachers(true);
         setTeachersError('');
         pb.collection('users').getFullList({
+          filter: 'dahoot_info != ""',
           expand: 'dahoot_info',
           sort: 'created'
         })
           .then(list => {
             if (active) {
-              setTeachers(list);
+              setTeachers(list.filter(t => t.dahoot_info));
               setIsLoadingTeachers(false);
             }
           })
@@ -292,7 +333,13 @@ export function TeacherDashboard({
     // Check for duplicates locally
     const exists = optionsList.some(opt => opt.type === type && opt.value.toLowerCase() === cleanValue.toLowerCase());
     if (exists) {
-      alert(`This option already exists.`);
+      await confirm({
+        title: "Duplicate Option",
+        message: `This option already exists.`,
+        confirmText: "OK",
+        cancelText: null,
+        variant: "warning"
+      });
       return;
     }
 
@@ -386,7 +433,13 @@ export function TeacherDashboard({
     setTeachersError('');
     try {
       if (user.id === currentUser.id) {
-        alert("You cannot change your own role!");
+        await confirm({
+          title: "Action Not Allowed",
+          message: "You cannot change your own role!",
+          confirmText: "OK",
+          cancelText: null,
+          variant: "warning"
+        });
         return;
       }
       if (user.expand && user.expand.dahoot_info) {
@@ -403,40 +456,67 @@ export function TeacherDashboard({
       }
       
       const list = await pb.collection('users').getFullList({
+        filter: 'dahoot_info != ""',
         expand: 'dahoot_info',
         sort: 'created'
       });
-      setTeachers(list);
+      setTeachers(list.filter(t => t.dahoot_info));
     } catch (err) {
       console.error("Error updating user role:", err);
       setTeachersError("Failed to update role: " + err.message);
     }
   };
 
-  const handleDeleteUser = async (user) => {
+  const handleToggleDisableUser = async (user) => {
     if (user.id === currentUser.id) {
-      alert("You cannot delete yourself!");
+      await confirm({
+        title: "Action Not Allowed",
+        message: "You cannot disable yourself!",
+        confirmText: "OK",
+        cancelText: null,
+        variant: "warning"
+      });
       return;
     }
+    const info = user.expand?.dahoot_info;
+    const isCurrentlyDisabled = info?.role === 'DISABLED';
+    const actionText = isCurrentlyDisabled ? "enable" : "disable";
+    const confirmTitle = isCurrentlyDisabled ? "Enable User" : "Disable User";
+    const confirmMessage = isCurrentlyDisabled 
+      ? `Are you sure you want to enable user ${user.email || user.username}? This will restore their access.`
+      : `Are you sure you want to disable user ${user.email || user.username}? They will not be able to create or manage games.`;
+
     const confirmed = await confirm({
-      title: "Delete User",
-      message: `Are you sure you want to delete user ${user.email || user.username}?`
+      title: confirmTitle,
+      message: confirmMessage,
+      confirmText: isCurrentlyDisabled ? "Enable User" : "Disable User",
+      variant: isCurrentlyDisabled ? "primary" : "danger"
     });
     if (!confirmed) return;
     setTeachersError('');
     try {
-      await pb.collection('users').delete(user.id);
+      const newRole = isCurrentlyDisabled ? 'TEACHER' : 'DISABLED';
       if (user.dahoot_info) {
-        await pb.collection('dahoot_user_info').delete(user.dahoot_info);
+        await pb.collection('dahoot_user_info').update(user.dahoot_info, {
+          role: newRole
+        });
+      } else {
+        const newInfo = await pb.collection('dahoot_user_info').create({
+          role: newRole
+        });
+        await pb.collection('users').update(user.id, {
+          dahoot_info: newInfo.id
+        });
       }
       const list = await pb.collection('users').getFullList({
+        filter: 'dahoot_info != ""',
         expand: 'dahoot_info',
         sort: 'created'
       });
-      setTeachers(list);
+      setTeachers(list.filter(t => t.dahoot_info));
     } catch (err) {
-      console.error("Error deleting user:", err);
-      setTeachersError("Failed to delete user: " + err.message);
+      console.error("Error toggling user status:", err);
+      setTeachersError(`Failed to ${actionText} user: ` + err.message);
     }
   };
 
@@ -485,10 +565,11 @@ export function TeacherDashboard({
       setIsCreatingTeacher(false);
       
       const list = await pb.collection('users').getFullList({
+        filter: 'dahoot_info != ""',
         expand: 'dahoot_info',
         sort: 'created'
       });
-      setTeachers(list);
+      setTeachers(list.filter(t => t.dahoot_info));
     } catch (err) {
       console.error("Error creating teacher:", err);
       let msg = err.message || "Failed to create teacher.";
@@ -797,16 +878,21 @@ export function TeacherDashboard({
                                 <option value="TEACHER">TEACHER</option>
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="STUDENT">STUDENT</option>
+                                <option value="DISABLED">DISABLED</option>
                               </select>
                             </td>
                             <td className="p-3 text-right">
                               <button
                                 type="button"
-                                onClick={() => handleDeleteUser(t)}
+                                onClick={() => handleToggleDisableUser(t)}
                                 disabled={isSelf}
-                                className="px-2.5 py-1 border border-rose-200 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded font-bold text-[10px] transition-all cursor-pointer outline-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                className={`px-2.5 py-1 border rounded font-bold text-[10px] transition-all cursor-pointer outline-none disabled:opacity-30 disabled:cursor-not-allowed ${
+                                  role === 'DISABLED'
+                                    ? 'border-indigo-200 hover:bg-indigo-50 text-indigo-500 hover:text-indigo-600'
+                                    : 'border-rose-200 hover:bg-rose-50 text-rose-500 hover:text-rose-600'
+                                }`}
                               >
-                                Delete
+                                {role === 'DISABLED' ? 'Enable' : 'Disable'}
                               </button>
                             </td>
                           </tr>
@@ -1060,13 +1146,19 @@ export function TeacherDashboard({
     setPreviewAnswered(true);
   };
 
-  const nextPreviewQuestion = () => {
+  const nextPreviewQuestion = async () => {
     if (previewCurrentIdx + 1 < previewQuestions.length) {
       const nextIdx = previewCurrentIdx + 1;
       setPreviewCurrentIdx(nextIdx);
       initPreviewQuestionStates();
     } else {
-      alert("You have previewed all questions in this Dahoot!");
+      await confirm({
+        title: "Preview Complete",
+        message: "You have previewed all questions in this Dahoot!",
+        confirmText: "OK",
+        cancelText: null,
+        variant: "primary"
+      });
       closePreviewGame();
     }
   };
@@ -1221,20 +1313,20 @@ export function TeacherDashboard({
     if (!currentUser) return null;
     return (
       <div className="flex justify-between items-center bg-slate-50 border-b border-slate-200/80 px-6 py-3 -mx-10 -mt-10 mb-6 text-xs text-slate-500 rounded-t-2xl shadow-inner w-[calc(100%+80px)]">
-        <span className="flex items-center gap-1.5">
-          👤 Logged in as: <strong className="text-slate-700 font-bold">{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
+        <span className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap min-w-0 mr-4 scrollbar-none">
+          👤 <strong className="text-slate-700 font-bold shrink-0">{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
           {userRole === 'ADMIN' && (
-            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border border-amber-200/60 ml-2">
+            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border border-amber-200/60 shrink-0">
               Admin
             </span>
           )}
         </span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {userRole === 'ADMIN' && (
             <button
               type="button"
               onClick={() => setIsAdminPanelOpen(true)}
-              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center border-none outline-none"
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center border-none outline-none whitespace-nowrap"
             >
               🛠 Manage
             </button>
@@ -1242,7 +1334,7 @@ export function TeacherDashboard({
           <button 
             type="button"
             onClick={onLogout} 
-            className="px-3 py-1 bg-white hover:bg-rose-50 border border-slate-200/80 text-rose-500 hover:text-rose-600 font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center outline-none"
+            className="px-3 py-1 bg-white hover:bg-rose-50 border border-slate-200/80 text-rose-500 hover:text-rose-600 font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center outline-none whitespace-nowrap"
           >
             Log Out
           </button>
@@ -1414,7 +1506,7 @@ export function TeacherDashboard({
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7 max-w-[600px]">
               {dragChoices.map((choice, idx) => {
                 const isBlankValue = dragSentence.includes(`[blank${idx}]`);
                 return (
@@ -1597,22 +1689,40 @@ export function TeacherDashboard({
                   {q.type === 'CATEGORIZE' && `Categories: ${q.options.categories.join(', ')}`}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => removePendingQuestion(idx)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#ff4b60',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  fontSize: '1.1rem',
-                  transition: 'transform 0.1s'
-                }}
-                title="Remove question"
-              >
-                🗑️
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => startEditingPendingQuestion(idx)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    fontSize: '1.1rem',
+                    transition: 'transform 0.1s'
+                  }}
+                  title="Edit question"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removePendingQuestion(idx)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ff4b60',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    fontSize: '1.1rem',
+                    transition: 'transform 0.1s'
+                  }}
+                  title="Remove question"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -1639,6 +1749,11 @@ export function TeacherDashboard({
   const isGenerateDisabled = getMissingFieldsForGenerate().length > 0;
 
   const handleGenerateQuestions = async () => {
+    if (!genPrompt.trim()) {
+      setGenError('Custom Prompt or Source Text is required.');
+      return;
+    }
+
     setGenLoading(true);
     setGenError('');
 
@@ -1978,10 +2093,10 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label className="form-label" style={{ margin: 0 }}>
-                  Custom Prompt or Source Text (Optional)
+                  Prompt
                 </label>
                 <span style={{ fontSize: '0.8rem', color: genPrompt.length > 100000 ? '#ff4b60' : 'var(--text-secondary)' }}>
-                  {genPrompt.length.toLocaleString()} / 100,000 chars
+                  {genPrompt.length.toLocaleString()} / 10,000 chars
                 </span>
               </div>
               <textarea
@@ -1992,6 +2107,7 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                 disabled={genLoading}
                 rows={6}
                 maxLength={100000}
+                required
                 style={{
                   fontFamily: 'inherit',
                   fontSize: '0.9rem',
@@ -2098,7 +2214,7 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                 type="button"
                 className="btn btn-primary" 
                 onClick={handleGenerateQuestions}
-                disabled={genLoading || isGenerateDisabled} 
+                disabled={genLoading || isGenerateDisabled || !genPrompt.trim()} 
                 style={{ 
                   width: 'auto', 
                   minWidth: 150,
@@ -2115,7 +2231,7 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
                   </>
                 ) : (
                   <>
-                    ✨ Generate Questions
+                    ✨ Generate
                   </>
                 )}
               </button>
@@ -2283,6 +2399,45 @@ Sort these numbers from lowest to highest.
     });
   }, [gamesList, libraryTab, currentUser, filterSubject, filterCefr, filterLanguage, filterCreator]);
   
+  // 0. DISABLED USER ACCESS BLOCK
+  if (userRole === 'DISABLED') {
+    return (
+      <div className="app-container">
+        <div className="panel animate-join-focus" style={{ maxWidth: '440px', margin: '40px auto', padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(239, 68, 68, 0.1)',
+            color: '#EF4444',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2rem',
+            margin: '0 auto 16px',
+            fontWeight: '700'
+          }}>
+            ⚠️
+          </div>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Account Disabled
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '24px' }}>
+            Your account has been disabled by an administrator. You do not have permission to create, edit, or manage games.
+          </p>
+          <button
+            onClick={onLogout}
+            className="btn btn-danger"
+            style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)' }}
+          >
+            Log Out
+          </button>
+        </div>
+        {ConfirmDialog}
+      </div>
+    );
+  }
+
   // 1. GAME EDITING MODE
   if (!selectedGame && isEditingGame) {
     return (
@@ -2337,7 +2492,7 @@ Sort these numbers from lowest to highest.
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div className="form-group">
                 <label className="form-label">Creator / Author *</label>
                 <input 
@@ -2369,7 +2524,7 @@ Sort these numbers from lowest to highest.
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label">CEFR Language Level *</label>
@@ -2434,7 +2589,6 @@ Sort these numbers from lowest to highest.
               </div>
             </div>
 
-            {!selectedGameForEdit && (
               <div style={{ 
                 marginTop: '32px', 
                 borderTop: '1px dashed rgba(93, 107, 130, 0.2)', 
@@ -2442,10 +2596,12 @@ Sort these numbers from lowest to highest.
                 marginBottom: '24px'
               }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  Add Questions (Optional)
+                  {selectedGameForEdit ? 'Manage Questions' : 'Add Questions (Optional)'}
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
-                  Create questions now or skip and add them later. Use the tabs below to choose between adding questions individually or bulk importing via Markdown.
+                  {selectedGameForEdit 
+                    ? 'Add, edit, or delete questions for this Dahoot. Use the tabs below to choose between adding/editing questions individually or bulk importing via Markdown.'
+                    : 'Create questions now or skip and add them later. Use the tabs below to choose between adding questions individually or bulk importing via Markdown.'}
                 </p>
 
                 {/* Tabs selector */}
@@ -2526,24 +2682,48 @@ Sort these numbers from lowest to highest.
                       marginBottom: '20px'
                     }}>
                       <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                        Create Question
+                        {editingPendingIndex !== null ? '✏️ Edit Question' : 'Create Question'}
                       </h4>
                       {renderQuestionFormFields()}
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={addPendingQuestion}
-                        style={{
-                          marginTop: '16px',
-                          backgroundColor: 'rgba(93, 107, 130, 0.05)',
-                          color: 'var(--text-secondary)',
-                          border: '1px solid rgba(93, 107, 130, 0.12)',
-                          width: 'auto',
-                          minWidth: '200px'
-                        }}
-                      >
-                        ➕ Add Question to Dahoot
-                      </button>
+                      {editingPendingIndex !== null ? (
+                        <div style={{ display: 'flex', gap: 12, marginTop: '16px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => {
+                              const success = updatePendingQuestion(editingPendingIndex);
+                              if (success) setEditingPendingIndex(null);
+                            }}
+                            style={{ width: 'auto', minWidth: '150px' }}
+                          >
+                            ✓ Update Question
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={cancelEditingPendingQuestion}
+                            style={{ width: 'auto', minWidth: '100px' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={addPendingQuestion}
+                          style={{
+                            marginTop: '16px',
+                            backgroundColor: 'rgba(93, 107, 130, 0.05)',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid rgba(93, 107, 130, 0.12)',
+                            width: 'auto',
+                            minWidth: '200px'
+                          }}
+                        >
+                          ➕ Add Question to Dahoot
+                        </button>
+                      )}
                     </div>
                     
                     {/* Render Pending Questions List */}
@@ -2556,10 +2736,12 @@ Sort these numbers from lowest to highest.
                   </div>
                 )}
               </div>
-            )}
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-              <button type="button" className="btn btn-secondary" onClick={cancelEditingGame} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
+              <button type="button" className="btn btn-secondary" onClick={() => {
+                cancelEditingGame();
+                setEditingPendingIndex(null);
+              }} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: 'auto', minWidth: 150 }}>
@@ -2569,6 +2751,7 @@ Sort these numbers from lowest to highest.
           </form>
         </div>
         {renderGenerateModal()}
+        {ConfirmDialog}
       </div>
     );
   }
@@ -2841,34 +3024,39 @@ Sort these numbers from lowest to highest.
                   </div>
 
                   <div className="flex flex-col gap-2 mt-3.5">
-                    {startHosting && (
-                      <button 
-                        className="btn-card-action btn-card-action-primary py-2.5 text-sm" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startHosting(game.id);
-                        }}
-                      >
-                        🚀 Host Game
-                      </button>
-                    )}
-                    
                     <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        className="btn-card-action btn-card-action-secondary py-2 text-xs" 
-                        onClick={() => setSelectedGame(game)}
-                      >
-                        ✏️ Questions
-                      </button>
-                      <button 
-                        className="btn-card-action btn-card-action-secondary py-2 text-xs" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startPreviewGame(game);
-                        }}
-                      >
-                        👁️ Preview
-                      </button>
+                      {startHosting ? (
+                        <>
+                          <button 
+                            className="btn-card-action btn-card-action-primary py-2 text-xs font-semibold" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startHosting(game.id);
+                            }}
+                          >
+                            🚀 Host Game
+                          </button>
+                          <button 
+                            className="btn-card-action btn-card-action-secondary py-2 text-xs font-semibold" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startPreviewGame(game);
+                            }}
+                          >
+                            👁️ Preview
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          className="btn-card-action btn-card-action-secondary py-2 text-xs font-semibold col-span-2" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startPreviewGame(game);
+                          }}
+                        >
+                          👁️ Preview
+                        </button>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-[1fr_1fr_40px] gap-2">
@@ -2876,13 +3064,13 @@ Sort these numbers from lowest to highest.
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => startEditingGame(game, e)}
                       >
-                        Edit Details
+                        ✏️ Edit
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => handleCopyGame(game, e)}
                       >
-                        Copy Game
+                        📋 Copy
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-danger py-1.5 text-xs" 
@@ -2908,6 +3096,7 @@ Sort these numbers from lowest to highest.
           </div>
         </div>
         {renderPreviewModal()}
+        {ConfirmDialog}
       </div>
     );
   }
@@ -3013,6 +3202,7 @@ Sort these numbers from lowest to highest.
           </form>
         </div>
         {renderGenerateModal()}
+        {ConfirmDialog}
       </div>
     );
   }
@@ -3055,6 +3245,7 @@ Sort these numbers from lowest to highest.
             </div>
           </form>
         </div>
+        {ConfirmDialog}
       </div>
     );
   }

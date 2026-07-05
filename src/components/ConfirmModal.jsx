@@ -186,14 +186,16 @@ export function ConfirmModal({
         )}
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-secondary"
-            style={{ flex: 1, minWidth: '120px' }}
-          >
-            {cancelText}
-          </button>
+          {cancelText && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-secondary"
+              style={{ flex: 1, minWidth: '120px' }}
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}

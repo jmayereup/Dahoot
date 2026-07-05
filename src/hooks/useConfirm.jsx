@@ -12,7 +12,7 @@ export function useConfirm() {
         title: options.title || 'Are you sure?',
         message: options.message || '',
         confirmText: options.confirmText || 'Confirm',
-        cancelText: options.cancelText || 'Cancel',
+        cancelText: options.cancelText === null || options.cancelText === false || options.cancelText === '' ? null : (options.cancelText || 'Cancel'),
         variant: options.variant || 'danger',
         icon: options.icon || null
       });

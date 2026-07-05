@@ -146,7 +146,7 @@ export function useTeacherDashboard(view, currentUser) {
     setCategorizeItemsText('');
   };
 
-  const startEditingGame = (game, e) => {
+  const startEditingGame = async (game, e) => {
     if (e) e.stopPropagation();
     setSelectedGameForEdit(game);
     setGameTitle(game.title);
@@ -155,8 +155,29 @@ export function useTeacherDashboard(view, currentUser) {
     setGameLanguage(game.language || 'English');
     setGameCefrLevel(game.cefr_level || '');
     setGameSubject(game.subject || '');
-    setIsEditingGame(true);
     setError('');
+    
+    setLoading(true);
+    try {
+      const qList = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
+        sort: 'created'
+      });
+      setPendingQuestions(qList.map(q => ({
+        id: q.id,
+        text: q.text,
+        options: q.options,
+        correct_option_index: q.correct_option_index,
+        type: q.type
+      })));
+    } catch (err) {
+      console.error("Error loading questions for editing:", err);
+      setError("Failed to load game questions: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+    
+    setIsEditingGame(true);
   };
 
   const cancelEditingGame = () => {
@@ -207,9 +228,49 @@ export function useTeacherDashboard(view, currentUser) {
         subject: gameSubject || null
       };
 
-      let createdGame = null;
       if (selectedGameForEdit) {
         await pb.collection('dahoot_games').update(selectedGameForEdit.id, gameData);
+
+        let questionsToSave = [];
+        if (creationQuestionsTab === 'bulk') {
+          if (importText.trim()) {
+            questionsToSave = parseMarkdownQuestions(importText);
+            if (questionsToSave.length === 0) {
+              throw new Error('Could not parse any valid questions. Please verify your bulk import formatting.');
+            }
+          }
+        } else {
+          questionsToSave = pendingQuestions;
+        }
+
+        // Fetch existing questions to find out what to delete or update
+        const existingQs = await pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameForEdit.id })
+        });
+
+        // 1. Delete questions that are no longer in questionsToSave
+        const toSaveIds = new Set(questionsToSave.map(q => q.id).filter(Boolean));
+        for (const eq of existingQs) {
+          if (!toSaveIds.has(eq.id)) {
+            await pb.collection('dahoot_questions').delete(eq.id);
+          }
+        }
+
+        // 2. Create or Update questions
+        for (const q of questionsToSave) {
+          const qData = {
+            game_id: selectedGameForEdit.id,
+            text: q.text,
+            options: q.options,
+            correct_option_index: q.correct_option_index,
+            type: q.type
+          };
+          if (q.id) {
+            await pb.collection('dahoot_questions').update(q.id, qData);
+          } else {
+            await pb.collection('dahoot_questions').create(qData);
+          }
+        }
       } else {
         // If creating a game in bulk mode, validate first before saving the game collection
         let questionsToSave = [];
@@ -225,7 +286,7 @@ export function useTeacherDashboard(view, currentUser) {
           questionsToSave = pendingQuestions;
         }
 
-        createdGame = await pb.collection('dahoot_games').create(gameData);
+        const createdGame = await pb.collection('dahoot_games').create(gameData);
 
         // Save associated questions if we have any
         for (const q of questionsToSave) {
@@ -705,6 +766,162 @@ export function useTeacherDashboard(view, currentUser) {
     setPendingQuestions(prev => prev.filter((_, i) => i !== index));
   };
 
+  const updatePendingQuestion = (index) => {
+    setError('');
+
+    if (!questionText.trim()) {
+      setError('Question text is required.');
+      return false;
+    }
+
+    let optionsPayload = null;
+
+    if (questionType === 'MULTIPLE_CHOICE' || questionType === 'SORTING') {
+      if (options.some(opt => !opt.trim())) {
+        setError('All 4 option choices must be filled out.');
+        return false;
+      }
+      optionsPayload = options.map(o => o.trim());
+    } 
+    
+    else if (questionType === 'DRAG_DROP') {
+      if (!dragSentence.trim()) {
+        setError('Sentence with blanks is required.');
+        return false;
+      }
+      if (dragChoices.some(choice => !choice.trim())) {
+        setError('All 4 choices must be filled out.');
+        return false;
+      }
+      const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
+      if (numBlanks === 0) {
+        setError('The sentence must contain at least one blank placeholder (e.g. [blank0] or [word]).');
+        return false;
+      }
+      optionsPayload = {
+        sentence: dragSentence.trim(),
+        choices: dragChoices.map(c => c.trim()),
+        correct: dragChoices.slice(0, numBlanks).map(c => c.trim())
+      };
+    } 
+    
+    else if (questionType === 'DROP_DOWN') {
+      if (!dropdownSentence.trim()) {
+        setError('Sentence with dropdowns is required.');
+        return false;
+      }
+      const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
+      if (numDropdowns === 0) {
+        setError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).');
+        return false;
+      }
+      
+      const activeLines = dropdownOptions.slice(0, numDropdowns);
+      if (activeLines.some(line => !line.trim())) {
+        setError(`Please define choices for all ${numDropdowns} dropdowns.`);
+        return false;
+      }
+
+      const dropdownsConfig = activeLines.map(line => {
+        const choices = line.split(',').map(c => c.trim()).filter(Boolean);
+        return {
+          choices,
+          correct: choices[0] || ''
+        };
+      });
+
+      if (dropdownsConfig.some(d => d.choices.length < 2)) {
+        setError('Each dropdown must have at least 2 comma-separated options (e.g. "Yes, No").');
+        return false;
+      }
+
+      optionsPayload = {
+        sentence: dropdownSentence.trim(),
+        dropdowns: dropdownsConfig
+      };
+    } 
+    
+    else if (questionType === 'CATEGORIZE') {
+      if (!categorizeCategories.trim()) {
+        setError('Categories list is required.');
+        return false;
+      }
+      if (!categorizeItemsText.trim()) {
+        setError('Items list is required.');
+        return false;
+      }
+
+      const categoriesList = categorizeCategories.split(',').map(c => c.trim()).filter(Boolean);
+      if (categoriesList.length < 2) {
+        setError('Please enter at least 2 categories, separated by commas.');
+        return false;
+      }
+
+      try {
+        const itemsList = categorizeItemsText
+          .split('\n')
+          .map(line => {
+            const parts = line.split(':');
+            if (parts.length >= 2) {
+              const cat = parts[1].trim();
+              if (!categoriesList.includes(cat)) {
+                throw new Error(`Category "${cat}" in item "${parts[0].trim()}" does not match defined categories.`);
+              }
+              return {
+                name: parts[0].trim(),
+                category: cat
+              };
+            }
+            if (line.trim()) {
+              throw new Error(`Invalid line format: "${line}". Must be "ItemName: CategoryName".`);
+            }
+            return null;
+          })
+          .filter(Boolean);
+
+        if (itemsList.length === 0) {
+          setError('Please enter at least one item mapped to a category.');
+          return false;
+        }
+
+        optionsPayload = {
+          categories: categoriesList,
+          items: itemsList
+        };
+      } catch (err) {
+        setError(err.message);
+        return false;
+      }
+    }
+
+    const updatedQuestion = {
+      id: pendingQuestions[index]?.id,
+      text: questionText.trim(),
+      type: questionType,
+      options: optionsPayload,
+      correct_option_index: questionType === 'MULTIPLE_CHOICE' ? correctOptionIndex : 0
+    };
+
+    setPendingQuestions(prev => {
+      const next = [...prev];
+      next[index] = updatedQuestion;
+      return next;
+    });
+
+    // Reset question builder fields
+    setQuestionText('');
+    setQuestionType('MULTIPLE_CHOICE');
+    setOptions(['', '', '', '']);
+    setCorrectOptionIndex(0);
+    setDragSentence('');
+    setDragChoices(['', '', '', '']);
+    setDropdownSentence('');
+    setDropdownOptions(['', '', '', '']);
+    setCategorizeCategories('');
+    setCategorizeItemsText('');
+    return true;
+  };
+
   // Bulk Import Actions
   const startImporting = () => {
     setIsImporting(true);
@@ -799,6 +1016,7 @@ export function useTeacherDashboard(view, currentUser) {
     
     // Multiple Choice & Sorting
     options,
+    setOptions,
     updateOptionValue,
     correctOptionIndex,
     setCorrectOptionIndex,
@@ -807,12 +1025,14 @@ export function useTeacherDashboard(view, currentUser) {
     dragSentence,
     setDragSentence,
     dragChoices,
+    setDragChoices,
     updateDragChoice,
 
     // Drop Down
     dropdownSentence,
     setDropdownSentence,
     dropdownOptions,
+    setDropdownOptions,
     updateDropdownOption,
 
     // Categorize
@@ -832,6 +1052,7 @@ export function useTeacherDashboard(view, currentUser) {
     setCreationQuestionsTab,
     addPendingQuestion,
     removePendingQuestion,
+    updatePendingQuestion,
     refreshList: () => selectedGame ? fetchQuestions(selectedGame.id) : fetchGames()
   };
 }

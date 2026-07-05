@@ -76,6 +76,13 @@ body {
   @apply flex flex-col items-center justify-center flex-grow p-6 max-w-6xl mx-auto w-full;
 }
 
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Layout Panels */
 @utility panel {
   @apply bg-white/90 border border-slate-200/50 backdrop-blur-md rounded-2xl p-10 w-full max-w-lg shadow-xl text-center relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-school-primary before:to-school-accent animate-fade-in;

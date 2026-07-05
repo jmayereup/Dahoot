@@ -174,7 +174,7 @@ function App() {
 
   // 4. TEACHER/ADMIN VIEW
   if (view === 'teacher') {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !currentUser?.dahoot_info) {
       return (
         <>
           <AuthView 
