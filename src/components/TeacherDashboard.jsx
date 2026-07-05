@@ -1809,7 +1809,7 @@ Question Schemas by Type:
   "type": "DRAG_DROP",
   "text": "Instruction text (e.g., 'Fill in the blanks by dragging the correct words.')",
   "options": {
-    "sentence": "The quick brown [answer1] jumps over the lazy [answer2].", // Sentence text with correct answers inside bracket placeholders like [answer1] and [answer2] (use the exact words from the 'correct' list).
+    "sentence": "The quick brown [blank0] jumps over the lazy [blank1].", // Sentence text with correct answers inside zero-indexed bracket placeholders like [blank0] and [blank1] (corresponding to the index in the 'correct' list).
     "choices": ["fox", "dog", "cat", "horse"], // Exactly 4 choices, including the correct answers and distractors.
     "correct": ["fox", "dog"] // The correct answers in the order they appear in the sentence placeholders.
   },
@@ -1821,7 +1821,7 @@ Question Schemas by Type:
   "type": "DROP_DOWN",
   "text": "Instruction text (e.g., 'Choose the correct verb conjugations.')",
   "options": {
-    "sentence": "Yesterday I [dropdown1] to school and [dropdown2] my friend.", // Sentence text with bracket placeholders like [dropdown1] and [dropdown2].
+    "sentence": "Yesterday I {{0}} to school and {{1}} my friend.", // Sentence text with zero-indexed double-curly placeholders like {{0}} and {{1}} corresponding to the index in the dropdowns array.
     "dropdowns": [
       {
         "choices": ["went", "go", "gone", "goes"], // Exactly 4 choices for the first placeholder.
