@@ -55,11 +55,13 @@ routerAdd("POST", "/api/generate-questions", (e) => {
             method: "POST",
             body: JSON.stringify({
                 model: "deepseek/deepseek-v4-pro",
+                response_format: { type: "json_object" },
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPromptContent }
                 ],
                 temperature: 0.7,
+                max_tokens: 8192,
                 thinking: {
                     type: "enabled",
                     budget_tokens: 4096

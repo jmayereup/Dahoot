@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PocketBaseStatusBanner } from './PocketBaseStatusBanner';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
@@ -189,7 +188,6 @@ export function SelectionView({
 
   return (
     <div className="app-container">
-      <PocketBaseStatusBanner status={pocketbaseStatus} />
       <LogoContainer />
 
       {hasPinFromUrl ? (
@@ -649,7 +647,7 @@ export function SelectionView({
         </div>
       </>
     )}
-      <SchoolFooter />
+      <SchoolFooter status={pocketbaseStatus} />
     </div>
   );
 }

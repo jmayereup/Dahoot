@@ -3,6 +3,8 @@ import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
 import { QuestionInteraction } from './QuestionInteraction';
 import { useConfirm } from '../hooks/useConfirm.jsx';
+import { compileQuestionsToMarkdown } from '../utils/markdownParser';
+
 
 export function TeacherDashboard({
   // Games List State & Handlers
@@ -1762,7 +1764,7 @@ export function TeacherDashboard({
     const subject = isEditingGame ? gameSubject : selectedGame?.subject;
 
     const systemPrompt = `You are an expert curriculum designer and language/subject assessment expert.
-Generate educational questions in Markdown format exactly conforming to the specifications below.
+Generate educational questions. You MUST respond with a single, valid JSON object matching the JSON schema below. Do not wrap the JSON output in markdown codeblocks (e.g. do not use \`\`\`json).
 
 Target Student Profile:
 - Language of questions/answers: ${language || 'English'}
@@ -1776,123 +1778,80 @@ Generate the following question counts (adjust based on user source content if p
 - Drag & Drop (DRAG_DROP): ${genDragDropCount} questions
 - Drop Down (DROP_DOWN): ${genDropDownCount} questions
 
-Each question must be formatted EXACTLY as follows. Do not add any extra text or conversational chatter between the markdown question blocks.
+JSON Response Schema:
+{
+  "description": "An engaging 1-2 sentence description for this game based on the subject and questions generated",
+  "questions": [
+    // Array of generated question objects matching the schemas below
+  ]
+}
 
---- FORMAT SPECIFICATIONS ---
+Question Schemas by Type:
 
 1. MULTIPLE_CHOICE
-Format:
-# MULTIPLE_CHOICE
-<Question text here>
-- <Option 1>
-- *<Correct Option> (prefixed with an asterisk * after the hyphen and space)
-- <Option 3>
-- <Option 4>
-
-Example:
-# MULTIPLE_CHOICE
-What is the capital of France?
-- Berlin
-- *Paris
-- London
-- Rome
+{
+  "type": "MULTIPLE_CHOICE",
+  "text": "Question text asking the student to choose the correct option.",
+  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+  "correct_option_index": 1 // 0-based index of the correct answer. Distractors must be clearly incorrect and unambiguous.
+}
 
 2. SORTING
-Format:
-# SORTING
-<Instruction text here>
-1. <First item in correct order>
-2. <Second item in correct order>
-3. <Third item in correct order>
-4. <Fourth item in correct order>
-
-Example:
-# SORTING
-Sort these numbers from lowest to highest.
-1. Five
-2. Ten
-3. Fifteen
-4. Twenty
+{
+  "type": "SORTING",
+  "text": "Instruction text (e.g., 'Sort these historical events in chronological order.')",
+  "options": ["Item 1", "Item 2", "Item 3", "Item 4"], // Exactly 4 items, sorted in the CORRECT order from first to last.
+  "correct_option_index": 0 // Always 0 for sorting questions
+}
 
 3. DRAG_DROP
-Format:
-# DRAG_DROP
-<Instruction text here>
-sentence: <Sentence text with correct answers inside bracket placeholders [answer1] and [answer2]>
-- *<Correct Answer 1> (prefixed with *)
-- *<Correct Answer 2> (prefixed with *)
-- <Distractor 1> (no asterisk)
-- <Distractor 2> (no asterisk)
-
-Example:
-# DRAG_DROP
-Fill in the blanks by dragging the correct words.
-sentence: The quick brown [fox] jumps over the lazy [dog].
-- *fox
-- *dog
-- cat
-- horse
+{
+  "type": "DRAG_DROP",
+  "text": "Instruction text (e.g., 'Fill in the blanks by dragging the correct words.')",
+  "options": {
+    "sentence": "The quick brown [answer1] jumps over the lazy [answer2].", // Sentence text with correct answers inside bracket placeholders like [answer1] and [answer2] (use the exact words from the 'correct' list).
+    "choices": ["fox", "dog", "cat", "horse"], // Exactly 4 choices, including the correct answers and distractors.
+    "correct": ["fox", "dog"] // The correct answers in the order they appear in the sentence placeholders.
+  },
+  "correct_option_index": 0 // Always 0
+}
 
 4. DROP_DOWN
-Format:
-# DROP_DOWN
-<Instruction text here>
-sentence: <Sentence text with correct answers inside bracket placeholders [dropdown1] and [dropdown2]>
-dropdown
-- *<Correct Option for dropdown1> (prefixed with *)
-- <Option 2>
-- <Option 3>
-- <Option 4>
-dropdown
-- *<Correct Option for dropdown2> (prefixed with *)
-- <Option 2>
-- <Option 3>
-- <Option 4>
-
-Example:
-# DROP_DOWN
-Choose the correct verb conjugation.
-sentence: Yesterday I [dropdown1] to school and [dropdown2] my friend.
-dropdown
-- *went
-- go
-- gone
-- goes
-dropdown
-- *saw
-- see
-- seen
-- sees
+{
+  "type": "DROP_DOWN",
+  "text": "Instruction text (e.g., 'Choose the correct verb conjugations.')",
+  "options": {
+    "sentence": "Yesterday I [dropdown1] to school and [dropdown2] my friend.", // Sentence text with bracket placeholders like [dropdown1] and [dropdown2].
+    "dropdowns": [
+      {
+        "choices": ["went", "go", "gone", "goes"], // Exactly 4 choices for the first placeholder.
+        "correct": "went" // The correct answer for this dropdown.
+      },
+      {
+        "choices": ["saw", "see", "seen", "sees"], // Exactly 4 choices for the second placeholder.
+        "correct": "saw" // The correct answer for this dropdown.
+      }
+    ]
+  },
+  "correct_option_index": 0 // Always 0
+}
 
 5. CATEGORIZE
-Format:
-# CATEGORIZE
-<Instruction text here>
-categories: <Category 1>, <Category 2>
-- <Item 1>: <Category 1>
-- <Item 2>: <Category 2>
-- <Item 3>: <Category 1>
-- <Item 4>: <Category 2>
-
-Example:
-# CATEGORIZE
-Group the items into the correct categories.
-categories: Fruits, Vegetables
-- Apple: Fruits
-- Broccoli: Vegetables
-- Banana: Fruits
-- Carrot: Vegetables
-
------------------------------
-
-ADDITIONAL REQUIREMENT:
-At the very end of your response, output a JSON block containing an engaging 1-2 sentence description for this game based on the subject and questions generated, like this:
-\`\`\`json
 {
-  "description": "Engaging description here"
+  "type": "CATEGORIZE",
+  "text": "Instruction text (e.g., 'Group the items into the correct categories.')",
+  "options": {
+    "categories": ["Fruits", "Vegetables"], // Exactly 2 categories.
+    "items": [
+      { "name": "Apple", "category": "Fruits" },
+      { "name": "Broccoli", "category": "Vegetables" },
+      { "name": "Banana", "category": "Fruits" },
+      { "name": "Carrot", "category": "Vegetables" }
+    ] // Exactly 4 items, each mapped to one of the categories.
+  },
+  "correct_option_index": 0 // Always 0
 }
-\`\`\`
-Ensure that the JSON block is the absolute last thing in your response. Do not output any other text after it.`;
+`;
 
     const userPromptContent = genPrompt.trim() 
       ? `Source text/Instructions provided by the teacher:\n"""\n${genPrompt}\n"""\n\nGenerate the questions based on the source text/instructions above. Ensure they are tailored for CEFR level ${cefrLevel}, Language ${language}, and Subject ${subject}.`
@@ -1912,31 +1871,41 @@ Ensure that the JSON block is the absolute last thing in your response. Do not o
         throw new Error('No content returned from OpenRouter API.');
       }
 
-      let markdownText = choice;
-      let aiDescription = '';
+      let choiceText = choice.trim();
+      // Strip any markdown codeblock wrapper if present
+      if (choiceText.startsWith("```json")) {
+        choiceText = choiceText.substring(7);
+      } else if (choiceText.startsWith("```")) {
+        choiceText = choiceText.substring(3);
+      }
+      if (choiceText.endsWith("```")) {
+        choiceText = choiceText.substring(0, choiceText.length - 3);
+      }
+      choiceText = choiceText.trim();
 
-      const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/i;
-      const match = choice.match(jsonRegex);
-      if (match) {
-        try {
-          const jsonObj = JSON.parse(match[1]);
-          aiDescription = jsonObj?.description || '';
-          markdownText = choice.replace(match[0], '').trim();
-        } catch (e) {
-          console.error("Failed to parse AI description JSON:", e);
-        }
-      } else {
-        const endJsonIndex = choice.lastIndexOf('{');
-        if (endJsonIndex !== -1) {
-          const possibleJson = choice.substring(endJsonIndex);
+      let parsedData;
+      try {
+        parsedData = JSON.parse(choiceText);
+      } catch (parseErr) {
+        console.error("JSON parse error on raw content, attempting regex fallback:", parseErr, choice);
+        const jsonMatch = choice.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
           try {
-            const jsonObj = JSON.parse(possibleJson);
-            aiDescription = jsonObj?.description || '';
-            markdownText = choice.substring(0, endJsonIndex).trim();
-          } catch (e) {
-            // Ignore
+            parsedData = JSON.parse(jsonMatch[0]);
+          } catch (regexParseErr) {
+            throw new Error('Failed to parse JSON from AI response: ' + regexParseErr.message);
           }
+        } else {
+          throw new Error('AI response did not contain a valid JSON object.');
         }
+      }
+
+      const questions = parsedData.questions || [];
+      const aiDescription = parsedData.description || '';
+
+      const markdownText = compileQuestionsToMarkdown(questions);
+      if (!markdownText) {
+        throw new Error('No valid questions could be generated.');
       }
 
       // Populate description if blank

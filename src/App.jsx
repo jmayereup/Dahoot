@@ -180,6 +180,7 @@ function App() {
           <AuthView 
             onSuccess={() => setView('teacher')}
             onCancel={() => setView('selection')}
+            pocketbaseStatus={pocketbaseStatus}
           />
           <CookieConsent />
         </>
@@ -224,6 +225,7 @@ function App() {
           setQuestionText={teacherDashboard.setQuestionText}
           
           options={teacherDashboard.options}
+          setOptions={teacherDashboard.setOptions}
           updateOptionValue={teacherDashboard.updateOptionValue}
           correctOptionIndex={teacherDashboard.correctOptionIndex}
           setCorrectOptionIndex={teacherDashboard.setCorrectOptionIndex}
@@ -231,11 +233,13 @@ function App() {
           dragSentence={teacherDashboard.dragSentence}
           setDragSentence={teacherDashboard.setDragSentence}
           dragChoices={teacherDashboard.dragChoices}
+          setDragChoices={teacherDashboard.setDragChoices}
           updateDragChoice={teacherDashboard.updateDragChoice}
 
           dropdownSentence={teacherDashboard.dropdownSentence}
           setDropdownSentence={teacherDashboard.setDropdownSentence}
           dropdownOptions={teacherDashboard.dropdownOptions}
+          setDropdownOptions={teacherDashboard.setDropdownOptions}
           updateDropdownOption={teacherDashboard.updateDropdownOption}
 
           categorizeCategories={teacherDashboard.categorizeCategories}
@@ -260,6 +264,7 @@ function App() {
           setCreationQuestionsTab={teacherDashboard.setCreationQuestionsTab}
           addPendingQuestion={teacherDashboard.addPendingQuestion}
           removePendingQuestion={teacherDashboard.removePendingQuestion}
+          updatePendingQuestion={teacherDashboard.updatePendingQuestion}
           availableSubjects={availableSubjects}
           availableCefrLevels={availableCefrLevels}
           setAvailableSubjects={setAvailableSubjects}

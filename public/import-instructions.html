@@ -197,7 +197,7 @@
         <ul>
           <li>Provide a question prompt.</li>
           <li>List 4 answer choices using bullet points (starting with <code>-</code>).</li>
-          <li>Prefix the correct option with an asterisk: <code>- *Correct Option</code>.</li>
+          <li>Prefix the correct option with an asterisk: <code>- *Correct Option</code>. Exactly one option must be the correct option, and all other options must be incorrect.</li>
         </ul>
         <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># MULTIPLE_CHOICE
 Which programming language was created by Brendan Eich in 1995?
@@ -213,6 +213,7 @@ Which programming language was created by Brendan Eich in 1995?
         <ul>
           <li>Provide a sorting prompt.</li>
           <li>List 4 items in their <strong>correct sorted order</strong> using numbered points: <code>1.</code>, <code>2.</code>, etc.</li>
+          <li>Ensure there is exactly one logical correct sorting order; no alternative sorting sequences should make sense.</li>
           <li>Dahoot shuffles the elements automatically during the game.</li>
         </ul>
         <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># SORTING
@@ -230,6 +231,7 @@ Sort these tech stack layers from front-end to back-end.
           <li>Provide a prompt.</li>
           <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>[blank0]</code> and <code>[blank1]</code>.</li>
           <li>List 4 bullet point choices. Prefixes correct choices in correct blank order with <code>*</code>. Other choices act as distractors.</li>
+          <li>Ensure each placeholder has exactly one correct word (marked with <code>*</code>). Distractors must be clearly incorrect and must not fit grammatically or contextually in any of the blanks.</li>
         </ul>
         <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DRAG_DROP
 Complete the sentence about React hooks.
@@ -247,6 +249,7 @@ Sentence: In React, we use the [blank0] hook to manage state, and [blank1] to pe
           <li>Provide a prompt.</li>
           <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>{{0}}</code> and <code>{{1}}</code>.</li>
           <li>List dropdown options under a <code>Dropdown N:</code> header. Correct answer must be prefixed with <code>*</code>.</li>
+          <li>Ensure each dropdown group has exactly one correct choice marked with <code>*</code>. All distractors must be completely incorrect in the context, and there must not be alternative correct options.</li>
         </ul>
         <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DROP_DOWN
 Fill in the blanks regarding PocketBase architecture.
@@ -267,6 +270,7 @@ Dropdown 1:
         <ul>
           <li>Provide a classification prompt.</li>
           <li>Provide category names with <code>Categories: CategoryA, CategoryB</code>.</li>
+          <li>Ensure each item belongs to exactly one category; items must not fit into multiple categories.</li>
           <li>List mapped items under <code>Items:</code> with the format <code>- Item Name: Category Name</code>.</li>
         </ul>
         <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># CATEGORIZE
@@ -286,7 +290,8 @@ Items:
       <p style="color: var(--text-secondary); margin-bottom: 16px;">
         Alternatively, paste the following prompt instructions into your Custom AI chatbot settings to configure it:
       </p>
-      <pre style="max-height: 350px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text:
+      <pre style="max-height: 350px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text.
+CRITICAL: Every question must have exactly one correct answer (or exactly one correct option per blank). Distractors must be clearly incorrect, with no ambiguity.
 
 # MULTIPLE_CHOICE
 Question prompt here

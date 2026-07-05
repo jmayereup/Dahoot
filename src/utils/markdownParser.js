@@ -197,3 +197,67 @@ export function parseMarkdownQuestions(text) {
   
   return questions;
 }
+
+export function compileQuestionsToMarkdown(questions) {
+  if (!Array.isArray(questions)) return '';
+
+  return questions.map(q => {
+    let output = `# ${q.type}\n${q.text}\n`;
+    
+    if (q.type === 'MULTIPLE_CHOICE') {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      opts.forEach((opt, idx) => {
+        output += idx === q.correct_option_index ? `- *${opt}\n` : `- ${opt}\n`;
+      });
+    } 
+    
+    else if (q.type === 'SORTING') {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      opts.forEach((opt, idx) => {
+        output += `${idx + 1}. ${opt}\n`;
+      });
+    } 
+    
+    else if (q.type === 'DRAG_DROP') {
+      const opts = q.options || {};
+      const sentence = opts.sentence || '';
+      const choices = Array.isArray(opts.choices) ? opts.choices : [];
+      const correct = Array.isArray(opts.correct) ? opts.correct : [];
+      
+      output += `sentence: ${sentence}\n`;
+      choices.forEach(choice => {
+        const isCorrect = correct.includes(choice);
+        output += isCorrect ? `- *${choice}\n` : `- ${choice}\n`;
+      });
+    } 
+    
+    else if (q.type === 'DROP_DOWN') {
+      const opts = q.options || {};
+      const sentence = opts.sentence || '';
+      const dropdowns = Array.isArray(opts.dropdowns) ? opts.dropdowns : [];
+      
+      output += `sentence: ${sentence}\n`;
+      dropdowns.forEach(dd => {
+        output += `dropdown\n`;
+        const choices = Array.isArray(dd.choices) ? dd.choices : [];
+        choices.forEach(choice => {
+          output += choice === dd.correct ? `- *${choice}\n` : `- ${choice}\n`;
+        });
+      });
+    } 
+    
+    else if (q.type === 'CATEGORIZE') {
+      const opts = q.options || {};
+      const categories = Array.isArray(opts.categories) ? opts.categories : [];
+      const items = Array.isArray(opts.items) ? opts.items : [];
+      
+      output += `categories: ${categories.join(', ')}\n`;
+      items.forEach(item => {
+        output += `- ${item.name}: ${item.category}\n`;
+      });
+    }
+    
+    return output;
+  }).join('\n');
+}
+

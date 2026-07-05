@@ -13,7 +13,7 @@ Each question block **must** start with a heading designating its type (e.g. `# 
 ### 1. Multiple Choice
 *   **Header:** `# MULTIPLE_CHOICE`
 *   **Options:** 4 bullet points starting with `-`.
-*   **Correct Answer:** Prepend an asterisk (`*`) to the correct option.
+*   **Correct Answer:** Prepend an asterisk (`*`) to the correct option. Exactly one option must be the correct option, and all other options must be incorrect.
 
 **Format Example:**
 ```markdown
@@ -30,6 +30,7 @@ Which programming language was created by Brendan Eich in 1995?
 ### 2. Sorting Order
 *   **Header:** `# SORTING`
 *   **Options:** 4 ordered lines starting with `1.`, `2.`, `3.`, `4.` representing the **correct sorted order**.
+*   **Correctness:** Ensure there is exactly one logical correct sorting order; no alternative sorting sequences should make sense.
 *   **Note:** The game shuffles the elements automatically during play.
 
 **Format Example:**
@@ -48,6 +49,7 @@ Sort these tech stack layers from front-end to back-end (client-side at the top)
 *   **Header:** `# DRAG_DROP`
 *   **Sentence:** Preceded by `Sentence: ` containing placeholders `[blank0]`, `[blank1]`, etc.
 *   **Choices:** 4 bullet points starting with `-`. Correct choices must match the order of the blanks and be prefixed with `*`. Other choices act as distractors.
+*   **Correctness:** Ensure each placeholder has exactly one correct word (marked with `*`). Distractors must be clearly incorrect and must not fit grammatically or contextually in any of the blanks.
 
 **Format Example:**
 ```markdown
@@ -66,6 +68,7 @@ Sentence: In React, we use the [blank0] hook to manage state, and [blank1] to pe
 *   **Header:** `# DROP_DOWN`
 *   **Sentence:** Preceded by `Sentence: ` containing dropdown slots `{{0}}`, `{{1}}`, etc.
 *   **Dropdown Groups:** Each dropdown is defined by a `Dropdown N:` header, followed by choice bullet points starting with `-`. The correct choice is prefixed with `*`.
+*   **Correctness:** Ensure each dropdown group has exactly one correct choice marked with `*`. All distractors must be completely incorrect in the context, and there must not be any alternative correct options.
 
 **Format Example:**
 ```markdown
@@ -88,6 +91,7 @@ Dropdown 1:
 *   **Header:** `# CATEGORIZE`
 *   **Categories:** Preceded by `Categories: ` followed by a comma-separated list of categories.
 *   **Items:** Preceded by an `Items:` header, followed by bullet points mapping each item to its category in the format `- ItemName: CategoryName`.
+*   **Correctness:** Ensure each item belongs to exactly one category. Items must not fit into multiple categories.
 
 **Format Example:**
 ```markdown
@@ -112,7 +116,8 @@ You can use our pre-configured [Dahoot Quiz Generator Gem](https://gemini.google
 Alternatively, copy and paste the prompt below into ChatGPT, Claude, or another AI tool to generate quizzes:
 
 ```text
-You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text:
+You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text.
+CRITICAL: Every question must have exactly one correct answer (or exactly one correct option per blank). Distractors must be clearly incorrect, with no ambiguity.
 
 # MULTIPLE_CHOICE
 Question prompt here

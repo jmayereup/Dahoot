@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { pb } from '../pb';
 import { SchoolFooter } from './SchoolFooter';
 
-export function AuthView({ onSuccess, onCancel }) {
+export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -397,7 +397,7 @@ export function AuthView({ onSuccess, onCancel }) {
             </div>
           </form>
         </div>
-        <SchoolFooter />
+        <SchoolFooter status={pocketbaseStatus} />
       </div>
     );
   }
@@ -706,7 +706,7 @@ export function AuthView({ onSuccess, onCancel }) {
           </div>
         </form>
       </div>
-      <SchoolFooter />
+      <SchoolFooter status={pocketbaseStatus} />
     </div>
   );
 }
