@@ -8,7 +8,7 @@ cronAdd("cleanup_old_rooms", "*/10 * * * *", () => {
 
     try {
         // Query rooms that haven't been updated since the cutoff date
-        const rooms = $app.dao().findRecordsByFilter(
+        const rooms = $app.findRecordsByFilter(
             "dahoot_rooms",
             "updated <= {:cutoff}",
             "",
@@ -22,7 +22,7 @@ cronAdd("cleanup_old_rooms", "*/10 * * * *", () => {
             // Since dahoot_players has cascadeDelete: true on room_id,
             // deleting a room automatically deletes all associated players.
             rooms.forEach((room) => {
-                $app.dao().deleteRecord(room);
+                $app.delete(room);
             });
             console.log(`[Dahoot Cron] Successfully cleaned up ${rooms.length} stale room(s) and their players.`);
         }

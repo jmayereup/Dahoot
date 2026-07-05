@@ -14,7 +14,7 @@ routerAdd("POST", "/api/generate-questions", (e) => {
     }
     
     try {
-        const infoRecord = $app.dao().findRecordById("dahoot_user_info", infoId);
+        const infoRecord = $app.findRecordById("dahoot_user_info", infoId);
         if (!infoRecord) {
             return e.json(403, { error: "Access denied. User info not found." });
         }

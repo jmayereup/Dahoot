@@ -4,30 +4,21 @@
 onRecordCreateRequest((e) => {
     const role = e.record.get("role");
     if (role === "TEACHER" || role === "ADMIN") {
-        // If the creator is already an authenticated admin (e.g. creating via Admin Panel), bypass invite code check
-        let isAdmin = false;
-        const authRecord = e.auth || (e.requestInfo ? e.requestInfo.auth : null);
-        if (authRecord) {
-            const infoId = authRecord.get("dahoot_info");
-            if (infoId) {
-                try {
-                    const infoRecord = $app.dao().findRecordById("dahoot_user_info", infoId);
-                    if (infoRecord && infoRecord.get("role") === "ADMIN") {
-                        isAdmin = true;
-                    }
-                } catch (err) {}
-            }
-        }
+        // If the creator is already an authenticated superuser (e.g. creating via Admin Panel), bypass invite code check
+        const isSuperuser = e.auth && e.auth.isSuperuser();
 
-        if (!isAdmin) {
-            const submittedInvite = e.record.get("invite_code");
-            let inviteSetting;
+        if (!isSuperuser) {
+            const submittedInvite = e.record.get("invite_code") || "";
+            let expectedInvite = "DAHOOT123";
             try {
-                inviteSetting = $app.dao().findFirstRecordByFilter("dahoot_settings", "key = 'invite_code'");
+                const inviteSetting = $app.findFirstRecordByFilter("dahoot_settings", "key = 'invite_code'");
+                if (inviteSetting && inviteSetting.get("value")) {
+                    expectedInvite = inviteSetting.get("value");
+                }
             } catch (err) {
-                throw new Error("Could not retrieve invite code configuration from database.");
+                // Fallback to default DAHOOT123 if database query fails or collection is missing
             }
-            if (!inviteSetting || !submittedInvite || submittedInvite.trim() !== inviteSetting.get("value").trim()) {
+            if (submittedInvite.trim().toUpperCase() !== expectedInvite.trim().toUpperCase()) {
                 throw new Error("Invalid invite code. Please contact an administrator.");
             }
         }
@@ -35,5 +26,5 @@ onRecordCreateRequest((e) => {
     
     // Clear invite code before saving so it's not stored in the database
     e.record.set("invite_code", "");
-    e.next();
+    return e.next();
 }, "dahoot_user_info");
