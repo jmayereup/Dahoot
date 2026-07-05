@@ -118,6 +118,7 @@ function App() {
           availableCefrLevels={availableCefrLevels}
           isAuthenticated={isAuthenticated}
           currentUser={currentUser}
+          userInfo={teacherDashboard.userInfo}
           onLogout={handleLogout}
           selectedGameId={selectedGameId}
           setSelectedGameId={setSelectedGameId}
@@ -217,6 +218,7 @@ function App() {
           questionsList={teacherDashboard.questionsList}
           loading={teacherDashboard.loading}
           error={teacherDashboard.error}
+          setError={teacherDashboard.setError}
           isEditing={teacherDashboard.isEditing}
           selectedQuestion={teacherDashboard.selectedQuestion}
           questionType={teacherDashboard.questionType}
@@ -273,6 +275,8 @@ function App() {
           setAvailableLanguages={setAvailableLanguages}
           setView={setView}
           currentUser={currentUser}
+          userInfo={teacherDashboard.userInfo}
+          setUserInfo={teacherDashboard.setUserInfo}
           onLogout={handleLogout}
           startHosting={(gameId) => {
             setSelectedGameId(gameId);

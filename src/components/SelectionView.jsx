@@ -25,6 +25,7 @@ export function SelectionView({
   availableCefrLevels = [],
   isAuthenticated,
   currentUser,
+  userInfo = null,
   onLogout,
   selectedGameId,
   setSelectedGameId
@@ -42,7 +43,6 @@ export function SelectionView({
   ]);
   const [maxQuestions, setMaxQuestions] = useState('');
   const [timerDuration, setTimerDuration] = useState(20);
-  const [pacingMode, setPacingMode] = useState('student');
 
   // Fetch questions when game is selected
   useEffect(() => {
@@ -178,13 +178,27 @@ export function SelectionView({
   const searchedGames = useMemo(() => {
     if (!searchQuery) return filteredGames.slice(0, 10);
     const q = searchQuery.toLowerCase();
-    return filteredGames.filter(game =>
-      game.title.toLowerCase().includes(q) ||
-      (game.description && game.description.toLowerCase().includes(q)) ||
-      (game.subject && game.subject.toLowerCase().includes(q)) ||
-      (game.creator && game.creator.toLowerCase().includes(q))
-    );
-  }, [filteredGames, searchQuery]);
+    return filteredGames.filter(game => {
+      const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+      const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+      const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+      const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+      const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+      
+      const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                       (myName && creatorName === myName) || 
+                       (myEmail && creatorName === myEmail) || 
+                       (myUsername && creatorName === myUsername) || 
+                       (currentUser?.id && creatorName === currentUser.id);
+                       
+      const effectiveCreator = (isMyGame && userInfo?.dahoot_username) ? userInfo.dahoot_username : (game.creator || '');
+      
+      return game.title.toLowerCase().includes(q) ||
+        (game.description && game.description.toLowerCase().includes(q)) ||
+        (game.subject && game.subject.toLowerCase().includes(q)) ||
+        (effectiveCreator && effectiveCreator.toLowerCase().includes(q));
+    });
+  }, [filteredGames, searchQuery, currentUser, userInfo]);
 
   return (
     <div className="app-container">
@@ -253,7 +267,7 @@ export function SelectionView({
               {isAuthenticated ? (
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
                   <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                    Logged in as: <strong className="text-slate-700 font-semibold">{currentUser?.email}</strong>
+                    Logged in as: <strong className="text-slate-700 font-semibold">{userInfo?.dahoot_username || currentUser?.name || currentUser?.email}</strong>
                   </span>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button 
@@ -448,11 +462,26 @@ export function SelectionView({
                               🎓 {g.cefr_level}
                             </span>
                           )}
-                          {g.creator && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                              👤 {g.creator}
-                            </span>
-                          )}
+                          {g.creator && (() => {
+                            const creatorName = g.creator.toLowerCase().trim();
+                            const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+                            const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+                            const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+                            const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+                            
+                            const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                                             (myName && creatorName === myName) || 
+                                             (myEmail && creatorName === myEmail) || 
+                                             (myUsername && creatorName === myUsername) || 
+                                             (currentUser?.id && creatorName === currentUser.id);
+                            
+                            const displayCreator = (isMyGame && userInfo?.dahoot_username) ? userInfo.dahoot_username : g.creator;
+                            return (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                👤 {displayCreator}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -590,22 +619,6 @@ export function SelectionView({
                     <option value={0}>No Timer (Unlimited)</option>
                   </select>
                 </div>
-
-                {/* Pacing Mode Option */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
-                    Pacing Mode:
-                  </span>
-                  <select
-                    value={pacingMode}
-                    onChange={(e) => setPacingMode(e.target.value)}
-                    className="form-input"
-                    style={{ width: '250px', maxWidth: '250px', cursor: 'pointer', height: 'auto', padding: '8px 12px', fontSize: '0.95rem' }}
-                  >
-                    <option value="student">Student-Paced (Players advance independently)</option>
-                    <option value="teacher">Teacher-Paced (Host controls advancement)</option>
-                  </select>
-                </div>
               </div>
             )}
 
@@ -616,9 +629,21 @@ export function SelectionView({
                 disabled={loading || pocketbaseStatus !== 'connected' || !selectedGameId || !totalQuestions}
                 style={{ width: '100%' }}
               >
-                {loading ? 'Initializing...' : 'Host Live Room'}
+                {loading ? 'Initializing...' : 'Class Game (Teacher-Paced)'}
               </button>
               
+              <button 
+                className="btn btn-secondary w-full bg-blue-500/10 hover:bg-blue-500/20" 
+                onClick={() => startMarathonHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes, pacingMode: 'student' })} 
+                disabled={loading || !selectedGameId || !totalQuestions}
+                style={{ 
+                  border: '1.5px solid #3b82f6',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                Class Game (Student-Paced)
+              </button>
+
               <button 
                 className="btn btn-secondary w-full bg-[#FFB7B2]/10 hover:bg-[#FFB7B2]/20" 
                 onClick={() => startSoloPractice(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes })} 
@@ -628,19 +653,7 @@ export function SelectionView({
                   color: 'var(--text-secondary)'
                 }}
               >
-                Practice Solo (Self-Paced)
-              </button>
-              
-              <button 
-                className="btn btn-secondary w-full bg-blue-500/10 hover:bg-blue-500/20" 
-                onClick={() => startMarathonHosting(selectedGameId, { randomize, maxQuestions: parseInt(maxQuestions) || 0, questionTypes: selectedQuestionTypes, pacingMode })} 
-                disabled={loading || !selectedGameId || !totalQuestions}
-                style={{ 
-                  border: '1.5px solid #3b82f6',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                🏃 Host Marathon Mode
+                Single Player Game
               </button>
             </div>
           </div>

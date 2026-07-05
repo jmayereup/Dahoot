@@ -325,6 +325,7 @@ async function runSetup() {
     fields: [
       { name: 'role', type: 'select', required: true, values: ['TEACHER', 'ADMIN', 'STUDENT', 'DISABLED'], maxSelect: 1 },
       { name: 'school', type: 'text', required: false, max: 100 },
+      { name: 'dahoot_username', type: 'text', required: false, max: 100 },
       { name: 'invite_code', type: 'text', required: false, max: 100 },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }

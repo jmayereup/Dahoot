@@ -15,9 +15,11 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
   const [successMsg, setSuccessMsg] = useState('');
   const timeoutRef = useRef(null);
 
+  const [dahootUsername, setDahootUsername] = useState('');
   const [needsActivation, setNeedsActivation] = useState(false);
   const [activationInviteCode, setActivationInviteCode] = useState('');
   const [activationSchool, setActivationSchool] = useState('');
+  const [activationDahootUsername, setActivationDahootUsername] = useState('');
 
   useEffect(() => {
     if (pb.authStore.isValid && pb.authStore.record && !pb.authStore.record.dahoot_info) {
@@ -68,7 +70,8 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
       passwordConfirm: true,
       name: true,
       school: true,
-      inviteCode: true
+      inviteCode: true,
+      dahootUsername: true
     });
 
     try {
@@ -91,6 +94,9 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
         // Registration Mode
         if (!inviteCode.trim()) {
           throw new Error("Invite code is required.");
+        }
+        if (!dahootUsername.trim()) {
+          throw new Error("Dahoot username is required.");
         }
         if (!validateEmail(email)) {
           throw new Error("Please enter a valid email address.");
@@ -126,6 +132,7 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
           const userInfo = await pb.collection('dahoot_user_info').create({
             role: 'TEACHER',
             school: school.trim() || undefined,
+            dahoot_username: dahootUsername.trim(),
             invite_code: inviteCode.trim()
           });
 
@@ -157,6 +164,7 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
         const userInfo = await pb.collection('dahoot_user_info').create({
           role: 'TEACHER',
           school: school.trim() || undefined,
+          dahoot_username: dahootUsername.trim(),
           invite_code: inviteCode.trim()
         });
 
@@ -217,11 +225,15 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
       if (!activationInviteCode.trim()) {
         throw new Error("Invite code is required.");
       }
+      if (!activationDahootUsername.trim()) {
+        throw new Error("Dahoot username is required.");
+      }
 
       // 1. Create the dahoot_user_info record (invite code verified server-side by hook)
       const userInfo = await pb.collection('dahoot_user_info').create({
         role: 'TEACHER',
         school: activationSchool.trim() || undefined,
+        dahoot_username: activationDahootUsername.trim(),
         invite_code: activationInviteCode.trim()
       });
 
@@ -358,6 +370,20 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
                 value={activationInviteCode}
                 onChange={(e) => setActivationInviteCode(e.target.value.toUpperCase())}
                 style={{ textTransform: 'uppercase' }}
+                disabled={loading}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="activationDahootUsername">Dahoot Username</label>
+              <input
+                type="text"
+                id="activationDahootUsername"
+                className="form-input"
+                placeholder="Enter your Dahoot username"
+                value={activationDahootUsername}
+                onChange={(e) => setActivationDahootUsername(e.target.value)}
                 disabled={loading}
                 required
               />
@@ -553,6 +579,28 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
                 disabled={loading}
                 autoComplete="name"
               />
+            </div>
+          )}
+
+          {!isLogin && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="dahootUsername">Dahoot Username</label>
+              <input
+                type="text"
+                id="dahootUsername"
+                className={`form-input ${isFieldInvalid('dahootUsername', dahootUsername, val => !!val.trim()) ? 'user-invalid-fallback' : ''}`}
+                placeholder="Choose your display username"
+                value={dahootUsername}
+                onChange={(e) => setDahootUsername(e.target.value)}
+                onBlur={() => handleBlur('dahootUsername')}
+                disabled={loading}
+                required
+              />
+              {isFieldInvalid('dahootUsername', dahootUsername, val => !!val.trim()) && (
+                <div style={{ color: '#ff4b60', fontSize: '0.8rem', marginTop: '6px' }}>
+                  ❌ Dahoot username is required to register.
+                </div>
+              )}
             </div>
           )}
 

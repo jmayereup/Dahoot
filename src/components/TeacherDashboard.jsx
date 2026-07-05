@@ -1,9 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
-import { QuestionInteraction } from './QuestionInteraction';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { compileQuestionsToMarkdown } from '../utils/markdownParser';
+import {
+  splitCurlyTokens,
+  getCurlyIndex,
+  getCurlyInner,
+  splitBracketTokens,
+  getBlankIndex,
+  getBracketInner
+} from '../utils/blankParsing';
+
 
 
 export function TeacherDashboard({
@@ -36,6 +44,7 @@ export function TeacherDashboard({
   questionsList = [],
   loading,
   error,
+  setError = () => {},
   isEditing,
   selectedQuestion,
   questionType,
@@ -99,6 +108,8 @@ export function TeacherDashboard({
   setAvailableCefrLevels,
   setAvailableLanguages,
   currentUser = null,
+  userInfo = null,
+  setUserInfo = null,
   onLogout = null,
   startHosting = null
 }) {
@@ -107,6 +118,7 @@ export function TeacherDashboard({
   const [editingPendingIndex, setEditingPendingIndex] = useState(null);
 
   const startEditingPendingQuestion = (idx) => {
+    setError('');
     const q = pendingQuestions[idx];
     setEditingPendingIndex(idx);
     setQuestionType(q.type);
@@ -127,6 +139,7 @@ export function TeacherDashboard({
   };
 
   const cancelEditingPendingQuestion = () => {
+    setError('');
     setEditingPendingIndex(null);
     setQuestionText('');
     setQuestionType('MULTIPLE_CHOICE');
@@ -190,13 +203,6 @@ export function TeacherDashboard({
   const [previewQuestions, setPreviewQuestions] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
-  const [previewCurrentIdx, setPreviewCurrentIdx] = useState(0);
-  
-  // Interactive preview answering states
-  const [previewAnswered, setPreviewAnswered] = useState(false);
-  const [previewIsCorrect, setPreviewIsCorrect] = useState(false);
-  const [previewPlayerAnswer, setPreviewPlayerAnswer] = useState(null);
-  const [previewCategorizeIdx, setPreviewCategorizeIdx] = useState(0);
 
   // Admin Panel states
   const [userRole, setUserRole] = useState('TEACHER');
@@ -241,7 +247,20 @@ export function TeacherDashboard({
   const [genDropDownCount, setGenDropDownCount] = useState(5);
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState('');
+  // Profile settings states
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileSchool, setProfileSchool] = useState('');
+  const [profileUsername, setProfileUsername] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
 
+  // Sync role when userInfo prop is available
+  useEffect(() => {
+    if (userInfo && userInfo.role) {
+      setUserRole(userInfo.role);
+    }
+  }, [userInfo]);
 
   // Fetch current user's role from dahoot_user_info
   useEffect(() => {
@@ -600,9 +619,9 @@ export function TeacherDashboard({
         WebkitBackdropFilter: 'blur(12px)',
         zIndex: 1000,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '12px'
+        padding: '40px 12px 12px 12px'
       }}>
         <div 
           className="panel panel-large animate-fade-in p-6 sm:p-8" 
@@ -1073,29 +1092,163 @@ export function TeacherDashboard({
     );
   };
 
-  const initPreviewQuestionStates = () => {
-    setPreviewAnswered(false);
-    setPreviewIsCorrect(false);
-    setPreviewPlayerAnswer(null);
-    setPreviewCategorizeIdx(0);
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (profileSaving) return;
+    setProfileError('');
+    setProfileSuccess('');
+    setProfileSaving(true);
+    try {
+      if (!currentUser?.dahoot_info) {
+        throw new Error("No linked user info record found.");
+      }
+      const updatedInfo = await pb.collection('dahoot_user_info').update(currentUser.dahoot_info, {
+        school: profileSchool.trim(),
+        dahoot_username: profileUsername.trim()
+      });
+      if (setUserInfo) {
+        setUserInfo(updatedInfo);
+      }
+      setProfileSuccess('Profile updated successfully!');
+      setTimeout(() => {
+        setIsProfileModalOpen(false);
+      }, 1000);
+    } catch (err) {
+      console.error("Error saving profile details:", err);
+      setProfileError(err.message || "Failed to update profile details.");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const renderProfileModal = () => {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '40px 12px 12px 12px'
+      }}>
+        <div 
+          className="panel animate-fade-in p-6 sm:p-8" 
+          style={{ 
+            width: '100%', 
+            maxWidth: '480px', 
+            maxHeight: '90vh', 
+            overflowY: 'auto',
+            textAlign: 'left',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }} className="text-slate-800 flex items-center gap-2">
+                ⚙️ Profile Settings
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">Update your teacher information</p>
+            </div>
+            <button 
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                setProfileError('');
+                setProfileSuccess('');
+              }}
+              className="text-slate-400 hover:text-slate-600 font-bold text-lg p-2 rounded-full hover:bg-slate-100 transition-all cursor-pointer border-none outline-none bg-transparent"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            {profileError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs font-semibold">
+                ⚠️ {profileError}
+              </div>
+            )}
+            {profileSuccess && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-lg text-xs font-semibold">
+                ✓ {profileSuccess}
+              </div>
+            )}
+
+            <div>
+              <label className="form-label text-slate-700 font-bold block mb-1.5 text-xs uppercase tracking-wider" htmlFor="profileUsername">
+                Dahoot Username
+              </label>
+              <input
+                type="text"
+                id="profileUsername"
+                value={profileUsername}
+                onChange={(e) => setProfileUsername(e.target.value)}
+                placeholder="Enter your Dahoot username"
+                className="form-input text-xs font-semibold py-2.5 w-full"
+                maxLength={50}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">This name will be displayed in the header and when creating/hosting games.</p>
+            </div>
+
+            <div>
+              <label className="form-label text-slate-700 font-bold block mb-1.5 text-xs uppercase tracking-wider" htmlFor="profileSchool">
+                School / Institution
+              </label>
+              <input
+                type="text"
+                id="profileSchool"
+                value={profileSchool}
+                onChange={(e) => setProfileSchool(e.target.value)}
+                placeholder="Enter your school name"
+                className="form-input text-xs font-semibold py-2.5 w-full"
+                maxLength={100}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileModalOpen(false);
+                  setProfileError('');
+                  setProfileSuccess('');
+                }}
+                className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer outline-none bg-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={profileSaving}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+              >
+                {profileSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
   };
 
   const startPreviewGame = async (game) => {
     setPreviewGame(game);
     setPreviewLoading(true);
     setPreviewError('');
-    setPreviewCurrentIdx(0);
-    setPreviewAnswered(false);
-    setPreviewIsCorrect(false);
     try {
       const qList = await pb.collection('dahoot_questions').getFullList({
         filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
         sort: 'created'
       });
       setPreviewQuestions(qList);
-      if (qList.length > 0) {
-        initPreviewQuestionStates();
-      }
     } catch (err) {
       console.error(err);
       setPreviewError('Failed to load preview questions: ' + err.message);
@@ -1107,117 +1260,198 @@ export function TeacherDashboard({
   const closePreviewGame = () => {
     setPreviewGame(null);
     setPreviewQuestions([]);
-    setPreviewCurrentIdx(0);
-    setPreviewAnswered(false);
-    setPreviewIsCorrect(false);
-    setPreviewPlayerAnswer(null);
-    setPreviewCategorizeIdx(0);
   };
 
-  const submitPreviewAnswer = (userAnswer) => {
-    if (previewAnswered) return;
 
-    const activeQuestion = previewQuestions[previewCurrentIdx];
-    let isCorrect = false;
-    const type = activeQuestion.type || 'MULTIPLE_CHOICE';
 
-    if (type === 'MULTIPLE_CHOICE') {
-      isCorrect = userAnswer === activeQuestion.correct_option_index;
-    } else if (type === 'SORTING') {
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === activeQuestion.options.length &&
-                  userAnswer.every((val, i) => val === activeQuestion.options[i]);
-    } else if (type === 'DRAG_DROP') {
-      const correctArr = activeQuestion.options.correct || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === correctArr.length &&
-                  userAnswer.every((val, i) => val === correctArr[i]);
-    } else if (type === 'DROP_DOWN') {
-      const dropdowns = activeQuestion.options.dropdowns || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === dropdowns.length &&
-                  userAnswer.every((val, i) => val === dropdowns[i]?.correct);
-    } else if (type === 'CATEGORIZE') {
-      const correctItems = activeQuestion.options.items || [];
-      isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&
-                  correctItems.every(item => userAnswer[item.name] === item.category);
-    }
-
-    setPreviewPlayerAnswer(userAnswer);
-    setPreviewIsCorrect(isCorrect);
-    setPreviewAnswered(true);
+  const renderPreviewSentenceWithBlanks = (sentence, correct) => {
+    if (!sentence) return '';
+    const parts = splitBracketTokens(sentence);
+    return parts.map((part, idx) => {
+      const numericIdx = getBlankIndex(part);
+      const inner = getBracketInner(part);
+      if (numericIdx !== null) {
+        const blankIdx = numericIdx;
+        const correctWord = correct ? correct[blankIdx] : '';
+        return (
+          <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+            {correctWord || '_____'}
+          </span>
+        );
+      }
+      if (inner) {
+        let mappedIdx = -1;
+        if (correct) mappedIdx = correct.findIndex(c => c === inner);
+        const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
+        const correctWord = correct ? correct[blankIdx] : inner;
+        return (
+          <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+            {correctWord || inner}
+          </span>
+        );
+      }
+      return <span key={idx}>{part}</span>;
+    });
   };
 
-  const nextPreviewQuestion = async () => {
-    if (previewCurrentIdx + 1 < previewQuestions.length) {
-      const nextIdx = previewCurrentIdx + 1;
-      setPreviewCurrentIdx(nextIdx);
-      initPreviewQuestionStates();
-    } else {
-      await confirm({
-        title: "Preview Complete",
-        message: "You have previewed all questions in this Dahoot!",
-        confirmText: "OK",
-        cancelText: null,
-        variant: "primary"
-      });
-      closePreviewGame();
-    }
+  const renderPreviewSentenceWithDropdowns = (sentence, dropdowns) => {
+    if (!sentence || !Array.isArray(dropdowns)) return '';
+    const parts = splitCurlyTokens(sentence);
+    let sequentialDrop = 0;
+    return parts.map((part, idx) => {
+      const dropIdx = getCurlyIndex(part);
+      const inner = getCurlyInner(part);
+      if (dropIdx !== null) {
+        const correctVal = dropdowns[dropIdx]?.correct || '';
+        return (
+          <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+            {correctVal || '_____'}
+          </span>
+        );
+      }
+      if (inner) {
+        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
+        if (mappedIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { correct: inner };
+        return (
+          <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+            {config.correct || inner}
+          </span>
+        );
+      }
+      return <span key={idx}>{part}</span>;
+    });
   };
 
-  const renderPreviewQuestionBody = () => {
-    const activeQuestion = previewQuestions[previewCurrentIdx];
-    if (!activeQuestion) return null;
-
+  const renderPreviewCategorize = (options) => {
+    if (!options) return null;
+    const categories = options.categories || [];
+    const items = options.items || [];
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {!previewAnswered ? (
-          <QuestionInteraction
-            question={activeQuestion}
-            questionNumber={previewCurrentIdx + 1}
-            totalQuestions={previewQuestions.length}
-            mode="interactive"
-            onSubmit={submitPreviewAnswer}
-            categorizeIdx={previewCategorizeIdx}
-            onCategorizeIdxChange={setPreviewCategorizeIdx}
-          />
-        ) : (
-          <>
-            <div style={{
-              background: previewIsCorrect ? 'rgba(76, 175, 80, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid ' + (previewIsCorrect ? 'rgba(76, 175, 80, 0.3)' : 'rgba(239, 68, 68, 0.3)'),
-              borderRadius: '8px',
-              padding: '16px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{
-                color: previewIsCorrect ? '#4caf50' : '#ff4b60',
-                margin: '0 0 6px 0',
-                fontSize: '1.2rem',
-                fontWeight: 700,
-                textShadow: previewIsCorrect ? '0 0 10px rgba(76, 175, 80, 0.3)' : '0 0 10px rgba(255, 75, 96, 0.3)'
-              }}>
-                {previewIsCorrect ? '🎉 Correct!' : '❌ Incorrect'}
-              </h3>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        {categories.map((cat, cIdx) => {
+          const catItems = items.filter(item => item.category === cat);
+          return (
+            <div key={cIdx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 border-b pb-1 truncate" title={cat}>
+                Category: <span className="text-slate-800">{cat}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {catItems.map((item, iIdx) => (
+                  <span key={iIdx} className="px-2 py-0.5 bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-semibold rounded-lg truncate max-w-full">
+                    {item.name}
+                  </span>
+                ))}
+                {catItems.length === 0 && (
+                  <span className="text-[10px] text-slate-400 italic">No items</span>
+                )}
+              </div>
             </div>
-
-            <QuestionInteraction
-              question={activeQuestion}
-              mode="review"
-              playerAnswer={previewPlayerAnswer}
-            />
-
-            <button
-              className="btn btn-primary"
-              onClick={nextPreviewQuestion}
-              style={{ width: '100%', marginTop: '16px' }}
-            >
-              {previewCurrentIdx + 1 < previewQuestions.length ? 'Next Question ➔' : 'Finish Preview'}
-            </button>
-          </>
-        )}
+          );
+        })}
       </div>
     );
+  };
+
+  const renderPreviewOptions = (question) => {
+    const type = question.type || 'MULTIPLE_CHOICE';
+
+    if (type === 'MULTIPLE_CHOICE') {
+      const opts = Array.isArray(question.options) ? question.options : [];
+      return (
+        <div className="flex flex-col gap-2">
+          {opts.map((opt, oIdx) => {
+            const isCorrect = question.correct_option_index === oIdx;
+            return (
+              <div 
+                key={oIdx} 
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-colors ${
+                  isCorrect 
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold shadow-xs' 
+                    : 'border-slate-100 bg-slate-50/50 text-slate-500'
+                }`}
+              >
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
+                  isCorrect 
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {isCorrect ? '✓' : ['A', 'B', 'C', 'D'][oIdx]}
+                </span>
+                <span className="truncate" title={opt}>{opt}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (type === 'SORTING') {
+      const opts = Array.isArray(question.options) ? question.options : [];
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <span>✨ Correct Sorted Order:</span>
+          </div>
+          {opts.map((opt, oIdx) => (
+            <div 
+              key={oIdx} 
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-medium text-xs shadow-xs"
+            >
+              <span className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 bg-emerald-500 text-white">
+                {oIdx + 1}
+              </span>
+              <span className="truncate" title={opt}>{opt}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (type === 'DRAG_DROP' && question.options) {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
+            {renderPreviewSentenceWithBlanks(question.options.sentence, question.options.correct)}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Blanks:</span>
+            {(question.options.correct || []).map((word, wIdx) => (
+              <span key={wIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
+                {word}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'DROP_DOWN' && question.options) {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
+            {renderPreviewSentenceWithDropdowns(question.options.sentence, question.options.dropdowns)}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Dropdowns:</span>
+            {(question.options.dropdowns || []).map((d, dIdx) => (
+              <span key={dIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
+                {d.correct}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'CATEGORIZE' && question.options) {
+      return renderPreviewCategorize(question.options);
+    }
+
+    return null;
   };
 
   const renderPreviewModal = () => {
@@ -1242,8 +1476,8 @@ export function TeacherDashboard({
         <div 
           className="panel panel-large animate-join-focus p-4 sm:p-7" 
           style={{ 
-            width: '100%', 
-            maxWidth: '650px', 
+            width: '95%', 
+            maxWidth: '1200px', 
             maxHeight: '94vh', 
             overflowY: 'auto',
             textAlign: 'left',
@@ -1261,7 +1495,7 @@ export function TeacherDashboard({
           }}>
             <div>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Game Preview Mode
+                Game Preview Mode ({previewQuestions.length} Questions)
               </span>
               <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{previewGame.title}</h2>
             </div>
@@ -1302,8 +1536,49 @@ export function TeacherDashboard({
               <button className="btn btn-secondary" onClick={closePreviewGame}>Close</button>
             </div>
           ) : (
-            <div>
-              {renderPreviewQuestionBody()}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {previewQuestions.map((question, qIdx) => (
+                <div 
+                  key={question.id} 
+                  className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
+                >
+                  <div className="flex flex-col h-full justify-between">
+                    <div>
+                      {/* Header */}
+                      <div className="flex justify-between items-start gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-rose-50 text-rose-600 border border-rose-100 font-bold px-2.5 py-0.5 rounded-full text-xs">
+                            Q{qIdx + 1}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                            {(question.type || 'MULTIPLE_CHOICE').replace('_', ' ')}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedGame(previewGame);
+                            startEditing(question);
+                            closePreviewGame();
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+
+                      {/* Question text */}
+                      <div className="text-sm font-semibold text-slate-800 mb-4 line-clamp-3" title={question.text}>
+                        {question.text}
+                      </div>
+                    </div>
+
+                    {/* Answers/Options highlight */}
+                    <div className="text-xs text-slate-600 space-y-2 mt-auto">
+                      {renderPreviewOptions(question)}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1313,10 +1588,19 @@ export function TeacherDashboard({
 
   const renderUserStatusBar = () => {
     if (!currentUser) return null;
+    const displayName = userInfo?.dahoot_username || currentUser.name || currentUser.email;
+    const displaySchool = userInfo?.school || '';
     return (
       <div className="flex justify-between items-center bg-slate-50 border-b border-slate-200/80 px-6 py-3 -mx-10 -mt-10 mb-6 text-xs text-slate-500 rounded-t-2xl shadow-inner w-[calc(100%+80px)]">
         <span className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap min-w-0 mr-4 scrollbar-none">
-          👤 <strong className="text-slate-700 font-bold shrink-0">{currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email}</strong>
+          👤 <strong className="text-slate-700 font-bold shrink-0">
+            {displayName === currentUser.email ? displayName : `${displayName} (${currentUser.email})`}
+          </strong>
+          {displaySchool && (
+            <span className="text-slate-400 font-medium shrink-0 ml-1">
+              • {displaySchool}
+            </span>
+          )}
           {userRole === 'ADMIN' && (
             <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border border-amber-200/60 shrink-0">
               Admin
@@ -1324,6 +1608,20 @@ export function TeacherDashboard({
           )}
         </span>
         <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setProfileSchool(userInfo?.school || '');
+              setProfileUsername(userInfo?.dahoot_username || '');
+              setProfileError('');
+              setProfileSuccess('');
+              setIsProfileModalOpen(true);
+            }}
+            className="p-1 text-slate-400 hover:text-slate-600 transition-all cursor-pointer hover:bg-slate-100 rounded-full active:scale-95 flex items-center justify-center border-none outline-none bg-transparent"
+            title="Edit Profile"
+          >
+            ⚙️
+          </button>
           {userRole === 'ADMIN' && (
             <button
               type="button"
@@ -1342,6 +1640,7 @@ export function TeacherDashboard({
           </button>
         </div>
         {isAdminPanelOpen && renderAdminPanel()}
+        {isProfileModalOpen && renderProfileModal()}
       </div>
     );
   };
@@ -1933,6 +2232,121 @@ Question Schemas by Type:
     }
   };
 
+  const renderEditQuestionModal = () => {
+    if (editingPendingIndex === null) return null;
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 1100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px'
+      }}>
+        <div 
+          className="panel panel-large animate-join-focus p-4 sm:p-7" 
+          style={{ 
+            width: '100%', 
+            maxWidth: '750px', 
+            maxHeight: '94vh', 
+            overflowY: 'auto',
+            textAlign: 'left',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '20px', 
+            borderBottom: '1px solid var(--panel-border)',
+            paddingBottom: '15px'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Question Editor
+              </span>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>Edit Question #{editingPendingIndex + 1}</h2>
+            </div>
+            <button 
+              type="button"
+              onClick={cancelEditingPendingQuestion}
+              style={{
+                background: 'rgba(93, 107, 130, 0.08)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                fontSize: '1rem'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {error && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              color: '#ff4b60', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              marginBottom: 20
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div>
+            {renderQuestionFormFields()}
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: 12, 
+            marginTop: '24px', 
+            justifyContent: 'flex-end', 
+            borderTop: '1px solid var(--panel-border)', 
+            paddingTop: '16px' 
+          }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={cancelEditingPendingQuestion}
+              style={{ width: 'auto', minWidth: '100px' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                const success = updatePendingQuestion(editingPendingIndex);
+                if (success) setEditingPendingIndex(null);
+              }}
+              style={{ width: 'auto', minWidth: '150px' }}
+            >
+              ✓ Update Question
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderGenerateModal = () => {
     if (!isGenModalOpen) return null;
 
@@ -2298,10 +2712,28 @@ Sort these numbers from lowest to highest.
   const uniqueCreators = useMemo(() => {
     const creators = new Set();
     gamesList.forEach(g => {
-      if (g.creator) creators.add(g.creator);
+      if (g.creator) {
+        const creatorName = g.creator.toLowerCase().trim();
+        const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+        const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+        const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+        const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+        
+        const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                         (myName && creatorName === myName) || 
+                         (myEmail && creatorName === myEmail) || 
+                         (myUsername && creatorName === myUsername) || 
+                         (currentUser?.id && creatorName === currentUser.id);
+        
+        if (isMyGame && userInfo?.dahoot_username) {
+          creators.add(userInfo.dahoot_username);
+        } else {
+          creators.add(g.creator);
+        }
+      }
     });
     return Array.from(creators);
-  }, [gamesList]);
+  }, [gamesList, currentUser, userInfo]);
 
   // Filter handlers
   const toggleSubjectFilter = (sub) => {
@@ -2330,16 +2762,18 @@ Sort these numbers from lowest to highest.
   const myGamesCount = useMemo(() => {
     return gamesList.filter(game => {
       const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+      const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
       const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
       const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
       const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
       
-      return (myName && creatorName === myName) || 
+      return (myDahootUsername && creatorName === myDahootUsername) ||
+             (myName && creatorName === myName) || 
              (myEmail && creatorName === myEmail) || 
              (myUsername && creatorName === myUsername) || 
              (currentUser?.id && creatorName === currentUser.id);
     }).length;
-  }, [gamesList, currentUser]);
+  }, [gamesList, currentUser, userInfo]);
 
   // Filtered games array
   const filteredGamesList = useMemo(() => {
@@ -2347,11 +2781,13 @@ Sort these numbers from lowest to highest.
       // 1. Tab filtering (All vs My Games)
       if (libraryTab === 'my') {
         const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+        const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
         const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
         const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
         const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
         
-        const isMyGame = (myName && creatorName === myName) || 
+        const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                         (myName && creatorName === myName) || 
                          (myEmail && creatorName === myEmail) || 
                          (myUsername && creatorName === myUsername) || 
                          (currentUser?.id && creatorName === currentUser.id);
@@ -2363,10 +2799,25 @@ Sort these numbers from lowest to highest.
       if (filterSubject.length > 0 && !filterSubject.includes(game.subject)) return false;
       if (filterCefr.length > 0 && !filterCefr.includes(game.cefr_level)) return false;
       if (filterLanguage.length > 0 && !filterLanguage.includes(game.language)) return false;
-      if (filterCreator.length > 0 && !filterCreator.includes(game.creator)) return false;
+      if (filterCreator.length > 0) {
+        const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+        const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+        const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+        const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+        const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+        
+        const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                         (myName && creatorName === myName) || 
+                         (myEmail && creatorName === myEmail) || 
+                         (myUsername && creatorName === myUsername) || 
+                         (currentUser?.id && creatorName === currentUser.id);
+                         
+        const effectiveCreator = (isMyGame && userInfo?.dahoot_username) ? userInfo.dahoot_username : game.creator;
+        if (!filterCreator.includes(effectiveCreator)) return false;
+      }
       return true;
     });
-  }, [gamesList, libraryTab, currentUser, filterSubject, filterCefr, filterLanguage, filterCreator]);
+  }, [gamesList, libraryTab, currentUser, userInfo, filterSubject, filterCefr, filterLanguage, filterCreator]);
   
   // 0. DISABLED USER ACCESS BLOCK
   if (userRole === 'DISABLED') {
@@ -2464,15 +2915,23 @@ Sort these numbers from lowest to highest.
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div className="form-group">
                 <label className="form-label">Creator / Author *</label>
-                <input 
-                  type="text"
+                <select 
                   className="form-input" 
-                  placeholder="e.g. Dahoot Team"
                   value={gameCreator}
                   onChange={(e) => setGameCreator(e.target.value)}
                   disabled={loading}
+                  style={{ cursor: 'pointer' }}
                   required
-                />
+                >
+                  {Array.from(new Set([
+                    gameCreator,
+                    userInfo?.dahoot_username,
+                    currentUser?.name,
+                    currentUser?.email
+                  ].filter(Boolean))).map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
@@ -2643,40 +3102,18 @@ Sort these numbers from lowest to highest.
                 {creationQuestionsTab === 'individual' ? (
                   <div>
                     {/* Render the Individual Question Fields */}
-                    <div style={{
-                      background: 'rgba(93, 107, 130, 0.02)',
-                      border: '1px solid rgba(93, 107, 130, 0.08)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '20px',
-                      marginBottom: '20px'
-                    }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                        {editingPendingIndex !== null ? '✏️ Edit Question' : 'Create Question'}
-                      </h4>
-                      {renderQuestionFormFields()}
-                      {editingPendingIndex !== null ? (
-                        <div style={{ display: 'flex', gap: 12, marginTop: '16px' }}>
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() => {
-                              const success = updatePendingQuestion(editingPendingIndex);
-                              if (success) setEditingPendingIndex(null);
-                            }}
-                            style={{ width: 'auto', minWidth: '150px' }}
-                          >
-                            ✓ Update Question
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={cancelEditingPendingQuestion}
-                            style={{ width: 'auto', minWidth: '100px' }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
+                    {editingPendingIndex === null && (
+                      <div style={{
+                        background: 'rgba(93, 107, 130, 0.02)',
+                        border: '1px solid rgba(93, 107, 130, 0.08)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '20px',
+                        marginBottom: '20px'
+                      }}>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                          Create Question
+                        </h4>
+                        {renderQuestionFormFields()}
                         <button
                           type="button"
                           className="btn btn-secondary"
@@ -2692,8 +3129,8 @@ Sort these numbers from lowest to highest.
                         >
                           ➕ Add Question to Dahoot
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     
                     {/* Render Pending Questions List */}
                     {renderPendingQuestionsList()}
@@ -2705,7 +3142,7 @@ Sort these numbers from lowest to highest.
                   </div>
                 )}
               </div>
-
+ 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button type="button" className="btn btn-secondary" onClick={() => {
                 cancelEditingGame();
@@ -2719,6 +3156,7 @@ Sort these numbers from lowest to highest.
             </div>
           </form>
         </div>
+        {renderEditQuestionModal()}
         {renderGenerateModal()}
         {ConfirmDialog}
       </div>
@@ -2971,11 +3409,26 @@ Sort these numbers from lowest to highest.
                           🗣️ {game.language}
                         </span>
                       )}
-                      {game.creator && (
-                        <span className="game-tag">
-                          👤 {game.creator}
-                        </span>
-                      )}
+                      {game.creator && (() => {
+                        const creatorName = game.creator.toLowerCase().trim();
+                        const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+                        const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+                        const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+                        const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+                        
+                        const isMyGame = (myDahootUsername && creatorName === myDahootUsername) ||
+                                         (myName && creatorName === myName) || 
+                                         (myEmail && creatorName === myEmail) || 
+                                         (myUsername && creatorName === myUsername) || 
+                                         (currentUser?.id && creatorName === currentUser.id);
+                        
+                        const displayCreator = (isMyGame && userInfo?.dahoot_username) ? userInfo.dahoot_username : game.creator;
+                        return (
+                          <span className="game-tag">
+                            👤 {displayCreator}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <p style={{ 

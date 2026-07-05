@@ -4,6 +4,25 @@ import { parseMarkdownQuestions } from '../utils/markdownParser';
 
 export function useTeacherDashboard(view, currentUser) {
   const [gamesList, setGamesList] = useState([]);
+  const [userInfo, setUserInfo] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (currentUser && currentUser.dahoot_info) {
+      pb.collection('dahoot_user_info').getOne(currentUser.dahoot_info)
+        .then(record => {
+          if (active && record) {
+            setUserInfo(record);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching user info in hook:", err);
+        });
+    } else {
+      setUserInfo(null);
+    }
+    return () => { active = false; };
+  }, [currentUser]);
   const [selectedGame, setSelectedGame] = useState(null); // The game whose questions we are currently viewing/editing
   
   const [questionsList, setQuestionsList] = useState([]);
@@ -121,7 +140,7 @@ export function useTeacherDashboard(view, currentUser) {
     setSelectedGameForEdit(null);
     setGameTitle('');
     setGameDescription('');
-    setGameCreator(currentUser?.name || currentUser?.email || '');
+    setGameCreator(userInfo?.dahoot_username || currentUser?.name || currentUser?.email || '');
     setGameLanguage('English');
     setGameCefrLevel('');
     setGameSubject('');
@@ -973,6 +992,8 @@ export function useTeacherDashboard(view, currentUser) {
   };
 
   return {
+    userInfo,
+    setUserInfo,
     gamesList,
     selectedGame,
     setSelectedGame,
@@ -1000,6 +1021,7 @@ export function useTeacherDashboard(view, currentUser) {
     questionsList,
     loading,
     error,
+    setError,
     isEditing,
     selectedQuestion,
     questionType,
