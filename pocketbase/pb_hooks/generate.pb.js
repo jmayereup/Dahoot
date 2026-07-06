@@ -47,6 +47,8 @@ routerAdd("POST", "/api/generate-questions", (e) => {
         return e.json(500, { error: "OPENROUTER_API_KEY is not set on the server. Please check your server environment variables." });
     }
 
+    const apiModel = $os.getenv("OPENROUTER_MODEL") || "minimax/minimax-m3";
+
     let res;
     try {
         // Send the HTTP request to OpenRouter securely
@@ -54,18 +56,14 @@ routerAdd("POST", "/api/generate-questions", (e) => {
             url: "https://openrouter.ai/api/v1/chat/completions",
             method: "POST",
             body: JSON.stringify({
-                model: "deepseek/deepseek-v4-pro",
+                model: apiModel,
                 response_format: { type: "json_object" },
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPromptContent }
                 ],
                 temperature: 0.7,
-                max_tokens: 8192,
-                thinking: {
-                    type: "enabled",
-                    budget_tokens: 4096
-                }
+                max_tokens: 8192
             }),
             headers: {
                 "Authorization": "Bearer " + apiKey,
