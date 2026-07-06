@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
-import { parseMarkdownQuestions } from '../utils/markdownParser';
 import { normalizeQuestion } from '../utils/questionSchema';
 
 export function useTeacherDashboard(view, currentUser) {
@@ -633,6 +632,29 @@ export function useTeacherDashboard(view, currentUser) {
     setError('');
   };
 
+  const parseAndValidateQuestions = (text) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (err) {
+      throw new Error('Invalid JSON: ' + err.message);
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error('JSON must be an array of question objects.');
+    }
+    for (let i = 0; i < parsed.length; i++) {
+      const q = parsed[i];
+      if (!q.type || !q.text || !q.options) {
+        throw new Error(`Question ${i + 1} is missing required fields (type, text, options).`);
+      }
+      const validTypes = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'];
+      if (!validTypes.includes(q.type)) {
+        throw new Error(`Question ${i + 1} has invalid type "${q.type}". Must be one of: ${validTypes.join(', ')}`);
+      }
+    }
+    return parsed;
+  };
+
   const saveImportedQuestions = async (e) => {
     e.preventDefault();
     setError('');
@@ -644,10 +666,7 @@ export function useTeacherDashboard(view, currentUser) {
 
     setLoading(true);
     try {
-      const parsed = parseMarkdownQuestions(importText);
-      if (parsed.length === 0) {
-        throw new Error('Could not parse any valid questions. Check formatting.');
-      }
+      const parsed = parseAndValidateQuestions(importText);
 
       await Promise.all(parsed.map(q =>
         pb.collection('dahoot_questions').create({
@@ -756,6 +775,7 @@ export function useTeacherDashboard(view, currentUser) {
     saveQuestion,
     deleteQuestion,
 
+    parseAndValidateQuestions,
     refreshList: () => selectedGame ? fetchQuestions(selectedGame.id) : fetchGames()
   };
 }

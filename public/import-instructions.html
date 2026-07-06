@@ -178,163 +178,218 @@
   <div class="container">
     <header>
       <h1>Dahoot Bulk Import Guide</h1>
-      <p class="subtitle">Quick reference formatting rules for bulk quiz question generation</p>
+      <p class="subtitle">JSON format reference for bulk quiz question import</p>
     </header>
 
     <main class="panel">
       <div class="alert">
-        <strong>💡 Pro-Tip:</strong> Copy the system instructions at the bottom of this page and paste them directly into ChatGPT, Claude, or Google Gemini to generate flawless custom quiz questions instantly!
+        <strong>💡 Pro-Tip:</strong> Copy the system instructions at the bottom of this page and paste them into ChatGPT, Claude, or Google Gemini to generate flawless custom quiz questions in JSON format instantly!
       </div>
 
-      <h2>Question Formats</h2>
+      <h2>JSON Format</h2>
       <p style="color: var(--text-secondary); margin-bottom: 20px;">
-        Each question block must begin with its corresponding type header (e.g. <code># MULTIPLE_CHOICE</code>), followed by the question text prompt, then configuration options/lines.
+        Import questions as a JSON array. Each object must have <code>type</code>, <code>text</code>, and <code>options</code> fields. The supported types are <code>MULTIPLE_CHOICE</code>, <code>SORTING</code>, <code>DRAG_DROP</code>, <code>DROP_DOWN</code>, and <code>CATEGORIZE</code>.
       </p>
 
       <!-- 1. MC -->
       <div class="format-card">
-        <h3>1. Multiple Choice (<code># MULTIPLE_CHOICE</code>)</h3>
+        <h3>1. Multiple Choice (<code>MULTIPLE_CHOICE</code>)</h3>
         <ul>
-          <li>Provide a question prompt.</li>
-          <li>List 4 answer choices using bullet points (starting with <code>-</code>).</li>
-          <li>Prefix the correct option with an asterisk: <code>- *Correct Option</code>. Exactly one option must be the correct option, and all other options must be incorrect.</li>
+          <li><code>text</code>: The question prompt.</li>
+          <li><code>options.correct_answer</code>: The correct answer string.</li>
+          <li><code>options.distractors</code>: Array of 3 incorrect options.</li>
         </ul>
-        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># MULTIPLE_CHOICE
-Which programming language was created by Brendan Eich in 1995?
-- Java
-- *JavaScript
-- Python
-- C++</code></pre>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "MULTIPLE_CHOICE",
+  "text": "Which programming language was created by Brendan Eich?",
+  "options": {
+    "correct_answer": "JavaScript",
+    "distractors": ["Java", "Python", "C++"]
+  }
+}</code></pre>
       </div>
 
       <!-- 2. SORTING -->
       <div class="format-card">
-        <h3>2. Sorting Order (<code># SORTING</code>)</h3>
+        <h3>2. Sorting Order (<code>SORTING</code>)</h3>
         <ul>
-          <li>Provide a sorting prompt.</li>
-          <li>List 4 items in their <strong>correct sorted order</strong> using numbered points: <code>1.</code>, <code>2.</code>, etc.</li>
-          <li>Ensure there is exactly one logical correct sorting order; no alternative sorting sequences should make sense.</li>
-          <li>Dahoot shuffles the elements automatically during the game.</li>
+          <li><code>text</code>: Sorting instruction.</li>
+          <li><code>options.correct_sequence</code>: Array of 4 items in the correct order (first to last).</li>
         </ul>
-        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># SORTING
-Sort these tech stack layers from front-end to back-end.
-1. HTML / CSS UI Layout
-2. React State Management
-3. Express Server Router
-4. Database Storage</code></pre>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "SORTING",
+  "text": "Sort these tech stack layers from front-end to back-end.",
+  "options": {
+    "correct_sequence": [
+      "HTML / CSS UI Layout",
+      "React State Management",
+      "Express Server Router",
+      "Database Storage"
+    ]
+  }
+}</code></pre>
       </div>
 
       <!-- 3. DRAG_DROP -->
       <div class="format-card">
-        <h3>3. Drag & Drop Blanks (<code># DRAG_DROP</code>)</h3>
+        <h3>3. Drag & Drop Blanks (<code>DRAG_DROP</code>)</h3>
         <ul>
-          <li>Provide a prompt.</li>
-          <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>[blank0]</code> and <code>[blank1]</code>.</li>
-          <li>List 4 bullet point choices. Prefixes correct choices in correct blank order with <code>*</code>. Other choices act as distractors.</li>
-          <li>Ensure each placeholder has exactly one correct word (marked with <code>*</code>). Distractors must be clearly incorrect and must not fit grammatically or contextually in any of the blanks.</li>
+          <li><code>options.sentence</code>: Sentence with <code>[blank0]</code>, <code>[blank1]</code> placeholders.</li>
+          <li><code>options.answers_in_order</code>: Correct words for each blank, in order.</li>
+          <li><code>options.distractors</code>: Wrong words to mix in as decoys.</li>
         </ul>
-        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DRAG_DROP
-Complete the sentence about React hooks.
-Sentence: In React, we use the [blank0] hook to manage state, and [blank1] to perform side effects.
-- *useState
-- *useEffect
-- useContext
-- useRef</code></pre>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "DRAG_DROP",
+  "text": "Complete the sentence about React hooks.",
+  "options": {
+    "sentence": "In React, we use the [blank0] hook to manage state, and [blank1] to perform side effects.",
+    "answers_in_order": ["useState", "useEffect"],
+    "distractors": ["useContext", "useRef"]
+  }
+}</code></pre>
       </div>
 
       <!-- 4. DROP_DOWN -->
       <div class="format-card">
-        <h3>4. Drop-Down Choices (<code># DROP_DOWN</code>)</h3>
+        <h3>4. Drop-Down Choices (<code>DROP_DOWN</code>)</h3>
         <ul>
-          <li>Provide a prompt.</li>
-          <li>Use <code>Sentence: </code> followed by a sentence containing placeholders like <code>{{0}}</code> and <code>{{1}}</code>.</li>
-          <li>List dropdown options under a <code>Dropdown N:</code> header. Correct answer must be prefixed with <code>*</code>.</li>
-          <li>Ensure each dropdown group has exactly one correct choice marked with <code>*</code>. All distractors must be completely incorrect in the context, and there must not be alternative correct options.</li>
+          <li><code>options.sentence</code>: Sentence with <code>{{0}}</code>, <code>{{1}}</code> placeholders.</li>
+          <li><code>options.dropdowns</code>: Array of objects, one per placeholder.</li>
+          <li>Each dropdown: <code>correct_answer</code> + <code>distractors</code> array.</li>
         </ul>
-        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># DROP_DOWN
-Fill in the blanks regarding PocketBase architecture.
-Sentence: PocketBase is written in {{0}} and uses {{1}} as its default database engine.
-Dropdown 0:
-- *Go
-- Rust
-- JavaScript
-Dropdown 1:
-- *SQLite
-- PostgreSQL
-- MongoDB</code></pre>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "DROP_DOWN",
+  "text": "Fill in the blanks about PocketBase.",
+  "options": {
+    "sentence": "PocketBase is written in {{0}} and uses {{1}} as its database.",
+    "dropdowns": [
+      {
+        "correct_answer": "Go",
+        "distractors": ["Rust", "JavaScript"]
+      },
+      {
+        "correct_answer": "SQLite",
+        "distractors": ["PostgreSQL", "MongoDB"]
+      }
+    ]
+  }
+}</code></pre>
       </div>
 
       <!-- 5. CATEGORIZE -->
       <div class="format-card">
-        <h3>5. Categorize Items (<code># CATEGORIZE</code>)</h3>
+        <h3>5. Categorize Items (<code>CATEGORIZE</code>)</h3>
         <ul>
-          <li>Provide a classification prompt.</li>
-          <li>Provide category names with <code>Categories: CategoryA, CategoryB</code>.</li>
-          <li>Ensure each item belongs to exactly one category; items must not fit into multiple categories.</li>
-          <li>List mapped items under <code>Items:</code> with the format <code>- Item Name: Category Name</code>.</li>
+          <li><code>options.categories</code>: Array of category names.</li>
+          <li><code>options.items</code>: Array of <code>{ name, category }</code> objects mapping each item to a category.</li>
         </ul>
-        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code># CATEGORIZE
-Classify the following tech elements.
-Categories: Languages, Frameworks
-Items:
-- JavaScript: Languages
-- React: Frameworks
-- Python: Languages
-- Next.js: Frameworks</code></pre>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "CATEGORIZE",
+  "text": "Classify the following tech elements.",
+  "options": {
+    "categories": ["Languages", "Frameworks"],
+    "items": [
+      { "name": "JavaScript", "category": "Languages" },
+      { "name": "React", "category": "Frameworks" },
+      { "name": "Python", "category": "Languages" },
+      { "name": "Next.js", "category": "Frameworks" }
+    ]
+  }
+}</code></pre>
       </div>
 
-      <h2>Gemini Gem / Custom GPT System Instructions</h2>
-      <div class="alert" style="background: rgba(168, 85, 247, 0.08); border-color: var(--accent); margin-bottom: 24px;">
-        <strong>💎 Pre-configured Gemini Gem:</strong> We have created a ready-to-use Google Gemini Gem! Click here to use the <a href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" target="_blank" rel="noopener noreferrer" style="color: var(--accent-light); text-decoration: underline; font-weight: 600;">Dahoot Quiz Generator Gem</a> directly on Gemini.
-      </div>
+      <h2>Complete Import Example</h2>
       <p style="color: var(--text-secondary); margin-bottom: 16px;">
-        Alternatively, paste the following prompt instructions into your Custom AI chatbot settings to configure it:
+        Paste a JSON array like this into the import textarea:
       </p>
-      <pre style="max-height: 350px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>You are the Dahoot Quiz Generator. Output ONLY raw Markdown questions matching the formats described below, with no conversational text.
-CRITICAL: Every question must have exactly one correct answer (or exactly one correct option per blank). Distractors must be clearly incorrect, with no ambiguity.
+      <pre style="max-height: 400px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>[
+  {
+    "type": "MULTIPLE_CHOICE",
+    "text": "What is the capital of France?",
+    "options": {
+      "correct_answer": "Paris",
+      "distractors": ["Berlin", "London", "Rome"]
+    }
+  },
+  {
+    "type": "SORTING",
+    "text": "Sort these numbers from lowest to highest.",
+    "options": {
+      "correct_sequence": ["Five", "Ten", "Fifteen", "Twenty"]
+    }
+  }
+]</code></pre>
 
-# MULTIPLE_CHOICE
-Question prompt here
-- Incorrect Option 1
-- *Correct Option (starts with - *)
-- Incorrect Option 2
-- Incorrect Option 3
+      <h2>AI Prompt Template</h2>
+      <div class="alert" style="background: rgba(168, 85, 247, 0.08); border-color: var(--accent); margin-bottom: 24px;">
+        <strong>💎 Pre-configured Gemini Gem:</strong> Use the <a href="https://gemini.google.com/gem/7c73c716f677" target="_blank" rel="noopener noreferrer" style="color: var(--accent-light); text-decoration: underline; font-weight: 600;">Dahoot Quiz Generator Gem</a> to generate questions directly in JSON format — no setup needed.
+      </div>
+      <div class="alert" style="background: rgba(168, 85, 247, 0.08); border-color: var(--accent); margin-bottom: 24px;">
+        <strong>💡 Manual prompt:</strong> Copy the prompt below and use it with ChatGPT, Claude, Gemini, or any LLM to generate questions as a JSON array ready for import.
+      </div>
+      <pre style="max-height: 500px;"><button class="copy-btn" onclick="copyText(this)">Copy</button><code>You are a quiz question generator. Output ONLY a raw JSON array matching the schemas below, with no conversational text, no markdown codeblocks, no wrapping.
 
-# SORTING
-Question prompt here
-1. First Item (Correct Order)
-2. Second Item (Correct Order)
-3. Third Item (Correct Order)
-4. Fourth Item (Correct Order)
+Generate questions for: [SPECIFY SUBJECT, LANGUAGE LEVEL, AND TOPIC HERE]
 
-# DRAG_DROP
-Question prompt here
-Sentence: Sentence goes here with placeholders like [blank0] and [blank1].
-- *Correct Choice for [blank0] (starts with - *)
-- *Correct Choice for [blank1] (starts with - *)
-- Distractor Choice 1
-- Distractor Choice 2
+Question type schemas:
 
-# DROP_DOWN
-Question prompt here
-Sentence: Sentence goes here with dropdown slots like {{0}} and {{1}}.
-Dropdown 0:
-- *Correct Choice (starts with - *)
-- Option 2
-- Option 3
-Dropdown 1:
-- *Correct Choice (starts with - *)
-- Option 2
-- Option 3
+1. MULTIPLE_CHOICE:
+{
+  "type": "MULTIPLE_CHOICE",
+  "text": "Question prompt",
+  "options": {
+    "correct_answer": "Correct option",
+    "distractors": ["Wrong 1", "Wrong 2", "Wrong 3"]
+  }
+}
 
-# CATEGORIZE
-Question prompt here
-Categories: CategoryA, CategoryB
-Items:
-- Item 1: CategoryA
-- Item 2: CategoryB
-- Item 3: CategoryA
-- Item 4: CategoryB</code></pre>
+2. SORTING:
+{
+  "type": "SORTING",
+  "text": "Sorting instruction",
+  "options": {
+    "correct_sequence": ["Item 1 (first)", "Item 2", "Item 3", "Item 4 (last)"]
+  }
+}
+
+3. DRAG_DROP:
+{
+  "type": "DRAG_DROP",
+  "text": "Instruction text",
+  "options": {
+    "sentence": "Sentence with [blank0] and [blank1].",
+    "answers_in_order": ["word1", "word2"],
+    "distractors": ["decoy1", "decoy2"]
+  }
+}
+
+4. DROP_DOWN:
+{
+  "type": "DROP_DOWN",
+  "text": "Instruction text",
+  "options": {
+    "sentence": "Sentence with {{0}} and {{1}}.",
+    "dropdowns": [
+      { "correct_answer": "answer1", "distractors": ["wrong1", "wrong2"] },
+      { "correct_answer": "answer2", "distractors": ["wrong1", "wrong2"] }
+    ]
+  }
+}
+
+5. CATEGORIZE:
+{
+  "type": "CATEGORIZE",
+  "text": "Instruction text",
+  "options": {
+    "categories": ["Category A", "Category B"],
+    "items": [
+      { "name": "Item 1", "category": "Category A" },
+      { "name": "Item 2", "category": "Category B" }
+    ]
+  }
+}
+
+Return ONLY a valid JSON array of question objects. No other text.</code></pre>
     </main>
   </div>
 

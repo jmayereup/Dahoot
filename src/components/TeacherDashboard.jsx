@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
 import { useConfirm } from '../hooks/useConfirm.jsx';
-import { compileQuestionsToMarkdown, parseMarkdownQuestions } from '../utils/markdownParser';
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import {
   splitCurlyTokens,
@@ -63,6 +62,7 @@ export function TeacherDashboard({
   startImporting,
   cancelImporting,
   saveImportedQuestions,
+  parseAndValidateQuestions,
   
   // Multiple Choice
   mcCorrectAnswer,
@@ -249,9 +249,11 @@ export function TeacherDashboard({
     e.preventDefault();
     const gameToPreview = selectedGame;
     if (gameToPreview && gameToPreview.id === 'temp') {
-      const parsed = parseMarkdownQuestions(importText);
-      if (parsed.length === 0) {
-        setError('Could not parse any valid questions. Check formatting.');
+      let parsed;
+      try {
+        parsed = parseAndValidateQuestions(importText);
+      } catch (err) {
+        setError(err.message);
         return;
       }
       const newQs = parsed.map((q, idx) => ({
@@ -270,6 +272,22 @@ export function TeacherDashboard({
         startPreviewGame(gameToPreview);
       }
     }
+  };
+
+  const requireFieldsOrWarn = async (action) => {
+    const missing = getMissingFieldsForGenerate();
+    if (missing.length > 0) {
+      await confirm({
+        title: 'Required Fields Missing',
+        message: `Please fill in the Language, CEFR Level, and Subject fields above before managing questions. These are needed for game metadata and AI generation context.`,
+        confirmText: 'OK',
+        cancelText: null,
+        variant: 'warning',
+        icon: '⚠️'
+      });
+      return;
+    }
+    action();
   };
 
   const renderInlineQuestionsSection = () => {
@@ -291,20 +309,28 @@ export function TeacherDashboard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={openPreviewAddQuestion}
+              onClick={() => requireFieldsOrWarn(openPreviewAddQuestion)}
               className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shrink-0"
             >
               ➕ Add Question
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={() => requireFieldsOrWarn(() => setIsGenModalOpen(true))}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Autogenerate questions using AI"
+            >
+              ✨ Autogenerate
+            </button>
+            <button
+              type="button"
+              onClick={() => requireFieldsOrWarn(() => {
                 setSelectedGame(selectedGameForEdit || previewGame);
                 startImporting();
-              }}
+              })}
               className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition-colors cursor-pointer shrink-0"
             >
-              📥 Import or Generate
+              📥 Import
             </button>
           </div>
         </div>
@@ -2757,8 +2783,7 @@ Question Schemas by Type:
       const questions = parsedData.questions || [];
       const aiDescription = parsedData.description || '';
 
-      const markdownText = compileQuestionsToMarkdown(questions);
-      if (!markdownText) {
+      if (!Array.isArray(questions) || questions.length === 0) {
         throw new Error('No valid questions could be generated.');
       }
 
@@ -2776,7 +2801,17 @@ Question Schemas by Type:
         }
       }
 
-      setImportText(prev => prev ? prev + '\n\n' + markdownText : markdownText);
+      if (isImporting) {
+        setImportText(prev => prev ? prev + '\n\n' + JSON.stringify(questions, null, 2) : JSON.stringify(questions, null, 2));
+      } else {
+        const newQs = questions.map((q, idx) => ({
+          id: 'local_' + (Date.now() + idx),
+          text: q.text,
+          options: q.options,
+          type: q.type
+        }));
+        setPreviewQuestions(prev => [...prev, ...newQs]);
+      }
       setIsGenModalOpen(false);
       setGenPrompt('');
     } catch (err) {
@@ -3070,7 +3105,7 @@ Question Schemas by Type:
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ marginBottom: 4 }}>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
-            Paste your Markdown-formatted questions below to import them in bulk when the Dahoot is created.
+            Paste a JSON array of questions below to import them in bulk when the Dahoot is created.
           </p>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <a 
@@ -3079,11 +3114,11 @@ Question Schemas by Type:
               rel="noopener noreferrer" 
               style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
             >
-              📖 View formatting guide & AI prompt template
+              📖 View JSON format guide & AI prompt template
             </a>
             <span style={{ color: 'var(--text-muted)' }}>•</span>
             <a 
-              href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
+              href="https://gemini.google.com/gem/7c73c716f677" 
               target="_blank" 
               rel="noopener noreferrer" 
               style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
@@ -3094,41 +3129,26 @@ Question Schemas by Type:
         </div>
 
         <div className="form-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setIsGenModalOpen(true)}
-              disabled={isGenerateDisabled}
-              style={{
-                padding: '6px 12px',
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
-              }}
-              title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
-            >
-              ✨ Autogenerate Questions
-            </button>
-          </div>
+          <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>JSON Data</label>
           <textarea 
             className="form-input" 
-            placeholder={`# MULTIPLE_CHOICE
-What is the capital of France?
-- Berlin
-- *Paris
-- London
-- Rome
-
-# SORTING
-Sort these numbers from lowest to highest.
-1. Five
-2. Ten
-3. Fifteen
-4. Twenty`}
+            placeholder={`[
+  {
+    "type": "MULTIPLE_CHOICE",
+    "text": "What is the capital of France?",
+    "options": {
+      "correct_answer": "Paris",
+      "distractors": ["Berlin", "London", "Rome"]
+    }
+  },
+  {
+    "type": "SORTING",
+    "text": "Sort these numbers from lowest to highest.",
+    "options": {
+      "correct_sequence": ["Five", "Ten", "Fifteen", "Twenty"]
+    }
+  }
+]`}
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
             disabled={loading}
@@ -3393,7 +3413,7 @@ Sort these numbers from lowest to highest.
               <label className="form-label">Description (optional / autogenerated)</label>
               <textarea 
                 className="form-input" 
-                placeholder="e.g. 10 questions covering major historical events of the 20th century. (Or leave blank to autogenerate from questions!)"
+                placeholder="e.g. 10 questions covering major historical events of the 20th century. (Leave blank, if using AI to generate questions.)"
                 value={gameDescription}
                 onChange={(e) => setGameDescription(e.target.value)}
                 disabled={loading}
@@ -3539,7 +3559,7 @@ Sort these numbers from lowest to highest.
           <div style={{ marginBottom: 24 }}>
             <h2>Import Questions in Bulk</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
-              Paste your Markdown-formatted questions below to load them into: <strong>{selectedGame.title}</strong>
+              Paste a JSON array of questions below to load them into: <strong>{selectedGame.title}</strong>
             </p>
             <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
               <a 
@@ -3548,11 +3568,11 @@ Sort these numbers from lowest to highest.
                 rel="noopener noreferrer" 
                 style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
               >
-                📖 View formatting guide & AI prompt template
+                📖 View JSON format guide & AI prompt template
               </a>
               <span style={{ color: 'var(--text-muted)' }}>•</span>
               <a 
-                href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
+                href="https://gemini.google.com/gem/7c73c716f677" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
@@ -3577,41 +3597,19 @@ Sort these numbers from lowest to highest.
 
           <form onSubmit={handleSaveImportedQuestions}>
             <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setIsGenModalOpen(true)}
-                  disabled={isGenerateDisabled}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
-                  }}
-                  title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
-                >
-                  ✨ Autogenerate Questions
-                </button>
-              </div>
+              <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>JSON Data</label>
               <textarea 
                 className="form-input" 
-                placeholder={`# MULTIPLE_CHOICE
-What is the capital of France?
-- Berlin
-- *Paris
-- London
-- Rome
-
-# SORTING
-Sort these numbers from lowest to highest.
-1. Five
-2. Ten
-3. Fifteen
-4. Twenty`}
+                placeholder={`[
+  {
+    "type": "MULTIPLE_CHOICE",
+    "text": "What is the capital of France?",
+    "options": {
+      "correct_answer": "Paris",
+      "distractors": ["Berlin", "London", "Rome"]
+    }
+  }
+]`}
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 disabled={loading}
