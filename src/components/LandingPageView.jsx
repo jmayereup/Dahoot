@@ -3,7 +3,7 @@ import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
-import { QuestionsPreviewModal } from './QuestionsPreviewModal';
+import { PreviewModal } from './PreviewModal';
 
 
 export function LandingPageView({
@@ -886,16 +886,15 @@ export function LandingPageView({
     )}
       <SchoolFooter status={pocketbaseStatus} />
 
-      <QuestionsPreviewModal
+      <PreviewModal
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
+        game={gamesList.find(g => g.id === selectedGameId)}
         gameId={selectedGameId}
-        gamesList={gamesList}
-        isAuthenticated={isAuthenticated}
+        canEdit={isAuthenticated && (userInfo?.role === 'TEACHER' || userInfo?.role === 'ADMIN')}
         currentUser={currentUser}
         userInfo={userInfo}
-        gameQuestions={gameQuestions}
-        refreshQuestions={refreshQuestions}
+        standalone
       />
     </div>
   );

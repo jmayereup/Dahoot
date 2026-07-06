@@ -1,28 +1,11 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 import { normalizeQuestion } from '../utils/questionSchema';
+import { useUserInfo } from './useUserInfo';
 
 export function useTeacherDashboard(view, currentUser) {
   const [gamesList, setGamesList] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    if (currentUser && currentUser.dahoot_info) {
-      pb.collection('dahoot_user_info').getOne(currentUser.dahoot_info)
-        .then(record => {
-          if (active && record) {
-            setUserInfo(record);
-          }
-        })
-        .catch(err => {
-          console.error("Error fetching user info in hook:", err);
-        });
-    } else {
-      setUserInfo(null);
-    }
-    return () => { active = false; };
-  }, [currentUser]);
+  const { userInfo, setUserInfo } = useUserInfo(currentUser);
   const [selectedGame, setSelectedGame] = useState(null); // The game whose questions we are currently viewing/editing
   
   const [questionsList, setQuestionsList] = useState([]);

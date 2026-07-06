@@ -305,25 +305,24 @@ function App() {
           setQuestionType={teacherDashboard.setQuestionType}
           questionText={teacherDashboard.questionText}
           setQuestionText={teacherDashboard.setQuestionText}
-          
-          options={teacherDashboard.options}
-          setOptions={teacherDashboard.setOptions}
-          updateOptionValue={teacherDashboard.updateOptionValue}
-          correctOptionIndex={teacherDashboard.correctOptionIndex}
-          setCorrectOptionIndex={teacherDashboard.setCorrectOptionIndex}
 
+          mcCorrectAnswer={teacherDashboard.mcCorrectAnswer}
+          setMcCorrectAnswer={teacherDashboard.setMcCorrectAnswer}
+          mcDistractors={teacherDashboard.mcDistractors}
+          updateMcDistractor={teacherDashboard.updateMcDistractor}
+          sortingItems={teacherDashboard.sortingItems}
+          updateSortingItem={teacherDashboard.updateSortingItem}
           dragSentence={teacherDashboard.dragSentence}
           setDragSentence={teacherDashboard.setDragSentence}
-          dragChoices={teacherDashboard.dragChoices}
-          setDragChoices={teacherDashboard.setDragChoices}
-          updateDragChoice={teacherDashboard.updateDragChoice}
-
+          dragAnswers={teacherDashboard.dragAnswers}
+          updateDragAnswer={teacherDashboard.updateDragAnswer}
+          dragDistractors={teacherDashboard.dragDistractors}
+          updateDragDistractor={teacherDashboard.updateDragDistractor}
           dropdownSentence={teacherDashboard.dropdownSentence}
           setDropdownSentence={teacherDashboard.setDropdownSentence}
-          dropdownOptions={teacherDashboard.dropdownOptions}
-          setDropdownOptions={teacherDashboard.setDropdownOptions}
-          updateDropdownOption={teacherDashboard.updateDropdownOption}
-
+          dropdownConfig={teacherDashboard.dropdownConfig}
+          updateDropdownCorrect={teacherDashboard.updateDropdownCorrect}
+          updateDropdownDistractor={teacherDashboard.updateDropdownDistractor}
           categorizeCategories={teacherDashboard.categorizeCategories}
           setCategorizeCategories={teacherDashboard.setCategorizeCategories}
           categorizeItemsText={teacherDashboard.categorizeItemsText}
@@ -334,13 +333,14 @@ function App() {
           cancelEditing={teacherDashboard.cancelEditing}
           saveQuestion={teacherDashboard.saveQuestion}
           deleteQuestion={teacherDashboard.deleteQuestion}
-          
+
           isImporting={teacherDashboard.isImporting}
           importText={teacherDashboard.importText}
           setImportText={teacherDashboard.setImportText}
           startImporting={teacherDashboard.startImporting}
           cancelImporting={teacherDashboard.cancelImporting}
           saveImportedQuestions={teacherDashboard.saveImportedQuestions}
+          parseAndValidateQuestions={teacherDashboard.parseAndValidateQuestions}
 
           availableSubjects={availableSubjects}
           availableCefrLevels={availableCefrLevels}
