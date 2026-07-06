@@ -26,18 +26,19 @@ export function getBlankIndex(part) {
 
 export function splitCurlyTokens(sentence) {
   if (!sentence) return [];
-  // Split on {{...}}, {...}, or [dropdown...]
-  return sentence.split(/(\{\{[^}]+\}\}|\{[^}]+\}|\[dropdown\d+\])/ig);
+  // Split on {{...}}, {...}, [dropdownN], or plain [word] (new format).
+  // Order matters: [dropdownN] must come before the generic [word] match.
+  return sentence.split(/(\{\{[^}]+\}\}|\{[^}]+\}|\[dropdown\d+\]|\[[^\]]+\])/ig);
 }
 
 export function getCurlyInner(part) {
   if (!part) return null;
-  const m = part.match(/\{\{([^}]+)\}\}|\{([^}]+)\}|\[dropdown(\d+)\]/i);
+  const m = part.match(/\{\{([^}]+)\}\}|\{([^}]+)\}|\[dropdown(\d+)\]|\[([^\]]+)\]/i);
   if (m) {
     if (m[3] !== undefined) {
       return `dropdown${m[3]}`;
     }
-    return m[1] || m[2];
+    return m[1] || m[2] || m[4];
   }
   return null;
 }
@@ -51,6 +52,8 @@ export function getCurlyIndex(part) {
     }
     return parseInt(m[1] || m[2], 10);
   }
+  // Plain [word] tokens carry no explicit index; the caller resolves them
+  // by matching the inner text against the dropdowns array.
   return null;
 }
 

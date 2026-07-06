@@ -285,6 +285,138 @@ export function isAnswerCorrect(question, userAnswer) {
 }
 
 /**
+ * Extract answer words from a sentence in the new bracketed format
+ * (e.g. "I use [hooks] to manage state" -> ["hooks"]).
+ * Only matches plain [word] tokens, not the legacy [blankN] / [dropdownN]
+ * placeholders, so the editor can convert those explicitly via
+ * `legacyDragSentenceToBracketed` / `legacyDropDownSentenceToBracketed`.
+ */
+
+/**
+ * Default question prompt / title for each question type. Pre-filled into
+ * the prompt field when creating a new question and when switching to a
+ * type while the prompt is empty or still holds a known default. Always
+ * editable by the user.
+ */
+export const QUESTION_TYPE_PROMPTS = {
+  MULTIPLE_CHOICE: 'Choose the correct answer.',
+  SORTING: 'Arrange these items in the correct order.',
+  DRAG_DROP: 'Fill in the missing words.',
+  DROP_DOWN: 'Select the correct word for each blank.',
+  CATEGORIZE: 'Place each item in the correct category.'
+};
+
+export function extractBracketedAnswers(sentence) {
+  if (!sentence) return [];
+  const matches = sentence.match(/\[([^\]]+)\]/g) || [];
+  return matches
+    .map(m => m.slice(1, -1).trim())
+    .filter(w => w && !/^blank\d+$/i.test(w) && !/^dropdown\d+$/i.test(w));
+}
+
+/**
+ * Convert a legacy drag-and-drop sentence that uses [blankN] placeholders
+ * into the new [word] format, using the stored answers_in_order array.
+ * Returns the original sentence unchanged if no placeholders are present.
+ */
+export function legacyDragSentenceToBracketed(sentence, answers = []) {
+  if (!sentence) return '';
+  let i = 0;
+  return sentence.replace(/\[blank\d+\]/gi, () => {
+    const word = answers[i++] || '';
+    return `[${word}]`;
+  });
+}
+
+/**
+ * Convert a legacy drop-down sentence that uses {{N}} / [dropdownN] placeholders
+ * into the new [word] format, using the stored dropdowns array.
+ */
+export function legacyDropDownSentenceToBracketed(sentence, dropdowns = []) {
+  if (!sentence) return '';
+  return sentence
+    .replace(/\{\{(\d+)\}\}/g, (_, n) => {
+      const idx = parseInt(n, 10);
+      const word = dropdowns[idx]?.correct_answer || dropdowns[idx]?.correct || '';
+      return `[${word}]`;
+    })
+    .replace(/\[dropdown(\d+)\]/gi, (_, n) => {
+      const idx = parseInt(n, 10) - 1;
+      const word = dropdowns[idx]?.correct_answer || dropdowns[idx]?.correct || '';
+      return `[${word}]`;
+    });
+}
+
+/**
+ * Compute the union of distractors across all dropdowns (preserving order
+ * of first appearance). Used to seed a shared distractor list when editing
+ * legacy per-dropdown data in the new editor.
+ */
+export function unionDropDownDistractors(dropdowns = []) {
+  const seen = new Set();
+  const out = [];
+  for (const d of dropdowns) {
+    for (const dist of (d.distractors || [])) {
+      const trimmed = (dist || '').trim();
+      if (!trimmed) continue;
+      if (seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      out.push(trimmed);
+    }
+  }
+  return out;
+}
+
+/**
+ * Convert a 2D categorize grid (row 0 = categories, row 1+ = items per cell,
+ * newline-separated) into the PocketBase storage shape { categories, items }.
+ * Empty cells / blank lines are ignored.
+ */
+export function categorizeGridToOptions(grid) {
+  if (!Array.isArray(grid) || grid.length === 0) {
+    return { categories: [], items: [] };
+  }
+  const categories = (grid[0] || []).map(c => (c || '').trim()).filter(Boolean);
+  const items = [];
+  for (let r = 1; r < grid.length; r++) {
+    const row = grid[r] || [];
+    for (let c = 0; c < categories.length; c++) {
+      const cell = row[c] || '';
+      const lines = cell.split('\n').map(s => s.trim()).filter(Boolean);
+      for (const name of lines) {
+        items.push({ name, category: categories[c] });
+      }
+    }
+  }
+  return { categories, items };
+}
+
+/**
+ * Convert a PocketBase CATEGORIZE options shape back into a 2D editor grid.
+ * Always returns at least row 0 with the given categories, plus a single
+ * empty data row so the user has somewhere to add items.
+ */
+export function categorizeOptionsToGrid(options) {
+  const categories = Array.isArray(options?.categories) ? options.categories : [];
+  const items = Array.isArray(options?.items) ? options.items : [];
+
+  const grid = [categories.slice()];
+  if (categories.length === 0) {
+    grid.push([]);
+    return grid;
+  }
+  const dataRow = categories.map(() => '');
+  for (const item of items) {
+    const cIdx = categories.indexOf(item.category);
+    if (cIdx === -1) continue;
+    const existing = dataRow[cIdx];
+    dataRow[cIdx] = existing ? `${existing}\n${item.name}` : item.name;
+  }
+  grid.push(dataRow);
+  return grid;
+}
+
+/**
  * Strips fields that don't belong in the new schema (e.g. legacy
  * `correct_option_index` for non-MC types) when writing to PocketBase.
  * Returns a new object; does not mutate the input.

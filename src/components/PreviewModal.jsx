@@ -2,7 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../pb';
 import { ConfirmModal } from './ConfirmModal';
 import { QuestionPreviewCard } from './QuestionPreviewCard';
-import { normalizeQuestion } from '../utils/questionSchema';
+import {
+  normalizeQuestion,
+  extractBracketedAnswers,
+  legacyDragSentenceToBracketed,
+  legacyDropDownSentenceToBracketed,
+  unionDropDownDistractors,
+  categorizeOptionsToGrid,
+  categorizeGridToOptions,
+  QUESTION_TYPE_PROMPTS
+} from '../utils/questionSchema';
 
 const OPTION_CLASSES = [
   'option-red',
@@ -13,20 +22,14 @@ const OPTION_CLASSES = [
 
 const defaultFormState = {
   questionType: 'MULTIPLE_CHOICE',
-  questionText: '',
+  questionText: QUESTION_TYPE_PROMPTS.MULTIPLE_CHOICE,
   mcCorrectAnswer: '',
   mcDistractors: ['', '', ''],
   sortingItems: ['', '', '', ''],
   dragSentence: '',
-  dragAnswers: ['', '', ''],
-  dragDistractors: ['', ''],
+  dragDistractors: [''],
   dropdownSentence: '',
-  dropdownConfig: [
-    { correct_answer: '', distractors: ['', ''] },
-    { correct_answer: '', distractors: ['', ''] }
-  ],
-  categorizeCategories: '',
-  categorizeItemsText: ''
+  categorizeGrid: [['', ''], ['', '']]
 };
 
 export function PreviewModal({
@@ -122,15 +125,9 @@ export function PreviewModal({
       mcDistractors: ['', '', ''],
       sortingItems: ['', '', '', ''],
       dragSentence: '',
-      dragAnswers: ['', '', ''],
-      dragDistractors: ['', ''],
+      dragDistractors: [''],
       dropdownSentence: '',
-      dropdownConfig: [
-        { correct_answer: '', distractors: ['', ''] },
-        { correct_answer: '', distractors: ['', ''] }
-      ],
-      categorizeCategories: '',
-      categorizeItemsText: ''
+      categorizeGrid: [['', ''], ['', '']]
     };
 
     if (qType === 'MULTIPLE_CHOICE') {
@@ -143,28 +140,19 @@ export function PreviewModal({
       while (seq.length < 4) seq.push('');
       newForm.sortingItems = seq;
     } else if (qType === 'DRAG_DROP') {
-      newForm.dragSentence = n.options?.sentence || '';
-      const ans = [...(n.options?.answers_in_order || [])];
-      while (ans.length < 3) ans.push('');
-      newForm.dragAnswers = ans;
-      const dists = [...(n.options?.distractors || [])];
-      while (dists.length < 2) dists.push('');
-      newForm.dragDistractors = dists;
+      const rawSentence = n.options?.sentence || '';
+      const answers = n.options?.answers_in_order || [];
+      newForm.dragSentence = legacyDragSentenceToBracketed(rawSentence, answers);
+      const dists = (n.options?.distractors || []).filter(d => (d || '').trim());
+      newForm.dragDistractors = dists.length ? dists : [''];
     } else if (qType === 'DROP_DOWN') {
-      newForm.dropdownSentence = n.options?.sentence || '';
+      const rawSentence = n.options?.sentence || '';
       const dds = Array.isArray(n.options?.dropdowns) ? n.options.dropdowns : [];
-      const padded = dds.map(d => ({
-        correct_answer: d.correct_answer || '',
-        distractors: [...(d.distractors || [])]
-      }));
-      while (padded.length < 2) padded.push({ correct_answer: '', distractors: ['', ''] });
-      padded.forEach(d => { while (d.distractors.length < 2) d.distractors.push(''); });
-      newForm.dropdownConfig = padded;
+      newForm.dropdownSentence = legacyDropDownSentenceToBracketed(rawSentence, dds);
+      const union = unionDropDownDistractors(dds);
+      newForm.dragDistractors = union.length ? union : [''];
     } else if (qType === 'CATEGORIZE') {
-      const cats = Array.isArray(n.options?.categories) ? n.options.categories.join(', ') : '';
-      newForm.categorizeCategories = cats;
-      const items = Array.isArray(n.options?.items) ? n.options.items : [];
-      newForm.categorizeItemsText = items.map(item => `${item.name}: ${item.category}`).join('\n');
+      newForm.categorizeGrid = categorizeOptionsToGrid(n.options);
     }
 
     setForm(newForm);
@@ -196,37 +184,11 @@ export function PreviewModal({
     });
   };
 
-  const updateDragAnswer = (idx, value) => {
-    setForm(prev => {
-      const next = [...prev.dragAnswers];
-      next[idx] = value;
-      return { ...prev, dragAnswers: next };
-    });
-  };
-
   const updateDragDistractor = (idx, value) => {
     setForm(prev => {
       const next = [...prev.dragDistractors];
       next[idx] = value;
       return { ...prev, dragDistractors: next };
-    });
-  };
-
-  const updateDropdownCorrect = (idx, value) => {
-    setForm(prev => {
-      const next = [...prev.dropdownConfig];
-      next[idx] = { ...next[idx], correct_answer: value };
-      return { ...prev, dropdownConfig: next };
-    });
-  };
-
-  const updateDropdownDistractor = (idx, distIdx, value) => {
-    setForm(prev => {
-      const next = [...prev.dropdownConfig];
-      const dists = [...(next[idx].distractors || [])];
-      dists[distIdx] = value;
-      next[idx] = { ...next[idx], distractors: dists };
-      return { ...prev, dropdownConfig: next };
     });
   };
 
@@ -250,53 +212,32 @@ export function PreviewModal({
       if (form.sortingItems.some(s => !s.trim())) { setEditError('All 4 sorting items must be filled out.'); return; }
       optionsPayload = { correct_sequence: form.sortingItems.map(s => s.trim()) };
     } else if (form.questionType === 'DRAG_DROP') {
-      if (!form.dragSentence.trim()) { setEditError('Sentence with blanks is required.'); return; }
-      const numBlanks = (form.dragSentence.match(/\[[^\]]+\]/g) || []).length;
-      if (numBlanks === 0) { setEditError('The sentence must contain at least one blank placeholder (e.g. [blank0]).'); return; }
-      const activeAnswers = form.dragAnswers.slice(0, numBlanks);
-      if (activeAnswers.some(a => !a.trim())) { setEditError(`Please define all ${numBlanks} correct blank answers.`); return; }
-      if (form.dragDistractors.some(d => !d.trim())) { setEditError('All distractor words must be filled out.'); return; }
+      if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
+      const answers = extractBracketedAnswers(form.dragSentence);
+      if (answers.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [hooks]).'); return; }
+      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean);
       optionsPayload = {
         sentence: form.dragSentence.trim(),
-        answers_in_order: activeAnswers.map(a => a.trim()),
-        distractors: form.dragDistractors.map(d => d.trim())
+        answers_in_order: answers,
+        distractors: filledDistractors
       };
     } else if (form.questionType === 'DROP_DOWN') {
-      if (!form.dropdownSentence.trim()) { setEditError('Sentence with dropdowns is required.'); return; }
-      const numDropdowns = (form.dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
-      if (numDropdowns === 0) { setEditError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).'); return; }
-      const activeDropdowns = form.dropdownConfig.slice(0, numDropdowns);
-      for (let i = 0; i < activeDropdowns.length; i++) {
-        if (!activeDropdowns[i].correct_answer.trim()) { setEditError(`Please define the correct answer for dropdown {{${i}}}.`); return; }
-        const filledDistractors = (activeDropdowns[i].distractors || []).filter(d => d.trim());
-        if (filledDistractors.length < 1) { setEditError(`Please add at least 1 distractor for dropdown {{${i}}}.`); return; }
-      }
+      if (!form.dropdownSentence.trim()) { setEditError('Sentence is required.'); return; }
+      const dropdowns = extractBracketedAnswers(form.dropdownSentence);
+      if (dropdowns.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [Go]).'); return; }
+      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean);
       optionsPayload = {
         sentence: form.dropdownSentence.trim(),
-        dropdowns: activeDropdowns.map(d => ({
-          correct_answer: d.correct_answer.trim(),
-          distractors: (d.distractors || []).filter(x => x.trim())
+        dropdowns: dropdowns.map(correct => ({
+          correct_answer: correct,
+          distractors: filledDistractors
         }))
       };
     } else if (form.questionType === 'CATEGORIZE') {
-      if (!form.categorizeCategories.trim()) { setEditError('Categories list is required.'); return; }
-      if (!form.categorizeItemsText.trim()) { setEditError('Items list is required.'); return; }
-      const categoriesList = form.categorizeCategories.split(',').map(c => c.trim()).filter(Boolean);
-      if (categoriesList.length < 2) { setEditError('Please enter at least 2 categories, separated by commas.'); return; }
-      try {
-        const itemsList = form.categorizeItemsText.split('\n').map(line => {
-          const parts = line.split(':');
-          if (parts.length >= 2) {
-            const cat = parts[1].trim();
-            if (!categoriesList.includes(cat)) throw new Error(`Category "${cat}" does not match defined categories.`);
-            return { name: parts[0].trim(), category: cat };
-          }
-          if (line.trim()) throw new Error(`Invalid line: "${line}". Must be "ItemName: CategoryName".`);
-          return null;
-        }).filter(Boolean);
-        if (itemsList.length === 0) { setEditError('Please enter at least one item.'); return; }
-        optionsPayload = { categories: categoriesList, items: itemsList };
-      } catch (err) { setEditError(err.message); return; }
+      const { categories, items } = categorizeGridToOptions(form.categorizeGrid);
+      if (categories.length < 2) { setEditError('Please enter at least 2 categories in the first row.'); return; }
+      if (items.length === 0) { setEditError('Please add at least one item in any cell.'); return; }
+      optionsPayload = { categories, items };
     }
 
     setEditLoading(true);

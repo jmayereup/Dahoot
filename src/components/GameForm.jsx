@@ -117,9 +117,9 @@ export function GameForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 items-start">
             <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center min-h-[28px]">
                 <label className="form-label">CEFR Language Level *</label>
                 <button
                   type="button"
@@ -164,8 +164,10 @@ export function GameForm({
               )}
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Subject *</label>
+            <div className="form-group self-stretch">
+              <div className="flex justify-between items-center min-h-[28px]">
+                <label className="form-label">Subject *</label>
+              </div>
               <select
                 className="form-input"
                 value={gameSubject}

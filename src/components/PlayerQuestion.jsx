@@ -237,11 +237,19 @@ export function PlayerQuestion({
         const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
         if (ddIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { correct_answer: inner, distractors: [] };
-        const correctVal = config.correct_answer || config.correct || inner;
+        const choices = getDropDownChoices(activeQuestion, idxToUse);
         return (
-          <select key={idx} className="player-sentence-select" disabled value={correctVal}>
-            <option value={correctVal}>{correctVal}</option>
+          <select
+            key={idx}
+            className="player-sentence-select"
+            value={dropdownSelections[idxToUse] || ''}
+            onChange={(e) => handleDropdownChange(idxToUse, e.target.value)}
+            disabled={isTimeUp}
+          >
+            <option value="">-- Choose --</option>
+            {choices.map((choice, cIdx) => (
+              <option key={cIdx} value={choice}>{choice}</option>
+            ))}
           </select>
         );
       }

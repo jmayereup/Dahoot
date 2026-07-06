@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
-import { normalizeQuestion } from '../utils/questionSchema';
+import {
+  normalizeQuestion,
+  extractBracketedAnswers,
+  legacyDragSentenceToBracketed,
+  legacyDropDownSentenceToBracketed,
+  unionDropDownDistractors,
+  categorizeOptionsToGrid,
+  categorizeGridToOptions,
+  QUESTION_TYPE_PROMPTS
+} from '../utils/questionSchema';
 import { useUserInfo } from './useUserInfo';
 
 export function useTeacherDashboard(view, currentUser) {
@@ -44,19 +53,13 @@ export function useTeacherDashboard(view, currentUser) {
 
   // DRAG_DROP
   const [dragSentence, setDragSentence] = useState('');
-  const [dragAnswers, setDragAnswers] = useState(['', '', '']);
-  const [dragDistractors, setDragDistractors] = useState(['', '']);
+  const [dragDistractors, setDragDistractors] = useState(['']);
 
-  // DROP_DOWN
+  // DROP_DOWN (shared distractor list reused from dragDistractors at save time)
   const [dropdownSentence, setDropdownSentence] = useState('');
-  const [dropdownConfig, setDropdownConfig] = useState([
-    { correct_answer: '', distractors: ['', ''] },
-    { correct_answer: '', distractors: ['', ''] }
-  ]);
 
-  // CATEGORIZE
-  const [categorizeCategories, setCategorizeCategories] = useState('');
-  const [categorizeItemsText, setCategorizeItemsText] = useState('');
+  // CATEGORIZE (row 0 = categories, row 1+ = items per cell, newline-separated)
+  const [categorizeGrid, setCategorizeGrid] = useState([['', ''], ['', '']]);
 
   // Fetch games from PocketBase (including question count per game)
   const fetchGames = async () => {
@@ -138,21 +141,15 @@ export function useTeacherDashboard(view, currentUser) {
     setImportText('');
 
     // Reset individual question fields
-    setQuestionText('');
+    setQuestionText(QUESTION_TYPE_PROMPTS.MULTIPLE_CHOICE);
     setQuestionType('MULTIPLE_CHOICE');
     setMcCorrectAnswer('');
     setMcDistractors(['', '', '']);
     setSortingItems(['', '', '', '']);
     setDragSentence('');
-    setDragAnswers(['', '', '']);
-    setDragDistractors(['', '']);
+    setDragDistractors(['']);
     setDropdownSentence('');
-    setDropdownConfig([
-      { correct_answer: '', distractors: ['', ''] },
-      { correct_answer: '', distractors: ['', ''] }
-    ]);
-    setCategorizeCategories('');
-    setCategorizeItemsText('');
+    setCategorizeGrid([['', ''], ['', '']]);
   };
 
   const startEditingGame = async (game, e) => {
@@ -303,20 +300,14 @@ export function useTeacherDashboard(view, currentUser) {
   const startCreating = () => {
     setSelectedQuestion(null);
     setQuestionType('MULTIPLE_CHOICE');
-    setQuestionText('');
+    setQuestionText(QUESTION_TYPE_PROMPTS.MULTIPLE_CHOICE);
     setMcCorrectAnswer('');
     setMcDistractors(['', '', '']);
     setSortingItems(['', '', '', '']);
     setDragSentence('');
-    setDragAnswers(['', '', '']);
-    setDragDistractors(['', '']);
+    setDragDistractors(['']);
     setDropdownSentence('');
-    setDropdownConfig([
-      { correct_answer: '', distractors: ['', ''] },
-      { correct_answer: '', distractors: ['', ''] }
-    ]);
-    setCategorizeCategories('');
-    setCategorizeItemsText('');
+    setCategorizeGrid([['', ''], ['', '']]);
     setIsEditing(true);
     setError('');
   };
@@ -339,29 +330,19 @@ export function useTeacherDashboard(view, currentUser) {
       while (seq.length < 4) seq.push('');
       setSortingItems(seq);
     } else if (type === 'DRAG_DROP') {
-      setDragSentence(n.options?.sentence || '');
-      const ans = [...(n.options?.answers_in_order || [])];
-      while (ans.length < 3) ans.push('');
-      setDragAnswers(ans);
-      const dists = [...(n.options?.distractors || [])];
-      while (dists.length < 2) dists.push('');
-      setDragDistractors(dists);
+      const rawSentence = n.options?.sentence || '';
+      const answers = n.options?.answers_in_order || [];
+      setDragSentence(legacyDragSentenceToBracketed(rawSentence, answers));
+      const dists = (n.options?.distractors || []).filter(d => (d || '').trim());
+      setDragDistractors(dists.length ? dists : ['']);
     } else if (type === 'DROP_DOWN') {
-      setDropdownSentence(n.options?.sentence || '');
+      const rawSentence = n.options?.sentence || '';
       const dds = Array.isArray(n.options?.dropdowns) ? n.options.dropdowns : [];
-      const padded = dds.map(d => ({
-        correct_answer: d.correct_answer || '',
-        distractors: [...(d.distractors || [])]
-      }));
-      while (padded.length < 2) padded.push({ correct_answer: '', distractors: ['', ''] });
-      padded.forEach(d => { while (d.distractors.length < 2) d.distractors.push(''); });
-      setDropdownConfig(padded);
+      setDropdownSentence(legacyDropDownSentenceToBracketed(rawSentence, dds));
+      const union = unionDropDownDistractors(dds);
+      setDragDistractors(union.length ? union : ['']);
     } else if (type === 'CATEGORIZE') {
-      const cats = Array.isArray(n.options?.categories) ? n.options.categories.join(', ') : '';
-      setCategorizeCategories(cats);
-      const items = Array.isArray(n.options?.items) ? n.options.items : [];
-      const itemsLines = items.map(item => `${item.name}: ${item.category}`).join('\n');
-      setCategorizeItemsText(itemsLines);
+      setCategorizeGrid(categorizeOptionsToGrid(n.options));
     }
 
     setIsEditing(true);
@@ -385,30 +366,10 @@ export function useTeacherDashboard(view, currentUser) {
     setSortingItems(updated);
   };
 
-  const updateDragAnswer = (index, value) => {
-    const updated = [...dragAnswers];
-    updated[index] = value;
-    setDragAnswers(updated);
-  };
-
   const updateDragDistractor = (index, value) => {
     const updated = [...dragDistractors];
     updated[index] = value;
     setDragDistractors(updated);
-  };
-
-  const updateDropdownCorrect = (idx, value) => {
-    const updated = [...dropdownConfig];
-    updated[idx] = { ...updated[idx], correct_answer: value };
-    setDropdownConfig(updated);
-  };
-
-  const updateDropdownDistractor = (idx, distIdx, value) => {
-    const updated = [...dropdownConfig];
-    const dists = [...(updated[idx].distractors || [])];
-    dists[distIdx] = value;
-    updated[idx] = { ...updated[idx], distractors: dists };
-    setDropdownConfig(updated);
   };
 
   const saveQuestion = async (e) => {
@@ -440,8 +401,8 @@ export function useTeacherDashboard(view, currentUser) {
         correct_answer: mcCorrectAnswer.trim(),
         distractors: mcDistractors.map(d => d.trim())
       };
-    } 
-    
+    }
+
     else if (questionType === 'SORTING') {
       if (sortingItems.some(opt => !opt.trim())) {
         setError('All 4 sorting items must be filled out.');
@@ -450,116 +411,57 @@ export function useTeacherDashboard(view, currentUser) {
       optionsPayload = {
         correct_sequence: sortingItems.map(o => o.trim())
       };
-    } 
-    
+    }
+
     else if (questionType === 'DRAG_DROP') {
       if (!dragSentence.trim()) {
-        setError('Sentence with blanks is required.');
+        setError('Sentence is required.');
         return;
       }
-      const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
-      if (numBlanks === 0) {
-        setError('The sentence must contain at least one blank placeholder (e.g. [blank0] or [word]).');
+      const answers = extractBracketedAnswers(dragSentence);
+      if (answers.length === 0) {
+        setError('The sentence must contain at least one bracketed answer (e.g. [hooks]).');
         return;
       }
-      const activeAnswers = dragAnswers.slice(0, numBlanks);
-      if (activeAnswers.some(answer => !answer.trim())) {
-        setError(`Please define all ${numBlanks} correct blank answers.`);
-        return;
-      }
-      if (dragDistractors.some(d => !d.trim())) {
-        setError('All distractor words must be filled out.');
-        return;
-      }
+      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
       optionsPayload = {
         sentence: dragSentence.trim(),
-        answers_in_order: activeAnswers.map(a => a.trim()),
-        distractors: dragDistractors.map(d => d.trim())
+        answers_in_order: answers,
+        distractors: filledDistractors
       };
-    } 
-    
+    }
+
     else if (questionType === 'DROP_DOWN') {
       if (!dropdownSentence.trim()) {
-        setError('Sentence with dropdowns is required.');
+        setError('Sentence is required.');
         return;
       }
-      const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
-      if (numDropdowns === 0) {
-        setError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).');
+      const dropdowns = extractBracketedAnswers(dropdownSentence);
+      if (dropdowns.length === 0) {
+        setError('The sentence must contain at least one bracketed answer (e.g. [Go]).');
         return;
       }
-      const activeDropdowns = dropdownConfig.slice(0, numDropdowns);
-      for (let i = 0; i < activeDropdowns.length; i++) {
-        if (!activeDropdowns[i].correct_answer.trim()) {
-          setError(`Please define the correct answer for dropdown {{${i}}}.`);
-          return;
-        }
-        const filledDistractors = (activeDropdowns[i].distractors || []).filter(d => d.trim());
-        if (filledDistractors.length < 1) {
-          setError(`Please add at least 1 distractor for dropdown {{${i}}}.`);
-          return;
-        }
-      }
+      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
       optionsPayload = {
         sentence: dropdownSentence.trim(),
-        dropdowns: activeDropdowns.map(d => ({
-          correct_answer: d.correct_answer.trim(),
-          distractors: (d.distractors || []).filter(x => x.trim())
+        dropdowns: dropdowns.map(correct => ({
+          correct_answer: correct,
+          distractors: filledDistractors
         }))
       };
-    } 
-    
+    }
+
     else if (questionType === 'CATEGORIZE') {
-      if (!categorizeCategories.trim()) {
-        setError('Categories list is required.');
+      const { categories, items } = categorizeGridToOptions(categorizeGrid);
+      if (categories.length < 2) {
+        setError('Please enter at least 2 categories in the first row.');
         return;
       }
-      if (!categorizeItemsText.trim()) {
-        setError('Items list is required.');
+      if (items.length === 0) {
+        setError('Please add at least one item in any cell.');
         return;
       }
-
-      const categoriesList = categorizeCategories.split(',').map(c => c.trim()).filter(Boolean);
-      if (categoriesList.length < 2) {
-        setError('Please enter at least 2 categories, separated by commas.');
-        return;
-      }
-
-      try {
-        const itemsList = categorizeItemsText
-          .split('\n')
-          .map(line => {
-            const parts = line.split(':');
-            if (parts.length >= 2) {
-              const cat = parts[1].trim();
-              if (!categoriesList.includes(cat)) {
-                throw new Error(`Category "${cat}" in item "${parts[0].trim()}" does not match defined categories.`);
-              }
-              return {
-                name: parts[0].trim(),
-                category: cat
-              };
-            }
-            if (line.trim()) {
-              throw new Error(`Invalid line format: "${line}". Must be "ItemName: CategoryName".`);
-            }
-            return null;
-          })
-          .filter(Boolean);
-
-        if (itemsList.length === 0) {
-          setError('Please enter at least one item mapped to a category.');
-          return;
-        }
-
-        optionsPayload = {
-          categories: categoriesList,
-          items: itemsList
-        };
-      } catch (err) {
-        setError(err.message);
-        return;
-      }
+      optionsPayload = { categories, items };
     }
 
     setLoading(true);
@@ -731,9 +633,6 @@ export function useTeacherDashboard(view, currentUser) {
     // Drag & Drop
     dragSentence,
     setDragSentence,
-    dragAnswers,
-    setDragAnswers,
-    updateDragAnswer,
     dragDistractors,
     setDragDistractors,
     updateDragDistractor,
@@ -741,16 +640,10 @@ export function useTeacherDashboard(view, currentUser) {
     // Drop Down
     dropdownSentence,
     setDropdownSentence,
-    dropdownConfig,
-    setDropdownConfig,
-    updateDropdownCorrect,
-    updateDropdownDistractor,
 
     // Categorize
-    categorizeCategories,
-    setCategorizeCategories,
-    categorizeItemsText,
-    setCategorizeItemsText,
+    categorizeGrid,
+    setCategorizeGrid,
 
     startCreating,
     startEditing,

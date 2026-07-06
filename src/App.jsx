@@ -314,19 +314,12 @@ function App() {
           updateSortingItem={teacherDashboard.updateSortingItem}
           dragSentence={teacherDashboard.dragSentence}
           setDragSentence={teacherDashboard.setDragSentence}
-          dragAnswers={teacherDashboard.dragAnswers}
-          updateDragAnswer={teacherDashboard.updateDragAnswer}
           dragDistractors={teacherDashboard.dragDistractors}
           updateDragDistractor={teacherDashboard.updateDragDistractor}
           dropdownSentence={teacherDashboard.dropdownSentence}
           setDropdownSentence={teacherDashboard.setDropdownSentence}
-          dropdownConfig={teacherDashboard.dropdownConfig}
-          updateDropdownCorrect={teacherDashboard.updateDropdownCorrect}
-          updateDropdownDistractor={teacherDashboard.updateDropdownDistractor}
-          categorizeCategories={teacherDashboard.categorizeCategories}
-          setCategorizeCategories={teacherDashboard.setCategorizeCategories}
-          categorizeItemsText={teacherDashboard.categorizeItemsText}
-          setCategorizeItemsText={teacherDashboard.setCategorizeItemsText}
+          categorizeGrid={teacherDashboard.categorizeGrid}
+          setCategorizeGrid={teacherDashboard.setCategorizeGrid}
 
           startCreating={teacherDashboard.startCreating}
           startEditing={teacherDashboard.startEditing}
