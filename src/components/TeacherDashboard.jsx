@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
 import { useConfirm } from '../hooks/useConfirm.jsx';
-import { compileQuestionsToMarkdown } from '../utils/markdownParser';
+import { compileQuestionsToMarkdown, parseMarkdownQuestions } from '../utils/markdownParser';
 import {
   splitCurlyTokens,
   getCurlyIndex,
@@ -52,13 +52,7 @@ export function TeacherDashboard({
   questionText,
   setQuestionText,
 
-  // Game Creation Questions State & Handlers
-  pendingQuestions = [],
-  creationQuestionsTab = 'individual',
-  setCreationQuestionsTab,
-  addPendingQuestion,
-  removePendingQuestion,
-  updatePendingQuestion,
+
 
   // Import State & Handlers
   isImporting,
@@ -115,43 +109,7 @@ export function TeacherDashboard({
 }) {
   const { confirm, ConfirmDialog } = useConfirm();
 
-  const [editingPendingIndex, setEditingPendingIndex] = useState(null);
 
-  const startEditingPendingQuestion = (idx) => {
-    setError('');
-    const q = pendingQuestions[idx];
-    setEditingPendingIndex(idx);
-    setQuestionType(q.type);
-    setQuestionText(q.text);
-    if (q.type === 'MULTIPLE_CHOICE' || q.type === 'SORTING') {
-      setOptions([...q.options]);
-      setCorrectOptionIndex(q.correct_option_index);
-    } else if (q.type === 'DRAG_DROP') {
-      setDragSentence(q.options.sentence);
-      setDragChoices([...q.options.choices]);
-    } else if (q.type === 'DROP_DOWN') {
-      setDropdownSentence(q.options.sentence);
-      setDropdownOptions(q.options.dropdowns.map(d => d.choices.join(', ')));
-    } else if (q.type === 'CATEGORIZE') {
-      setCategorizeCategories(q.options.categories.join(', '));
-      setCategorizeItemsText(q.options.items.map(item => `${item.name}: ${item.category}`).join('\n'));
-    }
-  };
-
-  const cancelEditingPendingQuestion = () => {
-    setError('');
-    setEditingPendingIndex(null);
-    setQuestionText('');
-    setQuestionType('MULTIPLE_CHOICE');
-    setOptions(['', '', '', '']);
-    setCorrectOptionIndex(0);
-    setDragSentence('');
-    setDragChoices(['', '', '', '']);
-    setDropdownSentence('');
-    setDropdownOptions(['', '', '', '']);
-    setCategorizeCategories('');
-    setCategorizeItemsText('');
-  };
 
   const handleDeleteGame = async (id, e) => {
     if (e) e.stopPropagation();
@@ -203,6 +161,197 @@ export function TeacherDashboard({
   const [previewQuestions, setPreviewQuestions] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
+
+  // Preview inline question editing state
+  const [previewEditingQuestion, setPreviewEditingQuestion] = useState(null); // null | question object (for edit) | 'new' (for add)
+  const [previewEditError, setPreviewEditError] = useState('');
+  const [previewEditLoading, setPreviewEditLoading] = useState(false);
+
+  const handleStartCreatingGame = () => {
+    startCreatingGame();
+    setPreviewGame({ id: 'temp', title: 'New Dahoot' });
+    setPreviewQuestions([]);
+  };
+
+  const handleStartEditingGame = async (game, e) => {
+    if (e) e.stopPropagation();
+    await startEditingGame(game, e);
+    setPreviewGame(game);
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      const qList = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
+        sort: 'created'
+      });
+      setPreviewQuestions(qList);
+    } catch (err) {
+      console.error(err);
+      setPreviewError('Failed to load questions: ' + err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleSubmitGame = async (e) => {
+    e.preventDefault();
+    const createdGame = await saveGame(e, previewQuestions);
+    if (createdGame) {
+      startPreviewGame(createdGame);
+    } else {
+      setPreviewGame(null);
+      setPreviewQuestions([]);
+    }
+  };
+
+  const handleCancelImporting = () => {
+    const gameToPreview = selectedGame;
+    cancelImporting();
+    setSelectedGame(null);
+    if (gameToPreview && gameToPreview.id !== 'temp') {
+      startPreviewGame(gameToPreview);
+    }
+  };
+
+  const handleSaveImportedQuestions = async (e) => {
+    e.preventDefault();
+    const gameToPreview = selectedGame;
+    if (gameToPreview && gameToPreview.id === 'temp') {
+      const parsed = parseMarkdownQuestions(importText);
+      if (parsed.length === 0) {
+        setError('Could not parse any valid questions. Check formatting.');
+        return;
+      }
+      const newQs = parsed.map((q, idx) => ({
+        id: 'local_' + (Date.now() + idx),
+        text: q.text,
+        options: q.options,
+        correct_option_index: q.correct_option_index,
+        type: q.type
+      }));
+      setPreviewQuestions(prev => [...prev, ...newQs]);
+      setIsImporting(false);
+      setImportText('');
+      setSelectedGame(null);
+    } else {
+      await saveImportedQuestions(e);
+      setSelectedGame(null);
+      if (gameToPreview) {
+        startPreviewGame(gameToPreview);
+      }
+    }
+  };
+
+  const renderInlineQuestionsSection = () => {
+    return (
+      <div style={{
+        marginTop: '32px',
+        borderTop: '1px dashed rgba(93, 107, 130, 0.2)',
+        paddingTop: '24px'
+      }}>
+        <div className="flex justify-between items-center mb-4" style={{ textAlign: 'left' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-secondary)', margin: 0 }}>
+              Questions ({previewQuestions.length})
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+              Add, edit, or remove questions. Changes are saved immediately.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openPreviewAddQuestion}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              ➕ Add Question
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedGame(selectedGameForEdit || previewGame);
+                startImporting();
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              📥 Import or Generate
+            </button>
+          </div>
+        </div>
+
+        {previewLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+            <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+          </div>
+        ) : previewQuestions.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '32px 16px',
+            background: 'rgba(93, 107, 130, 0.02)',
+            border: '1px dashed rgba(93, 107, 130, 0.15)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--text-muted)'
+          }}>
+            No questions yet. Click <strong>➕ Add Question</strong> to get started.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+            {previewQuestions.map((question, qIdx) => (
+              <div 
+                key={question.id} 
+                className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-rose-50 text-rose-600 border border-rose-100 font-bold px-2.5 py-0.5 rounded-full text-xs">
+                          Q{qIdx + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                          {(question.type || 'MULTIPLE_CHOICE').replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openPreviewEditQuestion(question)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
+                          title="Edit question"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deletePreviewQuestion(question.id)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg transition-colors cursor-pointer"
+                          title="Delete question"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Question text */}
+                    <div className="text-sm font-semibold text-slate-800 mb-4 line-clamp-3" title={question.text}>
+                      {question.text}
+                    </div>
+                  </div>
+
+                  {/* Answers/Options highlight */}
+                  <div className="text-xs text-slate-600 space-y-2 mt-auto">
+                    {renderPreviewOptions(question)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Admin Panel states
   const [userRole, setUserRole] = useState('TEACHER');
@@ -1454,8 +1603,218 @@ export function TeacherDashboard({
     return null;
   };
 
+  // Refresh preview questions list
+  const refreshPreviewQuestions = async () => {
+    if (!previewGame) return;
+    setPreviewLoading(true);
+    try {
+      const qList = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId: previewGame.id }),
+        sort: 'created'
+      });
+      setPreviewQuestions(qList);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Open inline question editor within preview
+  const openPreviewEditQuestion = (question) => {
+    setPreviewEditError('');
+    startEditing(question);
+    setPreviewEditingQuestion(question);
+  };
+
+  const openPreviewAddQuestion = () => {
+    setPreviewEditError('');
+    startCreating();
+    setPreviewEditingQuestion('new');
+  };
+
+  const closePreviewEditQuestion = () => {
+    setPreviewEditingQuestion(null);
+    setPreviewEditError('');
+    cancelEditing();
+  };
+
+  // Save question from within the preview edit modal
+  const savePreviewQuestion = async () => {
+    setPreviewEditError('');
+    if (!questionText.trim()) {
+      setPreviewEditError('Question text is required.');
+      return;
+    }
+    let optionsPayload = null;
+    if (questionType === 'MULTIPLE_CHOICE' || questionType === 'SORTING') {
+      if (options.some(opt => !opt.trim())) { setPreviewEditError('All 4 option choices must be filled out.'); return; }
+      optionsPayload = options.map(o => o.trim());
+    } else if (questionType === 'DRAG_DROP') {
+      if (!dragSentence.trim()) { setPreviewEditError('Sentence with blanks is required.'); return; }
+      if (dragChoices.some(c => !c.trim())) { setPreviewEditError('All 4 choices must be filled out.'); return; }
+      const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
+      if (numBlanks === 0) { setPreviewEditError('The sentence must contain at least one blank placeholder.'); return; }
+      optionsPayload = { sentence: dragSentence.trim(), choices: dragChoices.map(c => c.trim()), correct: dragChoices.slice(0, numBlanks).map(c => c.trim()) };
+    } else if (questionType === 'DROP_DOWN') {
+      if (!dropdownSentence.trim()) { setPreviewEditError('Sentence with dropdowns is required.'); return; }
+      const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
+      if (numDropdowns === 0) { setPreviewEditError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).'); return; }
+      const activeLines = dropdownOptions.slice(0, numDropdowns);
+      if (activeLines.some(l => !l.trim())) { setPreviewEditError(`Please define choices for all ${numDropdowns} dropdowns.`); return; }
+      const dropdownsConfig = activeLines.map(line => { const choices = line.split(',').map(c => c.trim()).filter(Boolean); return { choices, correct: choices[0] || '' }; });
+      if (dropdownsConfig.some(d => d.choices.length < 2)) { setPreviewEditError('Each dropdown must have at least 2 comma-separated options.'); return; }
+      optionsPayload = { sentence: dropdownSentence.trim(), dropdowns: dropdownsConfig };
+    } else if (questionType === 'CATEGORIZE') {
+      if (!categorizeCategories.trim()) { setPreviewEditError('Categories list is required.'); return; }
+      if (!categorizeItemsText.trim()) { setPreviewEditError('Items list is required.'); return; }
+      const categoriesList = categorizeCategories.split(',').map(c => c.trim()).filter(Boolean);
+      if (categoriesList.length < 2) { setPreviewEditError('Please enter at least 2 categories, separated by commas.'); return; }
+      try {
+        const itemsList = categorizeItemsText.split('\n').map(line => {
+          const parts = line.split(':');
+          if (parts.length >= 2) {
+            const cat = parts[1].trim();
+            if (!categoriesList.includes(cat)) throw new Error(`Category "${cat}" does not match defined categories.`);
+            return { name: parts[0].trim(), category: cat };
+          }
+          if (line.trim()) throw new Error(`Invalid line: "${line}". Must be "ItemName: CategoryName".`);
+          return null;
+        }).filter(Boolean);
+        if (itemsList.length === 0) { setPreviewEditError('Please enter at least one item.'); return; }
+        optionsPayload = { categories: categoriesList, items: itemsList };
+      } catch (err) { setPreviewEditError(err.message); return; }
+    }
+
+    setPreviewEditLoading(true);
+    const questionData = {
+      game_id: previewGame.id,
+      text: questionText.trim(),
+      options: optionsPayload,
+      correct_option_index: questionType === 'MULTIPLE_CHOICE' ? correctOptionIndex : 0,
+      type: questionType
+    };
+    try {
+      if (previewGame.id === 'temp') {
+        if (previewEditingQuestion && previewEditingQuestion !== 'new') {
+          setPreviewQuestions(prev => prev.map(q => q.id === previewEditingQuestion.id ? { ...q, ...questionData } : q));
+        } else {
+          const newQ = {
+            id: 'local_' + Date.now(),
+            ...questionData
+          };
+          setPreviewQuestions(prev => [...prev, newQ]);
+        }
+        closePreviewEditQuestion();
+      } else {
+        if (previewEditingQuestion && previewEditingQuestion !== 'new') {
+          await pb.collection('dahoot_questions').update(previewEditingQuestion.id, questionData);
+        } else {
+          await pb.collection('dahoot_questions').create(questionData);
+        }
+        closePreviewEditQuestion();
+        await refreshPreviewQuestions();
+      }
+    } catch (err) {
+      console.error('Error saving question:', err);
+      setPreviewEditError('Failed to save question: ' + err.message);
+    } finally {
+      setPreviewEditLoading(false);
+    }
+  };
+
+  // Delete a question from within preview
+  const deletePreviewQuestion = async (questionId) => {
+    const ok = await confirm({
+      title: 'Delete this question?',
+      message: 'This action cannot be undone.',
+      confirmText: 'Delete Question',
+      cancelText: 'Keep Question',
+      variant: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+    try {
+      if (previewGame.id === 'temp') {
+        setPreviewQuestions(prev => prev.filter(q => q.id !== questionId));
+      } else {
+        await pb.collection('dahoot_questions').delete(questionId);
+        await refreshPreviewQuestions();
+      }
+    } catch (err) {
+      console.error('Error deleting question:', err);
+    }
+  };
+
+  const renderPreviewQuestionEditModal = () => {
+    if (!previewEditingQuestion) return null;
+    const isNew = previewEditingQuestion === 'new';
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(9, 10, 15, 0.7)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 1100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px'
+      }}>
+        <div
+          className="panel panel-large animate-join-focus p-4 sm:p-7"
+          style={{
+            width: '100%',
+            maxWidth: '750px',
+            maxHeight: '94vh',
+            overflowY: 'auto',
+            textAlign: 'left',
+            border: '1px solid var(--panel-border-focus)',
+            position: 'relative'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px' }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Question Editor</span>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{isNew ? 'Add New Question' : 'Edit Question'}</h2>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{previewGame?.title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closePreviewEditQuestion}
+              style={{ background: 'rgba(93,107,130,0.08)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '1rem' }}
+            >✕</button>
+          </div>
+
+          {previewEditError && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ff4b60', padding: '12px 16px', borderRadius: '8px', marginBottom: 20 }}>
+              {previewEditError}
+            </div>
+          )}
+
+          <div>
+            {renderQuestionFormFields()}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: '24px', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
+            <button type="button" className="btn btn-secondary" onClick={closePreviewEditQuestion} style={{ width: 'auto', minWidth: '100px' }} disabled={previewEditLoading}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" onClick={savePreviewQuestion} style={{ width: 'auto', minWidth: '150px' }} disabled={previewEditLoading}>
+              {previewEditLoading ? 'Saving...' : (isNew ? '✓ Add Question' : '✓ Save Changes')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderPreviewModal = () => {
-    if (!previewGame) return null;
+    if (!previewGame || isEditingGame) return null;
 
     return (
       <div style={{
@@ -1491,33 +1850,55 @@ export function TeacherDashboard({
             alignItems: 'center', 
             marginBottom: '20px', 
             borderBottom: '1px solid var(--panel-border)',
-            paddingBottom: '15px'
+            paddingBottom: '15px',
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
             <div>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Game Preview Mode ({previewQuestions.length} Questions)
+                Questions ({previewQuestions.length})
               </span>
               <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{previewGame.title}</h2>
             </div>
-            <button 
-              onClick={closePreviewGame}
-              className="bg-white/5 hover:bg-white/10"
-              style={{
-                border: 'none',
-                color: 'var(--text-secondary)',
-                fontSize: '1.2rem',
-                cursor: 'pointer',
-                borderRadius: '50%',
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={openPreviewAddQuestion}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+              >
+                ➕ Add Question
+              </button>
+              {startImporting && (
+                <button
+                  onClick={() => {
+                    setSelectedGame(previewGame);
+                    closePreviewGame();
+                    startImporting();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  📥 Import or Generate
+                </button>
+              )}
+              <button 
+                onClick={closePreviewGame}
+                className="bg-white/5 hover:bg-white/10"
+                style={{
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {previewLoading ? (
@@ -1533,7 +1914,10 @@ export function TeacherDashboard({
           ) : previewQuestions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
-              <button className="btn btn-secondary" onClick={closePreviewGame}>Close</button>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <button className="btn btn-primary" onClick={openPreviewAddQuestion} style={{ width: 'auto' }}>➕ Add Question</button>
+                <button className="btn btn-secondary" onClick={closePreviewGame} style={{ width: 'auto' }}>Close</button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1554,16 +1938,22 @@ export function TeacherDashboard({
                             {(question.type || 'MULTIPLE_CHOICE').replace('_', ' ')}
                           </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            setSelectedGame(previewGame);
-                            startEditing(question);
-                            closePreviewGame();
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
-                        >
-                          ✏️ Edit
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openPreviewEditQuestion(question)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
+                            title="Edit question"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => deletePreviewQuestion(question.id)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg transition-colors cursor-pointer"
+                            title="Delete question"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
 
                       {/* Question text */}
@@ -1582,6 +1972,7 @@ export function TeacherDashboard({
             </div>
           )}
         </div>
+        {renderPreviewQuestionEditModal()}
       </div>
     );
   };
@@ -1921,115 +2312,7 @@ export function TeacherDashboard({
     );
   };
 
-  const renderPendingQuestionsList = () => {
-    if (pendingQuestions.length === 0) {
-      return (
-        <div style={{
-          textAlign: 'center',
-          padding: '24px',
-          background: 'rgba(93, 107, 130, 0.02)',
-          border: '1px dashed rgba(93, 107, 130, 0.15)',
-          borderRadius: 'var(--radius-sm)',
-          color: 'var(--text-muted)',
-          marginTop: '20px'
-        }}>
-          No questions added to this Dahoot yet. Fill out the form above and click "+ Add Question to Dahoot".
-        </div>
-      );
-    }
 
-    return (
-      <div style={{ marginTop: '24px' }}>
-        <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>
-          Added Questions ({pendingQuestions.length})
-        </h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {pendingQuestions.map((q, idx) => (
-            <div 
-              key={idx} 
-              className="pending-question-card animate-fade-in"
-              style={{
-                background: '#ffffff',
-                border: '1px solid rgba(93, 107, 130, 0.12)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    fontWeight: 700,
-                    color: 'var(--accent-light)',
-                    fontSize: '0.9rem'
-                  }}>
-                    #{idx + 1}
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    background: 'rgba(93, 107, 130, 0.08)',
-                    color: 'var(--text-secondary)',
-                    padding: '2px 8px',
-                    borderRadius: '4px'
-                  }}>
-                    {q.type.replace('_', ' ')}
-                  </span>
-                </div>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                  {q.text}
-                </span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {q.type === 'MULTIPLE_CHOICE' && `Options: ${q.options.join(', ')}`}
-                  {q.type === 'SORTING' && `Items: ${q.options.join(' → ')}`}
-                  {q.type === 'DRAG_DROP' && `Sentence: ${q.options.sentence}`}
-                  {q.type === 'DROP_DOWN' && `Sentence: ${q.options.sentence}`}
-                  {q.type === 'CATEGORIZE' && `Categories: ${q.options.categories.join(', ')}`}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => startEditingPendingQuestion(idx)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    fontSize: '1.1rem',
-                    transition: 'transform 0.1s'
-                  }}
-                  title="Edit question"
-                >
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removePendingQuestion(idx)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#ff4b60',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    fontSize: '1.1rem',
-                    transition: 'transform 0.1s'
-                  }}
-                  title="Remove question"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const getMissingFieldsForGenerate = () => {
     const missing = [];
@@ -2230,121 +2513,6 @@ Question Schemas by Type:
     } finally {
       setGenLoading(false);
     }
-  };
-
-  const renderEditQuestionModal = () => {
-    if (editingPendingIndex === null) return null;
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(9, 10, 15, 0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '12px'
-      }}>
-        <div 
-          className="panel panel-large animate-join-focus p-4 sm:p-7" 
-          style={{ 
-            width: '100%', 
-            maxWidth: '750px', 
-            maxHeight: '94vh', 
-            overflowY: 'auto',
-            textAlign: 'left',
-            border: '1px solid var(--panel-border-focus)',
-            position: 'relative'
-          }}
-        >
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: '20px', 
-            borderBottom: '1px solid var(--panel-border)',
-            paddingBottom: '15px'
-          }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Question Editor
-              </span>
-              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>Edit Question #{editingPendingIndex + 1}</h2>
-            </div>
-            <button 
-              type="button"
-              onClick={cancelEditingPendingQuestion}
-              style={{
-                background: 'rgba(93, 107, 130, 0.08)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                fontSize: '1rem'
-              }}
-            >
-              ✕
-            </button>
-          </div>
-
-          {error && (
-            <div style={{ 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              border: '1px solid rgba(239, 68, 68, 0.3)', 
-              color: '#ff4b60', 
-              padding: '12px 16px', 
-              borderRadius: '8px', 
-              marginBottom: 20
-            }}>
-              {error}
-            </div>
-          )}
-
-          <div>
-            {renderQuestionFormFields()}
-          </div>
-
-          <div style={{ 
-            display: 'flex', 
-            gap: 12, 
-            marginTop: '24px', 
-            justifyContent: 'flex-end', 
-            borderTop: '1px solid var(--panel-border)', 
-            paddingTop: '16px' 
-          }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={cancelEditingPendingQuestion}
-              style={{ width: 'auto', minWidth: '100px' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                const success = updatePendingQuestion(editingPendingIndex);
-                if (success) setEditingPendingIndex(null);
-              }}
-              style={{ width: 'auto', minWidth: '150px' }}
-            >
-              ✓ Update Question
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   const renderGenerateModal = () => {
@@ -2884,7 +3052,7 @@ Sort these numbers from lowest to highest.
             </div>
           )}
 
-          <form onSubmit={saveGame}>
+          <form onSubmit={handleSubmitGame}>
             <div className="form-group">
               <label className="form-label">Game Title *</label>
               <input 
@@ -2900,15 +3068,14 @@ Sort these numbers from lowest to highest.
             </div>
 
             <div className="form-group">
-              <label className="form-label">Description *</label>
+              <label className="form-label">Description (optional / autogenerated)</label>
               <textarea 
                 className="form-input" 
-                placeholder="e.g. 10 questions covering major historical events of the 20th century."
+                placeholder="e.g. 10 questions covering major historical events of the 20th century. (Or leave blank to autogenerate from questions!)"
                 value={gameDescription}
                 onChange={(e) => setGameDescription(e.target.value)}
                 disabled={loading}
                 rows={3}
-                required
               />
             </div>
 
@@ -3017,136 +3184,14 @@ Sort these numbers from lowest to highest.
               </div>
             </div>
 
-              <div style={{ 
-                marginTop: '32px', 
-                borderTop: '1px dashed rgba(93, 107, 130, 0.2)', 
-                paddingTop: '24px',
-                marginBottom: '24px'
-              }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  {selectedGameForEdit ? 'Manage Questions' : 'Add Questions (Optional)'}
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
-                  {selectedGameForEdit 
-                    ? 'Add, edit, or delete questions for this Dahoot. Use the tabs below to choose between adding/editing questions individually or bulk importing via Markdown.'
-                    : 'Create questions now or skip and add them later. Use the tabs below to choose between adding questions individually or bulk importing via Markdown.'}
-                </p>
+            {/* ── Questions Section ── */}
+            {renderInlineQuestionsSection()}
 
-                {/* Tabs selector */}
-                <div style={{
-                  display: 'flex',
-                  background: 'rgba(93, 107, 130, 0.06)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '4px',
-                  marginBottom: '24px',
-                  border: '1px solid rgba(93, 107, 130, 0.1)'
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setCreationQuestionsTab('individual')}
-                    style={{
-                      flex: 1,
-                      background: creationQuestionsTab === 'individual' ? 'var(--accent-gradient)' : 'transparent',
-                      color: creationQuestionsTab === 'individual' ? '#5D6B82' : 'var(--text-secondary)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px',
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <span>✍️ Individual Questions</span>
-                    {pendingQuestions.length > 0 && (
-                      <span style={{
-                        background: 'var(--accent-light)',
-                        color: 'white',
-                        borderRadius: '12px',
-                        padding: '2px 8px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}>
-                        {pendingQuestions.length}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCreationQuestionsTab('bulk')}
-                    style={{
-                      flex: 1,
-                      background: creationQuestionsTab === 'bulk' ? 'var(--accent-gradient)' : 'transparent',
-                      color: creationQuestionsTab === 'bulk' ? '#5D6B82' : 'var(--text-secondary)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px',
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <span>📥 Bulk Import (Markdown)</span>
-                  </button>
-                </div>
-
-                {creationQuestionsTab === 'individual' ? (
-                  <div>
-                    {/* Render the Individual Question Fields */}
-                    {editingPendingIndex === null && (
-                      <div style={{
-                        background: 'rgba(93, 107, 130, 0.02)',
-                        border: '1px solid rgba(93, 107, 130, 0.08)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '20px',
-                        marginBottom: '20px'
-                      }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                          Create Question
-                        </h4>
-                        {renderQuestionFormFields()}
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={addPendingQuestion}
-                          style={{
-                            marginTop: '16px',
-                            backgroundColor: 'rgba(93, 107, 130, 0.05)',
-                            color: 'var(--text-secondary)',
-                            border: '1px solid rgba(93, 107, 130, 0.12)',
-                            width: 'auto',
-                            minWidth: '200px'
-                          }}
-                        >
-                          ➕ Add Question to Dahoot
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Render Pending Questions List */}
-                    {renderPendingQuestionsList()}
-                  </div>
-                ) : (
-                  <div>
-                    {/* Render Bulk Import Textarea */}
-                    {renderBulkImportBuilder()}
-                  </div>
-                )}
-              </div>
- 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button type="button" className="btn btn-secondary" onClick={() => {
                 cancelEditingGame();
-                setEditingPendingIndex(null);
+                setPreviewGame(null);
+                setPreviewQuestions([]);
               }} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
                 Cancel
               </button>
@@ -3156,27 +3201,132 @@ Sort these numbers from lowest to highest.
             </div>
           </form>
         </div>
-        {renderEditQuestionModal()}
+        {renderPreviewQuestionEditModal()}
         {renderGenerateModal()}
         {ConfirmDialog}
       </div>
     );
   }
 
-  // 2. GAMES LIST VIEW (Default Screen)
-  if (!selectedGame) {
+  // 2. QUESTIONS BULK IMPORT PANEL (Under Selected Game)
+  if (isImporting) {
     return (
       <div className="app-container">
-        <div className="panel panel-large animate-join-focus">
+        <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
           {renderUserStatusBar()}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ textAlign: 'left' }}>
-              <h2 style={{ marginBottom: 4 }}>Dahoots</h2>
-              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                Manage groups of quiz questions that can be played, copied, and edited.
-              </p>
+          <div style={{ marginBottom: 24 }}>
+            <h2>Import Questions in Bulk</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+              Paste your Markdown-formatted questions below to load them into: <strong>{selectedGame.title}</strong>
+            </p>
+            <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <a 
+                href="/import-instructions.html" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
+              >
+                📖 View formatting guide & AI prompt template
+              </a>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <a 
+                href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
+              >
+                💎 Use Dahoot Quiz Generator Gem
+              </a>
+            </p>
+          </div>
+
+          {error && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              color: '#ff4b60', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              marginBottom: 20
+            }}>
+              {error}
             </div>
-            <button className="btn btn-primary" onClick={startCreatingGame} style={{ width: 'auto', minWidth: 180 }}>
+          )}
+
+          <form onSubmit={handleSaveImportedQuestions}>
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setIsGenModalOpen(true)}
+                  disabled={isGenerateDisabled}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
+                  }}
+                  title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
+                >
+                  ✨ Autogenerate Questions
+                </button>
+              </div>
+              <textarea 
+                className="form-input" 
+                placeholder={`# MULTIPLE_CHOICE
+What is the capital of France?
+- Berlin
+- *Paris
+- London
+- Rome
+
+# SORTING
+Sort these numbers from lowest to highest.
+1. Five
+2. Ten
+3. Fifteen
+4. Twenty`}
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                disabled={loading}
+                rows={15}
+                style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.5' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
+              <button type="button" className="btn btn-secondary" onClick={handleCancelImporting} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={loading || !importText.trim()} style={{ width: 'auto', minWidth: 150 }}>
+                {loading ? 'Importing...' : 'Save & Import'}
+              </button>
+            </div>
+          </form>
+        </div>
+        {renderGenerateModal()}
+        {ConfirmDialog}
+      </div>
+    );
+  }
+
+  // 3. GAMES LIST VIEW (Default Screen)
+  return (
+    <div className="app-container">
+      <div className="panel panel-large animate-join-focus">
+        {renderUserStatusBar()}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ textAlign: 'left' }}>
+            <h2 style={{ marginBottom: 4 }}>Dahoots</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Manage groups of quiz questions that can be played, copied, and edited.
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={handleStartCreatingGame} style={{ width: 'auto', minWidth: 180 }}>
               + Create Dahoot
             </button>
           </div>
@@ -3465,7 +3615,7 @@ Sort these numbers from lowest to highest.
                               startPreviewGame(game);
                             }}
                           >
-                            👁️ Preview
+                            📋 Questions
                           </button>
                         </>
                       ) : (
@@ -3476,7 +3626,7 @@ Sort these numbers from lowest to highest.
                             startPreviewGame(game);
                           }}
                         >
-                          👁️ Preview
+                          📋 View / Edit Questions
                         </button>
                       )}
                     </div>
@@ -3484,9 +3634,10 @@ Sort these numbers from lowest to highest.
                     <div className="grid grid-cols-[1fr_1fr_40px] gap-2">
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
-                        onClick={(e) => startEditingGame(game, e)}
+                        onClick={(e) => handleStartEditingGame(game, e)}
+                        title="Edit lesson title, description, and metadata"
                       >
-                        ✏️ Edit
+                        ✏️ Edit Info
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
@@ -3521,328 +3672,4 @@ Sort these numbers from lowest to highest.
         {ConfirmDialog}
       </div>
     );
-  }
-
-  // 3. QUESTIONS BULK IMPORT PANEL (Under Selected Game)
-  if (isImporting) {
-    return (
-      <div className="app-container">
-        <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
-          {renderUserStatusBar()}
-          <div style={{ marginBottom: 24 }}>
-            <h2>Import Questions in Bulk</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
-              Paste your Markdown-formatted questions below to load them into: <strong>{selectedGame.title}</strong>
-            </p>
-            <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-              <a 
-                href="/import-instructions.html" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                style={{ color: 'var(--accent-light)', textDecoration: 'underline' }}
-              >
-                📖 View formatting guide & AI prompt template
-              </a>
-              <span style={{ color: 'var(--text-muted)' }}>•</span>
-              <a 
-                href="https://gemini.google.com/gem/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
-              >
-                💎 Use Dahoot Quiz Generator Gem
-              </a>
-            </p>
-          </div>
-
-          {error && (
-            <div style={{ 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              border: '1px solid rgba(239, 68, 68, 0.3)', 
-              color: '#ff4b60', 
-              padding: '12px 16px', 
-              borderRadius: '8px', 
-              marginBottom: 20
-            }}>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={saveImportedQuestions}>
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label className="form-label" style={{ margin: 0 }}>Markdown Text</label>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setIsGenModalOpen(true)}
-                  disabled={isGenerateDisabled}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    cursor: isGenerateDisabled ? 'not-allowed' : 'pointer'
-                  }}
-                  title={isGenerateDisabled ? `Required fields missing: ${getMissingFieldsForGenerate().join(', ')}` : "Autogenerate questions using AI"}
-                >
-                  ✨ Autogenerate Questions
-                </button>
-              </div>
-              <textarea 
-                className="form-input" 
-                placeholder={`# MULTIPLE_CHOICE
-What is the capital of France?
-- Berlin
-- *Paris
-- London
-- Rome
-
-# SORTING
-Sort these numbers from lowest to highest.
-1. Five
-2. Ten
-3. Fifteen
-4. Twenty`}
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-                disabled={loading}
-                rows={15}
-                style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.5' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-              <button type="button" className="btn btn-secondary" onClick={cancelImporting} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={loading || !importText.trim()} style={{ width: 'auto', minWidth: 150 }}>
-                {loading ? 'Importing...' : 'Save & Import'}
-              </button>
-            </div>
-          </form>
-        </div>
-        {renderGenerateModal()}
-        {ConfirmDialog}
-      </div>
-    );
-  }
-
-  // 4. QUESTIONS EDITING / CREATING SCREEN (Under Selected Game)
-  if (isEditing) {
-    return (
-      <div className="app-container">
-        <div className="panel panel-large animate-join-focus" style={{ textAlign: 'left' }}>
-          {renderUserStatusBar()}
-          <div style={{ marginBottom: 24 }}>
-            <h2>{selectedQuestion ? 'Edit Question' : 'Add Question'}</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-              Create or edit a question for the Dahoot: <strong>{selectedGame.title}</strong>
-            </p>
-          </div>
-
-          {error && (
-            <div style={{ 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              border: '1px solid rgba(239, 68, 68, 0.3)', 
-              color: '#ff4b60', 
-              padding: '12px 16px', 
-              borderRadius: '8px', 
-              marginBottom: 20
-            }}>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={saveQuestion}>
-            {renderQuestionFormFields()}
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
-              <button type="button" className="btn btn-secondary" onClick={cancelEditing} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: 'auto', minWidth: 150 }}>
-                {loading ? 'Saving...' : 'Save Question'}
-              </button>
-            </div>
-          </form>
-        </div>
-        {ConfirmDialog}
-      </div>
-    );
-  }
-
-  // 5. QUESTIONS LIST VIEW (For Selected Game)
-  return (
-    <div className="app-container">
-      <div className="panel panel-large animate-join-focus">
-        {renderUserStatusBar()}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <button 
-                className="btn-link" 
-                onClick={() => setSelectedGame(null)}
-                style={{ fontSize: '1.2rem', padding: '0 4px', color: 'var(--accent-light)', cursor: 'pointer', background: 'none', border: 'none' }}
-              >
-                ←
-              </button>
-              <h2 style={{ margin: 0 }}>{selectedGame.title}</h2>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', margin: 0, paddingLeft: 24 }}>
-              Manage questions for this Dahoot
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => setSelectedGame(null)} style={{ width: 'auto', minWidth: 100 }}>
-              Back to Games
-            </button>
-            <button className="btn btn-secondary" onClick={startImporting} style={{ width: 'auto', minWidth: 130 }}>
-              📥 Import in Bulk
-            </button>
-            <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto', minWidth: 130 }}>
-              + Add Question
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div style={{ 
-            background: 'rgba(239, 68, 68, 0.1)', 
-            border: '1px solid rgba(239, 68, 68, 0.3)', 
-            color: '#ff4b60', 
-            padding: '12px 16px', 
-            borderRadius: '8px', 
-            marginBottom: 20,
-            textAlign: 'left'
-          }}>
-            {error}
-          </div>
-        )}
-
-        <div className="teacher-questions-list" style={{ 
-          maxHeight: '520px', 
-          overflowY: 'auto', 
-          paddingRight: '8px',
-          textAlign: 'left',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          marginBottom: 32
-        }}>
-          {questionsList.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '48px 16px', 
-              color: 'var(--text-muted)',
-              border: '1px dashed var(--panel-border)',
-              borderRadius: 'var(--radius-md)'
-            }}>
-              No questions in this Dahoot yet. Click "+ Add Question" or "📥 Import in Bulk" to get started.
-            </div>
-          ) : (
-            questionsList.map((question, qIdx) => {
-              const type = question.type || 'MULTIPLE_CHOICE';
-              return (
-                <div 
-                  key={question.id} 
-                  className="bg-white border border-slate-200/60 rounded-2xl p-5 flex justify-between items-center gap-5 flex-wrap transition-all hover:shadow-md shadow-sm mb-4"
-                >
-                  <div style={{ flex: 1, minWidth: '240px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span className="game-tag text-rose-500 border-rose-100 bg-rose-50/50 font-bold px-2 py-0.5">
-                        Q{qIdx + 1}
-                      </span>
-                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                        {type.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>
-                      {question.text}
-                    </div>
-                    
-                    {/* Summary details based on type */}
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {(type === 'MULTIPLE_CHOICE' || type === 'SORTING') && Array.isArray(question.options) && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                          {question.options.map((opt, oIdx) => {
-                            const isCorrect = type === 'MULTIPLE_CHOICE' && question.correct_option_index === oIdx;
-                            return (
-                              <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: isCorrect ? 600 : 400, color: isCorrect ? '#10b981' : 'var(--text-secondary)' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.8rem', color: isCorrect ? '#10b981' : 'var(--text-muted)' }}>
-                                  {['A', 'B', 'C', 'D'][oIdx]}.
-                                </span>
-                                <span>{opt}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {type === 'DRAG_DROP' && question.options && (
-                        <div>
-                          <p style={{ margin: '0 0 6px 0', fontStyle: 'italic', color: 'var(--text-muted)' }}>
-                            {question.options.sentence}
-                          </p>
-                          <p style={{ margin: 0 }}>
-                            Blanks: <strong style={{ color: 'var(--accent-light)' }}>{question.options.correct?.join(', ')}</strong>
-                          </p>
-                        </div>
-                      )}
-
-                      {type === 'DROP_DOWN' && question.options && (
-                        <div>
-                          <p style={{ margin: '0 0 6px 0', fontStyle: 'italic', color: 'var(--text-muted)' }}>
-                            {question.options.sentence}
-                          </p>
-                          <p style={{ margin: 0 }}>
-                            Dropdown Correct Answers: <strong style={{ color: 'var(--accent-light)' }}>{question.options.dropdowns?.map(d => d.correct).join(', ')}</strong>
-                          </p>
-                        </div>
-                      )}
-
-                      {type === 'CATEGORIZE' && question.options && (
-                        <div>
-                          <p style={{ margin: '0 0 6px 0' }}>
-                            Categories: <strong style={{ color: 'var(--accent-light)' }}>{question.options.categories?.join(', ')}</strong>
-                          </p>
-                          <p style={{ margin: 0 }}>
-                            Items: {question.options.items?.length || 0} items mapped.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 10, alignSelf: 'flex-start' }}>
-                    <button 
-                      className="btn btn-secondary btn-sm" 
-                      onClick={() => startEditing(question)}
-                      style={{ width: 'auto', padding: '8px 12px', minWidth: 60 }}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="btn btn-secondary btn-sm" 
-                      onClick={() => handleDeleteQuestion(question.id)}
-                      style={{ 
-                        width: 'auto', 
-                        padding: '8px 12px', 
-                        minWidth: 60,
-                        borderColor: 'rgba(239, 68, 68, 0.2)',
-                        color: '#ff4b60'
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-      {ConfirmDialog}
-    </div>
-  );
 }
