@@ -8,7 +8,7 @@ import { useMarathonGame } from './hooks/useMarathonGame';
 import { useMarathonHost } from './hooks/useMarathonHost';
 import { useMarathonPlayer } from './hooks/useMarathonPlayer';
 import { useAdSense } from './hooks/useAdSense';
-import { SelectionView } from './components/SelectionView';
+import { LandingPageView } from './components/LandingPageView';
 import { HostView } from './components/HostView';
 import { PlayerView } from './components/PlayerView';
 import { TeacherDashboard } from './components/TeacherDashboard';
@@ -32,7 +32,7 @@ function App() {
   const [showSyncReset, setShowSyncReset] = useState(false);
   const [shouldScrollToSettings, setShouldScrollToSettings] = useState(false);
 
-  // Extract shared quiz ID on mount to preselect it in SelectionView
+  // Extract shared quiz ID on mount to preselect it in LandingPageView
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const quizParam = params.get('quiz');
@@ -108,7 +108,7 @@ function App() {
 
     return (
       <>
-        <SelectionView
+        <LandingPageView
           hasPinFromUrl={playerGame.hasPinFromUrl}
           joinPin={playerGame.joinPin}
           setJoinPin={playerGame.setJoinPin}

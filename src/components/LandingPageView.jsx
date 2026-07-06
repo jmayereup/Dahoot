@@ -4,7 +4,7 @@ import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
 
 
-export function SelectionView({
+export function LandingPageView({
   hasPinFromUrl,
   joinPin,
   setJoinPin,
