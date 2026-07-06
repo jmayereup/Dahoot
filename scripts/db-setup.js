@@ -28,24 +28,26 @@ const DEFAULT_QUESTIONS = [
   {
     text: "Which programming language is predominantly used to add interactivity to web pages?",
     type: "MULTIPLE_CHOICE",
-    options: ["Python", "HTML", "JavaScript", "SQL"],
-    correct_option_index: 2
+    options: {
+      correct_answer: "JavaScript",
+      distractors: ["Python", "HTML", "SQL"]
+    }
   },
   {
     text: "Sort these language layers of the web stack from front-end layout to back-end logic.",
     type: "SORTING",
-    options: ["HTML Structured Markup", "CSS Cascading Styles", "JavaScript Client Behavior", "Python Database Logic"],
-    correct_option_index: 0
+    options: {
+      correct_sequence: ["HTML Structured Markup", "CSS Cascading Styles", "JavaScript Client Behavior", "Python Database Logic"]
+    }
   },
   {
     text: "Complete the sentence regarding styling languages.",
     type: "DRAG_DROP",
     options: {
       sentence: "In web development, we use [blank0] for layout structure, [blank1] for visual styles, and [blank2] for client scripting.",
-      choices: ["HTML", "CSS", "JavaScript", "Python"],
-      correct: ["HTML", "CSS", "JavaScript"]
-    },
-    correct_option_index: 0
+      answers_in_order: ["HTML", "CSS", "JavaScript"],
+      distractors: ["Python"]
+    }
   },
   {
     text: "Select the correct protocols for web communication.",
@@ -53,11 +55,10 @@ const DEFAULT_QUESTIONS = [
     options: {
       sentence: "For secure website browsing we use {{0}}, while real-time bidirectional message channels use {{1}} protocol.",
       dropdowns: [
-        { choices: ["HTTPS", "HTTP", "FTP"], correct: "HTTPS" },
-        { choices: ["WebSockets", "SMTP", "DNS"], correct: "WebSockets" }
+        { correct_answer: "HTTPS", distractors: ["HTTP", "FTP"] },
+        { correct_answer: "WebSockets", distractors: ["SMTP", "DNS"] }
       ]
-    },
-    correct_option_index: 0
+    }
   },
   {
     text: "Categorize these technologies into their respective layers.",
@@ -72,8 +73,7 @@ const DEFAULT_QUESTIONS = [
         { name: "Django", category: "Backend" },
         { name: "MongoDB", category: "Database" }
       ]
-    },
-    correct_option_index: 0
+    }
   }
 ];
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../pb';
 import { shuffleArray } from '../utils/shuffle';
+import { isAnswerCorrect } from '../utils/questionSchema';
 
 export function useMarathonPlayer(view, setView) {
   const [playerRoom, setPlayerRoom] = useState(null);
@@ -130,30 +131,7 @@ export function useMarathonPlayer(view, setView) {
       const question = currentLapQuestions[playerQuestionIndex];
       if (!question) return;
 
-      let isCorrect = false;
-      const type = question.type || 'MULTIPLE_CHOICE';
-
-      if (type === 'MULTIPLE_CHOICE') {
-        isCorrect = userAnswer === question.correct_option_index;
-      } else if (type === 'SORTING') {
-        isCorrect = Array.isArray(userAnswer) &&
-                    userAnswer.length === question.options.length &&
-                    userAnswer.every((val, i) => val === question.options[i]);
-      } else if (type === 'DRAG_DROP') {
-        const correctArr = question.options.correct || [];
-        isCorrect = Array.isArray(userAnswer) &&
-                    userAnswer.length === correctArr.length &&
-                    userAnswer.every((val, i) => val === correctArr[i]);
-      } else if (type === 'DROP_DOWN') {
-        const dropdowns = question.options.dropdowns || [];
-        isCorrect = Array.isArray(userAnswer) &&
-                    userAnswer.length === dropdowns.length &&
-                    userAnswer.every((val, i) => val === dropdowns[i]?.correct);
-      } else if (type === 'CATEGORIZE') {
-        const correctItems = question.options.items || [];
-        isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&
-                    correctItems.every(item => userAnswer[item.name] === item.category);
-      }
+      const isCorrect = isAnswerCorrect(question, userAnswer);
 
       const points = isCorrect ? 1000 : 0;
       const currentStats = playerRecord.marathon_stats || {};

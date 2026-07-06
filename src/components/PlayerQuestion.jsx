@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
+import { getMcOptions, getDragDropChoices, getDragDropCorrect, getDropDownChoices, getSortingCorrect, isScrambleSentence } from '../utils/questionSchema';
 
 export function PlayerQuestion({
   qIndex,
@@ -19,8 +20,9 @@ export function PlayerQuestion({
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
-    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+    if (type !== 'MULTIPLE_CHOICE') return [];
+    const opts = getMcOptions(activeQuestion);
+    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
   }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   // ----------------------------------------------------
@@ -30,9 +32,12 @@ export function PlayerQuestion({
   const [sortedItems, setSortedItems] = useState([]);
 
   useEffect(() => {
-    if (type === 'SORTING' && Array.isArray(activeQuestion.options)) {
-      setSortingPool(shuffleArray(activeQuestion.options));
-      setSortedItems([]);
+    if (type === 'SORTING') {
+      const seq = getSortingCorrect(activeQuestion);
+      if (seq.length) {
+        setSortingPool(shuffleArray(seq));
+        setSortedItems([]);
+      }
     }
   }, [activeQuestion.id, activeQuestion.options, type]);
 
@@ -55,9 +60,7 @@ export function PlayerQuestion({
   const [placedWords, setPlacedWords] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
 
-  const totalBlanks = typeof activeQuestion.options === 'object' && activeQuestion.options.correct
-    ? activeQuestion.options.correct.length
-    : 0;
+  const totalBlanks = type === 'DRAG_DROP' ? getDragDropCorrect(activeQuestion).length : 0;
 
   useEffect(() => {
     if (type === 'DRAG_DROP') {
@@ -109,9 +112,11 @@ export function PlayerQuestion({
   // DROP DOWN STATE & HANDLERS
   // ----------------------------------------------------
   const [dropdownSelections, setDropdownSelections] = useState([]);
-  const totalDropdowns = typeof activeQuestion.options === 'object' && activeQuestion.options.dropdowns
-    ? activeQuestion.options.dropdowns.length
-    : 0;
+  const totalDropdowns = (() => {
+    if (type !== 'DROP_DOWN') return 0;
+    const dds = activeQuestion.options?.dropdowns;
+    return Array.isArray(dds) ? dds.length : 0;
+  })();
 
   useEffect(() => {
     if (type === 'DROP_DOWN') {
@@ -135,8 +140,8 @@ export function PlayerQuestion({
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
 
-  const totalCategorizeItems = typeof activeQuestion.options === 'object' && activeQuestion.options.items
-    ? activeQuestion.options.items.length
+  const totalCategorizeItems = type === 'CATEGORIZE'
+    ? (activeQuestion.options?.items?.length || 0)
     : 0;
 
   useEffect(() => {
@@ -165,6 +170,7 @@ export function PlayerQuestion({
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
     const parts = splitBracketTokens(sentence);
+    const correctAnswers = getDragDropCorrect(activeQuestion);
     let sequentialBlank = 0;
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
@@ -174,8 +180,8 @@ export function PlayerQuestion({
         const word = placedWords[blankIdx];
         const isActive = blankIdx === activeBlankIdx;
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             onClick={() => handleBlankTap(blankIdx)}
             className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
           >
@@ -184,15 +190,14 @@ export function PlayerQuestion({
         );
       }
       if (inner) {
-        let mappedIdx = -1;
-        if (activeQuestion?.options?.correct) mappedIdx = activeQuestion.options.correct.findIndex(c => c === inner);
+        let mappedIdx = correctAnswers.findIndex(c => c === inner);
         const blankIdx = mappedIdx !== -1 ? mappedIdx : sequentialBlank;
         if (mappedIdx === -1) sequentialBlank += 1;
         const word = placedWords[blankIdx];
         const isActive = blankIdx === activeBlankIdx;
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             onClick={() => handleBlankTap(blankIdx)}
             className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
           >
@@ -212,7 +217,7 @@ export function PlayerQuestion({
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const config = dropdowns[dropIdx] || { choices: [] };
+        const choices = getDropDownChoices(activeQuestion, dropIdx);
         return (
           <select
             key={idx}
@@ -222,20 +227,21 @@ export function PlayerQuestion({
             disabled={isTimeUp}
           >
             <option value="">-- Choose --</option>
-            {config.choices.map((choice, cIdx) => (
+            {choices.map((choice, cIdx) => (
               <option key={cIdx} value={choice}>{choice}</option>
             ))}
           </select>
         );
       }
       if (inner) {
-        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
-        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
-        if (mappedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { choices: [inner] };
+        const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
+        const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
+        if (ddIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { correct_answer: inner, distractors: [] };
+        const correctVal = config.correct_answer || config.correct || inner;
         return (
-          <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
-            <option value={config.correct || inner}>{config.correct || inner}</option>
+          <select key={idx} className="player-sentence-select" disabled value={correctVal}>
+            <option value={correctVal}>{correctVal}</option>
           </select>
         );
       }
@@ -277,13 +283,13 @@ export function PlayerQuestion({
           <div className="player-input-area" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             
             {/* 1. MULTIPLE CHOICE */}
-            {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
+            {type === 'MULTIPLE_CHOICE' && (
               <div className="options-grid">
                 {shuffledMultipleChoiceOptions.map((item, idx) => (
-                  <button 
-                    key={item.originalIdx} 
+                  <button
+                    key={item.item}
                     className={`option-card interactive ${OPTION_CLASSES[idx]} ${isTimeUp ? 'disabled' : ''}`}
-                    onClick={() => submitAnswer(item.originalIdx)}
+                    onClick={() => submitAnswer(item.item)}
                     disabled={isTimeUp}
                   >
                     <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
@@ -361,14 +367,13 @@ export function PlayerQuestion({
 
             {/* 3. DRAG & DROP */}
             {type === 'DRAG_DROP' && activeQuestion.options && (() => {
-              const isScramble = typeof activeQuestion.options === 'object' && 
-                activeQuestion.options.sentence && 
-                !activeQuestion.options.sentence.replace(/\[blank\d+\]/g, '').trim();
+              const isScramble = isScrambleSentence(activeQuestion);
+              const choices = getDragDropChoices(activeQuestion);
               return (
                 <div style={{ width: '100%' }}>
                   {/* Sentence Container */}
-                  <div 
-                    className={isScramble 
+                  <div
+                    className={isScramble
                       ? "player-sentence-container bg-white border-2 border-dashed border-[#BFFCC6] rounded-2xl p-6 relative shadow-xs text-slate-800 flex flex-wrap items-center justify-center gap-2 min-h-[90px] mb-6 transition-all"
                       : "player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800"
                     }
@@ -405,7 +410,7 @@ export function PlayerQuestion({
 
                   {/* Choices Pool */}
                   <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                    {activeQuestion.options.choices?.map((choice, idx) => {
+                    {choices.map((choice, idx) => {
                       const isPlaced = placedWords.includes(choice);
                       return (
                         <button

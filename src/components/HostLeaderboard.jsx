@@ -3,6 +3,7 @@ import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
+import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
 
 export function HostLeaderboard({
   qIndex,
@@ -19,17 +20,20 @@ export function HostLeaderboard({
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
-    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+    if (type !== 'MULTIPLE_CHOICE') return [];
+    const opts = getMcOptions(activeQuestion);
+    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
   }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   const correctShuffledIdx = useMemo(() => {
-    return shuffledMultipleChoiceOptions.findIndex(item => item.originalIdx === activeQuestion.correct_option_index);
-  }, [shuffledMultipleChoiceOptions, activeQuestion.correct_option_index]);
+    const correct = getMcCorrectAnswer(activeQuestion);
+    return shuffledMultipleChoiceOptions.findIndex(item => item.item === correct);
+  }, [shuffledMultipleChoiceOptions, activeQuestion]);
 
   // Helper to fill blanks in Drag & Drop sentence
-  const fillSentenceBlanks = (sentence, correctAnswers) => {
+  const fillSentenceBlanks = (sentence) => {
     if (!sentence) return '';
+    const correctAnswers = getDragDropCorrect(activeQuestion);
     const parts = splitBracketTokens(sentence);
     let sequential = 0;
     return parts.map((part, idx) => {
@@ -38,31 +42,30 @@ export function HostLeaderboard({
       if (numericIdx !== null) {
         const valIdx = numericIdx;
         return (
-          <span key={idx} style={{ 
-            color: 'var(--accent-light)', 
-            fontWeight: 700, 
-            borderBottom: '2px solid var(--accent-light)', 
-            padding: '0 6px', 
-            margin: '0 4px' 
+          <span key={idx} style={{
+            color: 'var(--accent-light)',
+            fontWeight: 700,
+            borderBottom: '2px solid var(--accent-light)',
+            padding: '0 6px',
+            margin: '0 4px'
           }}>
-            {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : '???'}
+            {correctAnswers[valIdx] || '???'}
           </span>
         );
       }
       if (inner) {
-        let mapped = -1;
-        if (Array.isArray(correctAnswers)) mapped = correctAnswers.findIndex(c => c === inner);
+        const mapped = correctAnswers.findIndex(c => c === inner);
         const valIdx = mapped !== -1 ? mapped : sequential;
         if (mapped === -1) sequential += 1;
         return (
-          <span key={idx} style={{ 
-            color: 'var(--accent-light)', 
-            fontWeight: 700, 
-            borderBottom: '2px solid var(--accent-light)', 
-            padding: '0 6px', 
-            margin: '0 4px' 
+          <span key={idx} style={{
+            color: 'var(--accent-light)',
+            fontWeight: 700,
+            borderBottom: '2px solid var(--accent-light)',
+            padding: '0 6px',
+            margin: '0 4px'
           }}>
-            {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : (inner || '???')}
+            {correctAnswers[valIdx] || inner || '???'}
           </span>
         );
       }
@@ -71,8 +74,9 @@ export function HostLeaderboard({
   };
 
   // Helper to fill dropdowns in Drop Down sentence
-  const fillSentenceDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
+  const fillSentenceDropdowns = (sentence) => {
+    if (!sentence) return '';
+    const dropdowns = normalizeQuestion(activeQuestion)?.options?.dropdowns || [];
     const parts = splitCurlyTokens(sentence);
     let sequential = 0;
     return parts.map((part, idx) => {
@@ -80,31 +84,32 @@ export function HostLeaderboard({
       const inner = getCurlyInner(part);
       if (valIdx !== null) {
         return (
-          <span key={idx} style={{ 
-            color: 'var(--accent-light)', 
-            fontWeight: 700, 
-            borderBottom: '2px solid var(--accent-light)', 
-            padding: '0 6px', 
-            margin: '0 4px' 
+          <span key={idx} style={{
+            color: 'var(--accent-light)',
+            fontWeight: 700,
+            borderBottom: '2px solid var(--accent-light)',
+            padding: '0 6px',
+            margin: '0 4px'
           }}>
-            {dropdowns[valIdx]?.correct || '???'}
+            {getDropDownCorrect(activeQuestion, valIdx) || '???'}
           </span>
         );
       }
       if (inner) {
-        // If the token contains explicit text, try to map to dropdown by correct value, otherwise use sequential mapping
-        let mapped = dropdowns.findIndex(d => d.correct === inner);
+        const mapped = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = mapped !== -1 ? mapped : sequential;
         if (mapped === -1) sequential += 1;
+        const cfg = dropdowns[idxToUse];
+        const correctVal = cfg ? (cfg.correct_answer || cfg.correct || inner) : inner;
         return (
-          <span key={idx} style={{ 
-            color: 'var(--accent-light)', 
-            fontWeight: 700, 
-            borderBottom: '2px solid var(--accent-light)', 
-            padding: '0 6px', 
-            margin: '0 4px' 
+          <span key={idx} style={{
+            color: 'var(--accent-light)',
+            fontWeight: 700,
+            borderBottom: '2px solid var(--accent-light)',
+            padding: '0 6px',
+            margin: '0 4px'
           }}>
-            {dropdowns[idxToUse]?.correct || inner}
+            {correctVal}
           </span>
         );
       }
@@ -136,7 +141,7 @@ export function HostLeaderboard({
         </div>
 
         {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && correctShuffledIdx !== -1 && (
+        {type === 'MULTIPLE_CHOICE' && correctShuffledIdx !== -1 && (
           <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
             <div className="option-icon">{String.fromCharCode(65 + correctShuffledIdx)}</div>
             <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
@@ -144,11 +149,11 @@ export function HostLeaderboard({
         )}
 
         {/* 2. SORTING */}
-        {type === 'SORTING' && Array.isArray(activeQuestion.options) && (
+        {type === 'SORTING' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '500px' }}>
-            {activeQuestion.options.map((opt, idx) => (
-              <div 
-                key={idx} 
+            {getSortingCorrect(activeQuestion).map((opt, idx) => (
+              <div
+                key={idx}
                 style={{
                   background: 'rgba(16, 185, 129, 0.1)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -173,14 +178,14 @@ export function HostLeaderboard({
         {/* 3. DRAG AND DROP */}
         {type === 'DRAG_DROP' && activeQuestion.options && (
           <div style={{ fontSize: '1.2rem', lineHeight: '1.8rem', color: 'var(--text-primary)' }}>
-            {fillSentenceBlanks(activeQuestion.options.sentence, activeQuestion.options.correct)}
+            {fillSentenceBlanks(activeQuestion.options.sentence)}
           </div>
         )}
 
         {/* 4. DROP DOWN */}
         {type === 'DROP_DOWN' && activeQuestion.options && (
           <div style={{ fontSize: '1.2rem', lineHeight: '1.8rem', color: 'var(--text-primary)' }}>
-            {fillSentenceDropdowns(activeQuestion.options.sentence, activeQuestion.options.dropdowns)}
+            {fillSentenceDropdowns(activeQuestion.options.sentence)}
           </div>
         )}
 

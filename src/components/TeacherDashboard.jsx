@@ -12,6 +12,7 @@ import {
   getBlankIndex,
   getBracketInner
 } from '../utils/blankParsing';
+import { getDragDropCorrect, getDropDownCorrect, normalizeQuestion } from '../utils/questionSchema';
 
 
 
@@ -63,26 +64,30 @@ export function TeacherDashboard({
   cancelImporting,
   saveImportedQuestions,
   
-  // Multiple Choice & Sorting
-  options,
-  setOptions,
-  updateOptionValue,
-  correctOptionIndex,
-  setCorrectOptionIndex,
+  // Multiple Choice
+  mcCorrectAnswer,
+  setMcCorrectAnswer,
+  mcDistractors,
+  updateMcDistractor,
+
+  // Sorting
+  sortingItems,
+  updateSortingItem,
 
   // Drag & Drop
   dragSentence,
   setDragSentence,
-  dragChoices,
-  setDragChoices,
-  updateDragChoice,
+  dragAnswers,
+  updateDragAnswer,
+  dragDistractors,
+  updateDragDistractor,
 
   // Drop Down
   dropdownSentence,
   setDropdownSentence,
-  dropdownOptions,
-  setDropdownOptions,
-  updateDropdownOption,
+  dropdownConfig,
+  updateDropdownCorrect,
+  updateDropdownDistractor,
 
   // Categorize
   categorizeCategories,
@@ -253,7 +258,6 @@ export function TeacherDashboard({
         id: 'local_' + (Date.now() + idx),
         text: q.text,
         options: q.options,
-        correct_option_index: q.correct_option_index,
         type: q.type
       }));
       setPreviewQuestions(prev => [...prev, ...newQs]);
@@ -1453,15 +1457,16 @@ export function TeacherDashboard({
 
 
 
-  const renderPreviewSentenceWithBlanks = (sentence, correct) => {
+  const renderPreviewSentenceWithBlanks = (sentence) => {
     if (!sentence) return '';
+    const correctAnswers = getDragDropCorrect(previewEditingQuestion || {});
     const parts = splitBracketTokens(sentence);
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
       if (numericIdx !== null) {
         const blankIdx = numericIdx;
-        const correctWord = correct ? correct[blankIdx] : '';
+        const correctWord = correctAnswers[blankIdx] || '';
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctWord || '_____'}
@@ -1469,10 +1474,9 @@ export function TeacherDashboard({
         );
       }
       if (inner) {
-        let mappedIdx = -1;
-        if (correct) mappedIdx = correct.findIndex(c => c === inner);
+        const mappedIdx = correctAnswers.findIndex(c => c === inner);
         const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
-        const correctWord = correct ? correct[blankIdx] : inner;
+        const correctWord = correctAnswers[blankIdx] || inner;
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctWord || inner}
@@ -1483,15 +1487,16 @@ export function TeacherDashboard({
     });
   };
 
-  const renderPreviewSentenceWithDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
+  const renderPreviewSentenceWithDropdowns = (sentence) => {
+    if (!sentence) return '';
+    const dropdowns = normalizeQuestion(previewEditingQuestion || {})?.options?.dropdowns || [];
     const parts = splitCurlyTokens(sentence);
     let sequentialDrop = 0;
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const correctVal = dropdowns[dropIdx]?.correct || '';
+        const correctVal = getDropDownCorrect(previewEditingQuestion || {}, dropIdx);
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctVal || '_____'}
@@ -1499,13 +1504,14 @@ export function TeacherDashboard({
         );
       }
       if (inner) {
-        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const mappedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
         if (mappedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { correct: inner };
+        const config = dropdowns[idxToUse] || { correct_answer: inner };
+        const correctVal = config.correct_answer || config.correct || inner;
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
-            {config.correct || inner}
+            {correctVal}
           </span>
         );
       }
@@ -1545,25 +1551,27 @@ export function TeacherDashboard({
 
   const renderPreviewOptions = (question) => {
     const type = question.type || 'MULTIPLE_CHOICE';
+    const n = normalizeQuestion(question);
 
     if (type === 'MULTIPLE_CHOICE') {
-      const opts = Array.isArray(question.options) ? question.options : [];
+      const opts = getMcOptions(question);
+      const correct = n.options?.correct_answer || '';
       return (
         <div className="flex flex-col gap-2">
           {opts.map((opt, oIdx) => {
-            const isCorrect = question.correct_option_index === oIdx;
+            const isCorrect = opt === correct;
             return (
-              <div 
-                key={oIdx} 
+              <div
+                key={oIdx}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-colors ${
-                  isCorrect 
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold shadow-xs' 
+                  isCorrect
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold shadow-xs'
                     : 'border-slate-100 bg-slate-50/50 text-slate-500'
                 }`}
               >
                 <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
-                  isCorrect 
-                    ? 'bg-emerald-500 text-white' 
+                  isCorrect
+                    ? 'bg-emerald-500 text-white'
                     : 'bg-slate-200 text-slate-600'
                 }`}>
                   {isCorrect ? '✓' : ['A', 'B', 'C', 'D'][oIdx]}
@@ -1577,15 +1585,15 @@ export function TeacherDashboard({
     }
 
     if (type === 'SORTING') {
-      const opts = Array.isArray(question.options) ? question.options : [];
+      const opts = n.options?.correct_sequence || [];
       return (
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
             <span>✨ Correct Sorted Order:</span>
           </div>
           {opts.map((opt, oIdx) => (
-            <div 
-              key={oIdx} 
+            <div
+              key={oIdx}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-medium text-xs shadow-xs"
             >
               <span className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 bg-emerald-500 text-white">
@@ -1603,11 +1611,11 @@ export function TeacherDashboard({
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
-            {renderPreviewSentenceWithBlanks(question.options.sentence, question.options.correct)}
+            {renderPreviewSentenceWithBlanks(question.options.sentence)}
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 items-center">
             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Blanks:</span>
-            {(question.options.correct || []).map((word, wIdx) => (
+            {(n.options?.answers_in_order || []).map((word, wIdx) => (
               <span key={wIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
                 {word}
               </span>
@@ -1622,13 +1630,13 @@ export function TeacherDashboard({
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
-            {renderPreviewSentenceWithDropdowns(question.options.sentence, question.options.dropdowns)}
+            {renderPreviewSentenceWithDropdowns(question.options.sentence)}
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 items-center">
             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Dropdowns:</span>
-            {(question.options.dropdowns || []).map((d, dIdx) => (
+            {(n.options?.dropdowns || []).map((d, dIdx) => (
               <span key={dIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
-                {d.correct}
+                {d.correct_answer || d.correct}
               </span>
             ))}
           </div>
@@ -1691,24 +1699,48 @@ export function TeacherDashboard({
       return;
     }
     let optionsPayload = null;
-    if (questionType === 'MULTIPLE_CHOICE' || questionType === 'SORTING') {
-      if (options.some(opt => !opt.trim())) { setPreviewEditError('All 4 option choices must be filled out.'); return; }
-      optionsPayload = options.map(o => o.trim());
+    if (questionType === 'MULTIPLE_CHOICE') {
+      if (!mcCorrectAnswer.trim()) { setPreviewEditError('Correct answer is required.'); return; }
+      if (mcDistractors.some(d => !d.trim())) { setPreviewEditError('All 3 distractors must be filled out.'); return; }
+      optionsPayload = { correct_answer: mcCorrectAnswer.trim(), distractors: mcDistractors.map(d => d.trim()) };
+    } else if (questionType === 'SORTING') {
+      if (sortingItems.some(s => !s.trim())) { setPreviewEditError('All 4 sorting items must be filled out.'); return; }
+      optionsPayload = { correct_sequence: sortingItems.map(s => s.trim()) };
     } else if (questionType === 'DRAG_DROP') {
       if (!dragSentence.trim()) { setPreviewEditError('Sentence with blanks is required.'); return; }
-      if (dragChoices.some(c => !c.trim())) { setPreviewEditError('All 4 choices must be filled out.'); return; }
       const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
       if (numBlanks === 0) { setPreviewEditError('The sentence must contain at least one blank placeholder.'); return; }
-      optionsPayload = { sentence: dragSentence.trim(), choices: dragChoices.map(c => c.trim()), correct: dragChoices.slice(0, numBlanks).map(c => c.trim()) };
+      const activeAnswers = dragAnswers.slice(0, numBlanks);
+      if (activeAnswers.some(a => !a.trim())) { setPreviewEditError(`Please define all ${numBlanks} correct blank answers.`); return; }
+      if (dragDistractors.some(d => !d.trim())) { setPreviewEditError('All distractor words must be filled out.'); return; }
+      optionsPayload = {
+        sentence: dragSentence.trim(),
+        answers_in_order: activeAnswers.map(a => a.trim()),
+        distractors: dragDistractors.map(d => d.trim())
+      };
     } else if (questionType === 'DROP_DOWN') {
       if (!dropdownSentence.trim()) { setPreviewEditError('Sentence with dropdowns is required.'); return; }
       const numDropdowns = (dropdownSentence.match(/\{\{\d+\}\}/g) || []).length;
       if (numDropdowns === 0) { setPreviewEditError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).'); return; }
-      const activeLines = dropdownOptions.slice(0, numDropdowns);
-      if (activeLines.some(l => !l.trim())) { setPreviewEditError(`Please define choices for all ${numDropdowns} dropdowns.`); return; }
-      const dropdownsConfig = activeLines.map(line => { const choices = line.split(',').map(c => c.trim()).filter(Boolean); return { choices, correct: choices[0] || '' }; });
-      if (dropdownsConfig.some(d => d.choices.length < 2)) { setPreviewEditError('Each dropdown must have at least 2 comma-separated options.'); return; }
-      optionsPayload = { sentence: dropdownSentence.trim(), dropdowns: dropdownsConfig };
+      const activeDropdowns = dropdownConfig.slice(0, numDropdowns);
+      for (let i = 0; i < activeDropdowns.length; i++) {
+        if (!activeDropdowns[i].correct_answer.trim()) {
+          setPreviewEditError(`Please define the correct answer for dropdown {{${i}}}.`);
+          return;
+        }
+        const filledDistractors = (activeDropdowns[i].distractors || []).filter(d => d.trim());
+        if (filledDistractors.length < 1) {
+          setPreviewEditError(`Please add at least 1 distractor for dropdown {{${i}}}.`);
+          return;
+        }
+      }
+      optionsPayload = {
+        sentence: dropdownSentence.trim(),
+        dropdowns: activeDropdowns.map(d => ({
+          correct_answer: d.correct_answer.trim(),
+          distractors: (d.distractors || []).filter(x => x.trim())
+        }))
+      };
     } else if (questionType === 'CATEGORIZE') {
       if (!categorizeCategories.trim()) { setPreviewEditError('Categories list is required.'); return; }
       if (!categorizeItemsText.trim()) { setPreviewEditError('Items list is required.'); return; }
@@ -1735,7 +1767,6 @@ export function TeacherDashboard({
       game_id: previewGame.id,
       text: questionText.trim(),
       options: optionsPayload,
-      correct_option_index: questionType === 'MULTIPLE_CHOICE' ? correctOptionIndex : 0,
       type: questionType
     };
     try {
@@ -2287,22 +2318,35 @@ export function TeacherDashboard({
         {questionType === 'MULTIPLE_CHOICE' && (
           <div>
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Answer Choices & Correct Option</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Fill out the 4 choices and select the option representing the correct answer.
+              <label className="form-label">Correct Answer</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Enter the correct answer first, then add 3 plausible distractors below.
               </p>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Correct answer"
+                value={mcCorrectAnswer}
+                onChange={(e) => setMcCorrectAnswer(e.target.value)}
+                disabled={loading}
+                onKeyDown={preventSubmitOnEnter}
+              />
             </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Distractors (3 incorrect choices)</label>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
               gap: 16,
               marginBottom: 28
             }}>
-              {options.map((opt, idx) => (
-                <div 
-                  key={idx} 
-                  className={`teacher-option-input-card ${OPTION_CLASSES[idx]} ${correctOptionIndex === idx ? 'active' : ''}`}
+              {mcDistractors.map((dist, idx) => (
+                <div
+                  key={idx}
+                  className={`teacher-option-input-card ${OPTION_CLASSES[idx]}`}
                   style={{
                     background: '#ffffff',
                     border: '1px solid rgba(93, 107, 130, 0.15)',
@@ -2313,33 +2357,20 @@ export function TeacherDashboard({
                     gap: 12
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {['A', 'B', 'C', 'D'][idx]}
-                      </span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                        Choice {idx + 1}
-                      </span>
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', color: correctOptionIndex === idx ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      <input 
-                        type="radio" 
-                        name="correct-option" 
-                        checked={correctOptionIndex === idx}
-                        onChange={() => setCorrectOptionIndex(idx)}
-                        disabled={loading}
-                        style={{ accentColor: 'var(--accent)' }}
-                      />
-                      Correct
-                    </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {['A', 'B', 'C'][idx]}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                      Distractor {idx + 1}
+                    </span>
                   </div>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder={`Option ${idx + 1}`}
-                    value={opt}
-                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`Distractor ${idx + 1}`}
+                    value={dist}
+                    onChange={(e) => updateMcDistractor(idx, e.target.value)}
                     disabled={loading}
                     style={{ padding: '10px 14px', fontSize: '0.95rem' }}
                     onKeyDown={preventSubmitOnEnter}
@@ -2356,20 +2387,20 @@ export function TeacherDashboard({
             <div className="form-group" style={{ marginBottom: 12 }}>
               <label className="form-label">Sorting Elements (Correct Order)</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Enter items in their **correct sorted order** (top to bottom). The game will shuffle them automatically for players.
+                Enter items in their <strong>correct sorted order</strong> (top to bottom). The game will shuffle them automatically for players.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28, maxWidth: '600px' }}>
-              {options.map((opt, idx) => (
+              {sortingItems.map((opt, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ width: 30, fontWeight: 700, color: 'var(--accent-light)' }}>#{idx + 1}</span>
-                  <input 
-                    type="text" 
-                    className="form-input" 
+                  <input
+                    type="text"
+                    className="form-input"
                     placeholder={`Sorted Item ${idx + 1}`}
                     value={opt}
-                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                    onChange={(e) => updateSortingItem(idx, e.target.value)}
                     disabled={loading}
                     onKeyDown={preventSubmitOnEnter}
                   />
@@ -2387,8 +2418,8 @@ export function TeacherDashboard({
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
                 Write a sentence using placeholders like <code>[blank0]</code>, <code>[blank1]</code>, etc. for blank spaces.
               </p>
-              <textarea 
-                className="form-input" 
+              <textarea
+                className="form-input"
                 placeholder="e.g. In React, we use [blank0] to manage state and [blank1] for side effects."
                 rows={2}
                 value={dragSentence}
@@ -2398,32 +2429,58 @@ export function TeacherDashboard({
             </div>
 
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Blank Words & Distractors</label>
+              <label className="form-label">Blank Answers (in sentence order)</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Define the correct words matching the blanks, followed by incorrect distractor words.
+                Each blank needs a correct answer in the same order as the placeholders in the sentence.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7 max-w-[600px]">
-              {dragChoices.map((choice, idx) => {
-                const isBlankValue = dragSentence.includes(`[blank${idx}]`);
+              {dragAnswers.map((answer, idx) => {
+                const isBlankUsed = dragSentence.includes(`[blank${idx}]`);
                 return (
                   <div key={idx} className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankValue ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                      {isBlankValue ? `Choice ${idx + 1} (Fills [blank${idx}])` : `Choice ${idx + 1} (Distractor Word)`}
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isBlankUsed ? `Answer for [blank${idx}]` : `Answer ${idx + 1} (Optional)`}
                     </label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder={isBlankValue ? `Correct word for [blank${idx}]` : `Distractor word`}
-                      value={choice}
-                      onChange={(e) => updateDragChoice(idx, e.target.value)}
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={`Correct word for [blank${idx}]`}
+                      value={answer}
+                      onChange={(e) => updateDragAnswer(idx, e.target.value)}
                       disabled={loading}
                       onKeyDown={preventSubmitOnEnter}
                     />
                   </div>
                 );
               })}
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Distractor Words (decoys)</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
+                Add 2 extra wrong words that appear alongside the correct answers in the choice pool.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7 max-w-[600px]">
+              {dragDistractors.map((dist, idx) => (
+                <div key={idx} className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                    Distractor {idx + 1}
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`Distractor word ${idx + 1}`}
+                    value={dist}
+                    onChange={(e) => updateDragDistractor(idx, e.target.value)}
+                    disabled={loading}
+                    onKeyDown={preventSubmitOnEnter}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -2436,8 +2493,8 @@ export function TeacherDashboard({
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
                 Write a sentence using placeholders like <code>{"{{0}}"}</code>, <code>{"{{1}}"}</code> for the dropdowns.
               </p>
-              <textarea 
-                className="form-input" 
+              <textarea
+                className="form-input"
                 placeholder="e.g. PocketBase is written in {{0}} and uses {{1}} database."
                 rows={2}
                 value={dropdownSentence}
@@ -2447,30 +2504,45 @@ export function TeacherDashboard({
             </div>
 
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Dropdown Selections Config</label>
+              <label className="form-label">Dropdown Configuration</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Define comma-separated options. **The first option in the list is the correct answer**.
+                For each placeholder, enter the correct answer and at least 1 distractor.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
-              {dropdownOptions.map((choiceLine, idx) => {
-                const isDropdownUsed = dropdownSentence.includes(`{{${idx}}}`);
-                if (!isDropdownUsed && idx > 0) return null; // Show at least one config input
+              {dropdownConfig.map((dd, idx) => {
+                const isUsed = dropdownSentence.includes(`{{${idx}}}`);
+                if (!isUsed && idx > 0) return null;
                 return (
-                  <div key={idx} className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem', color: isDropdownUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                      {isDropdownUsed ? `Dropdown {{${idx}}} Options (Correct, Option2, Option3...)` : `Unused Dropdown Config`}
+                  <div key={idx} className="form-group" style={{ margin: 0, padding: 12, border: '1px solid rgba(93, 107, 130, 0.15)', borderRadius: 8 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isUsed ? `Dropdown {{${idx}}}` : `Unused Dropdown ${idx}`}
                     </label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Go, Rust, JavaScript, Python"
-                      value={choiceLine}
-                      onChange={(e) => updateDropdownOption(idx, e.target.value)}
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Correct answer"
+                      value={dd.correct_answer || ''}
+                      onChange={(e) => updateDropdownCorrect(idx, e.target.value)}
                       disabled={loading}
+                      style={{ marginBottom: 8 }}
                       onKeyDown={preventSubmitOnEnter}
                     />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {(dd.distractors || []).map((dist, dIdx) => (
+                        <input
+                          key={dIdx}
+                          type="text"
+                          className="form-input"
+                          placeholder={`Distractor ${dIdx + 1}`}
+                          value={dist}
+                          onChange={(e) => updateDropdownDistractor(idx, dIdx, e.target.value)}
+                          disabled={loading}
+                          onKeyDown={preventSubmitOnEnter}
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
               })}
@@ -2580,28 +2652,30 @@ Question Schemas by Type:
 {
   "type": "MULTIPLE_CHOICE",
   "text": "Question text asking the student to choose the correct option.",
-  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-  "correct_option_index": 1 // 0-based index of the correct answer. Distractors must be clearly incorrect and unambiguous.
+  "options": {
+    "correct_answer": "The correct option text",
+    "distractors": ["Wrong option 1", "Wrong option 2", "Wrong option 3"]
+  }
 }
 
 2. SORTING
 {
   "type": "SORTING",
   "text": "Instruction text (e.g., 'Sort these historical events in chronological order.')",
-  "options": ["Item 1", "Item 2", "Item 3", "Item 4"], // Exactly 4 items, sorted in the CORRECT order from first to last.
-  "correct_option_index": 0 // Always 0 for sorting questions
+  "options": {
+    "correct_sequence": ["Item 1 (first)", "Item 2", "Item 3", "Item 4 (last)"]
+  }
 }
 
 3. DRAG_DROP
 {
   "type": "DRAG_DROP",
-  "text": "Instruction text (e.g., 'Fill in the blanks by dragging the correct words.')",
+  "text": "Instruction text (e.g., 'Fill in the blanks by tapping the correct words.')",
   "options": {
-    "sentence": "The quick brown [blank0] jumps over the lazy [blank1].", // Sentence text with correct answers inside zero-indexed bracket placeholders like [blank0] and [blank1] (corresponding to the index in the 'correct' list).
-    "choices": ["fox", "dog", "cat", "horse"], // Exactly 4 choices, including the correct answers and distractors.
-    "correct": ["fox", "dog"] // The correct answers in the order they appear in the sentence placeholders.
-  },
-  "correct_option_index": 0 // Always 0
+    "sentence": "The quick brown [blank0] jumps over the lazy [blank1].",
+    "answers_in_order": ["fox", "dog"],
+    "distractors": ["cat", "horse"]
+  }
 }
 
 4. DROP_DOWN
@@ -2609,19 +2683,12 @@ Question Schemas by Type:
   "type": "DROP_DOWN",
   "text": "Instruction text (e.g., 'Choose the correct verb conjugations.')",
   "options": {
-    "sentence": "Yesterday I {{0}} to school and {{1}} my friend.", // Sentence text with zero-indexed double-curly placeholders like {{0}} and {{1}} corresponding to the index in the dropdowns array.
+    "sentence": "Yesterday I {{0}} to school and {{1}} my friend.",
     "dropdowns": [
-      {
-        "choices": ["went", "go", "gone", "goes"], // Exactly 4 choices for the first placeholder.
-        "correct": "went" // The correct answer for this dropdown.
-      },
-      {
-        "choices": ["saw", "see", "seen", "sees"], // Exactly 4 choices for the second placeholder.
-        "correct": "saw" // The correct answer for this dropdown.
-      }
+      { "correct_answer": "went", "distractors": ["go", "gone", "goes"] },
+      { "correct_answer": "saw",  "distractors": ["see", "seen", "sees"] }
     ]
-  },
-  "correct_option_index": 0 // Always 0
+  }
 }
 
 5. CATEGORIZE
@@ -2629,15 +2696,14 @@ Question Schemas by Type:
   "type": "CATEGORIZE",
   "text": "Instruction text (e.g., 'Group the items into the correct categories.')",
   "options": {
-    "categories": ["Fruits", "Vegetables"], // Exactly 2 categories.
+    "categories": ["Fruits", "Vegetables"],
     "items": [
       { "name": "Apple", "category": "Fruits" },
       { "name": "Broccoli", "category": "Vegetables" },
       { "name": "Banana", "category": "Fruits" },
       { "name": "Carrot", "category": "Vegetables" }
-    ] // Exactly 4 items, each mapped to one of the categories.
-  },
-  "correct_option_index": 0 // Always 0
+    ]
+  }
 }
 `;
 

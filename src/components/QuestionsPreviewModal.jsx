@@ -9,6 +9,7 @@ import {
   getCurlyIndex,
   getCurlyInner
 } from '../utils/blankParsing';
+import { getDragDropCorrect, getDropDownCorrect, normalizeQuestion } from '../utils/questionSchema';
 
 const OPTION_CLASSES = [
   'option-red',
@@ -43,18 +44,27 @@ export function QuestionsPreviewModal({
   // Question Form States
   const [questionType, setQuestionType] = useState('MULTIPLE_CHOICE');
   const [questionText, setQuestionText] = useState('');
-  const [options, setOptions] = useState(['', '', '', '']);
-  const [correctOptionIndex, setCorrectOptionIndex] = useState(0);
 
-  // Drag and Drop (Blanks) States
+  // Multiple Choice
+  const [mcCorrectAnswer, setMcCorrectAnswer] = useState('');
+  const [mcDistractors, setMcDistractors] = useState(['', '', '']);
+
+  // Sorting
+  const [sortingItems, setSortingItems] = useState(['', '', '', '']);
+
+  // Drag and Drop
   const [dragSentence, setDragSentence] = useState('');
-  const [dragChoices, setDragChoices] = useState(['', '', '', '']);
+  const [dragAnswers, setDragAnswers] = useState(['', '', '']);
+  const [dragDistractors, setDragDistractors] = useState(['', '']);
 
-  // Drop Down States
+  // Drop Down
   const [dropdownSentence, setDropdownSentence] = useState('');
-  const [dropdownOptions, setDropdownOptions] = useState(['', '', '', '']);
+  const [dropdownConfig, setDropdownConfig] = useState([
+    { correct_answer: '', distractors: ['', ''] },
+    { correct_answer: '', distractors: ['', ''] }
+  ]);
 
-  // Categorize States
+  // Categorize
   const [categorizeCategories, setCategorizeCategories] = useState('');
   const [categorizeItemsText, setCategorizeItemsText] = useState('');
 
@@ -128,12 +138,17 @@ export function QuestionsPreviewModal({
   const startCreating = () => {
     setQuestionType('MULTIPLE_CHOICE');
     setQuestionText('');
-    setOptions(['', '', '', '']);
-    setCorrectOptionIndex(0);
+    setMcCorrectAnswer('');
+    setMcDistractors(['', '', '']);
+    setSortingItems(['', '', '', '']);
     setDragSentence('');
-    setDragChoices(['', '', '', '']);
+    setDragAnswers(['', '', '']);
+    setDragDistractors(['', '']);
     setDropdownSentence('');
-    setDropdownOptions(['', '', '', '']);
+    setDropdownConfig([
+      { correct_answer: '', distractors: ['', ''] },
+      { correct_answer: '', distractors: ['', ''] }
+    ]);
     setCategorizeCategories('');
     setCategorizeItemsText('');
     setPreviewEditingQuestion('new');
@@ -145,27 +160,39 @@ export function QuestionsPreviewModal({
     setQuestionType(type);
     setQuestionText(question.text || '');
     setPreviewEditError('');
+    const n = normalizeQuestion(question);
 
-    if (type === 'MULTIPLE_CHOICE' || type === 'SORTING') {
-      const opts = Array.isArray(question.options) ? [...question.options] : [];
-      while (opts.length < 4) opts.push('');
-      setOptions(opts);
-      setCorrectOptionIndex(question.correct_option_index ?? 0);
+    if (type === 'MULTIPLE_CHOICE') {
+      setMcCorrectAnswer(n.options?.correct_answer || '');
+      const dists = [...(n.options?.distractors || [])];
+      while (dists.length < 3) dists.push('');
+      setMcDistractors(dists);
+    } else if (type === 'SORTING') {
+      const seq = [...(n.options?.correct_sequence || [])];
+      while (seq.length < 4) seq.push('');
+      setSortingItems(seq);
     } else if (type === 'DRAG_DROP') {
-      setDragSentence(question.options?.sentence || '');
-      const choices = Array.isArray(question.options?.choices) ? [...question.options.choices] : [];
-      while (choices.length < 4) choices.push('');
-      setDragChoices(choices);
+      setDragSentence(n.options?.sentence || '');
+      const ans = [...(n.options?.answers_in_order || [])];
+      while (ans.length < 3) ans.push('');
+      setDragAnswers(ans);
+      const dists = [...(n.options?.distractors || [])];
+      while (dists.length < 2) dists.push('');
+      setDragDistractors(dists);
     } else if (type === 'DROP_DOWN') {
-      setDropdownSentence(question.options?.sentence || '');
-      const dropdowns = Array.isArray(question.options?.dropdowns) ? question.options.dropdowns : [];
-      const choiceLines = dropdowns.map(d => Array.isArray(d.choices) ? d.choices.join(', ') : '');
-      while (choiceLines.length < 4) choiceLines.push('');
-      setDropdownOptions(choiceLines);
+      setDropdownSentence(n.options?.sentence || '');
+      const dds = Array.isArray(n.options?.dropdowns) ? n.options.dropdowns : [];
+      const padded = dds.map(d => ({
+        correct_answer: d.correct_answer || '',
+        distractors: [...(d.distractors || [])]
+      }));
+      while (padded.length < 2) padded.push({ correct_answer: '', distractors: ['', ''] });
+      padded.forEach(d => { while (d.distractors.length < 2) d.distractors.push(''); });
+      setDropdownConfig(padded);
     } else if (type === 'CATEGORIZE') {
-      const cats = Array.isArray(question.options?.categories) ? question.options.categories.join(', ') : '';
+      const cats = Array.isArray(n.options?.categories) ? n.options.categories.join(', ') : '';
       setCategorizeCategories(cats);
-      const items = Array.isArray(question.options?.items) ? question.options.items : [];
+      const items = Array.isArray(n.options?.items) ? n.options.items : [];
       const itemsLines = items.map(item => `${item.name}: ${item.category}`).join('\n');
       setCategorizeItemsText(itemsLines);
     }
@@ -184,27 +211,53 @@ export function QuestionsPreviewModal({
     }
   };
 
-  const updateOptionValue = (idx, value) => {
-    setOptions(prev => {
-      const newOpts = [...prev];
-      newOpts[idx] = value;
-      return newOpts;
+  const updateMcDistractor = (idx, value) => {
+    setMcDistractors(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
     });
   };
 
-  const updateDragChoice = (idx, value) => {
-    setDragChoices(prev => {
-      const newChoices = [...prev];
-      newChoices[idx] = value;
-      return newChoices;
+  const updateSortingItem = (idx, value) => {
+    setSortingItems(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
     });
   };
 
-  const updateDropdownOption = (idx, value) => {
-    setDropdownOptions(prev => {
-      const newOptions = [...prev];
-      newOptions[idx] = value;
-      return newOptions;
+  const updateDragAnswer = (idx, value) => {
+    setDragAnswers(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
+    });
+  };
+
+  const updateDragDistractor = (idx, value) => {
+    setDragDistractors(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
+    });
+  };
+
+  const updateDropdownCorrect = (idx, value) => {
+    setDropdownConfig(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], correct_answer: value };
+      return next;
+    });
+  };
+
+  const updateDropdownDistractor = (idx, distIdx, value) => {
+    setDropdownConfig(prev => {
+      const next = [...prev];
+      const dists = [...(next[idx].distractors || [])];
+      dists[distIdx] = value;
+      next[idx] = { ...next[idx], distractors: dists };
+      return next;
     });
   };
 
@@ -220,19 +273,25 @@ export function QuestionsPreviewModal({
     }
 
     let optionsPayload = null;
-    if (questionType === 'MULTIPLE_CHOICE' || questionType === 'SORTING') {
-      if (options.some(opt => !opt.trim())) {
-        setPreviewEditError('All 4 option choices must be filled out.');
+    if (questionType === 'MULTIPLE_CHOICE') {
+      if (!mcCorrectAnswer.trim()) {
+        setPreviewEditError('Correct answer is required.');
         return;
       }
-      optionsPayload = options.map(o => o.trim());
+      if (mcDistractors.some(d => !d.trim())) {
+        setPreviewEditError('All 3 distractors must be filled out.');
+        return;
+      }
+      optionsPayload = { correct_answer: mcCorrectAnswer.trim(), distractors: mcDistractors.map(d => d.trim()) };
+    } else if (questionType === 'SORTING') {
+      if (sortingItems.some(s => !s.trim())) {
+        setPreviewEditError('All 4 sorting items must be filled out.');
+        return;
+      }
+      optionsPayload = { correct_sequence: sortingItems.map(s => s.trim()) };
     } else if (questionType === 'DRAG_DROP') {
       if (!dragSentence.trim()) {
         setPreviewEditError('Sentence with blanks is required.');
-        return;
-      }
-      if (dragChoices.some(c => !c.trim())) {
-        setPreviewEditError('All 4 choices must be filled out.');
         return;
       }
       const numBlanks = (dragSentence.match(/\[[^\]]+\]/g) || []).length;
@@ -240,10 +299,19 @@ export function QuestionsPreviewModal({
         setPreviewEditError('The sentence must contain at least one blank placeholder (e.g. [blank0]).');
         return;
       }
+      const activeAnswers = dragAnswers.slice(0, numBlanks);
+      if (activeAnswers.some(a => !a.trim())) {
+        setPreviewEditError(`Please define all ${numBlanks} correct blank answers.`);
+        return;
+      }
+      if (dragDistractors.some(d => !d.trim())) {
+        setPreviewEditError('All distractor words must be filled out.');
+        return;
+      }
       optionsPayload = {
         sentence: dragSentence.trim(),
-        choices: dragChoices.map(c => c.trim()),
-        correct: dragChoices.slice(0, numBlanks).map(c => c.trim())
+        answers_in_order: activeAnswers.map(a => a.trim()),
+        distractors: dragDistractors.map(d => d.trim())
       };
     } else if (questionType === 'DROP_DOWN') {
       if (!dropdownSentence.trim()) {
@@ -255,22 +323,24 @@ export function QuestionsPreviewModal({
         setPreviewEditError('The sentence must contain at least one dropdown placeholder (e.g. {{0}}).');
         return;
       }
-      const activeLines = dropdownOptions.slice(0, numDropdowns);
-      if (activeLines.some(l => !l.trim())) {
-        setPreviewEditError(`Please define choices for all ${numDropdowns} dropdowns.`);
-        return;
-      }
-      const dropdownsConfig = activeLines.map(line => {
-        const choices = line.split(',').map(c => c.trim()).filter(Boolean);
-        return { choices, correct: choices[0] || '' };
-      });
-      if (dropdownsConfig.some(d => d.choices.length < 2)) {
-        setPreviewEditError('Each dropdown must have at least 2 comma-separated options.');
-        return;
+      const activeDropdowns = dropdownConfig.slice(0, numDropdowns);
+      for (let i = 0; i < activeDropdowns.length; i++) {
+        if (!activeDropdowns[i].correct_answer.trim()) {
+          setPreviewEditError(`Please define the correct answer for dropdown {{${i}}}.`);
+          return;
+        }
+        const filledDistractors = (activeDropdowns[i].distractors || []).filter(d => d.trim());
+        if (filledDistractors.length < 1) {
+          setPreviewEditError(`Please add at least 1 distractor for dropdown {{${i}}}.`);
+          return;
+        }
       }
       optionsPayload = {
         sentence: dropdownSentence.trim(),
-        dropdowns: dropdownsConfig
+        dropdowns: activeDropdowns.map(d => ({
+          correct_answer: d.correct_answer.trim(),
+          distractors: (d.distractors || []).filter(x => x.trim())
+        }))
       };
     } else if (questionType === 'CATEGORIZE') {
       if (!categorizeCategories.trim()) {
@@ -317,7 +387,6 @@ export function QuestionsPreviewModal({
       game_id: gameId,
       text: questionText.trim(),
       options: optionsPayload,
-      correct_option_index: questionType === 'MULTIPLE_CHOICE' ? correctOptionIndex : 0,
       type: questionType
     };
 
@@ -354,15 +423,16 @@ export function QuestionsPreviewModal({
     }
   };
 
-  const renderPreviewSentenceWithBlanks = (sentence, correct) => {
+  const renderPreviewSentenceWithBlanks = (sentence) => {
     if (!sentence) return '';
+    const correctAnswers = getDragDropCorrect(previewEditingQuestion || {});
     const parts = splitBracketTokens(sentence);
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
       if (numericIdx !== null) {
         const blankIdx = numericIdx;
-        const correctWord = correct ? correct[blankIdx] : '';
+        const correctWord = correctAnswers[blankIdx] || '';
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctWord || '_____'}
@@ -370,10 +440,9 @@ export function QuestionsPreviewModal({
         );
       }
       if (inner) {
-        let mappedIdx = -1;
-        if (correct) mappedIdx = correct.findIndex(c => c === inner);
+        const mappedIdx = correctAnswers.findIndex(c => c === inner);
         const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
-        const correctWord = correct ? correct[blankIdx] : inner;
+        const correctWord = correctAnswers[blankIdx] || inner;
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctWord || inner}
@@ -384,15 +453,16 @@ export function QuestionsPreviewModal({
     });
   };
 
-  const renderPreviewSentenceWithDropdowns = (sentence, dropdowns) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
+  const renderPreviewSentenceWithDropdowns = (sentence) => {
+    if (!sentence) return '';
+    const dropdowns = normalizeQuestion(previewEditingQuestion || {})?.options?.dropdowns || [];
     const parts = splitCurlyTokens(sentence);
     let sequentialDrop = 0;
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const correctVal = dropdowns[dropIdx]?.correct || '';
+        const correctVal = getDropDownCorrect(previewEditingQuestion || {}, dropIdx);
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
             {correctVal || '_____'}
@@ -400,13 +470,14 @@ export function QuestionsPreviewModal({
         );
       }
       if (inner) {
-        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const mappedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
         if (mappedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { correct: inner };
+        const config = dropdowns[idxToUse] || { correct_answer: inner };
+        const correctVal = config.correct_answer || config.correct || inner;
         return (
           <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
-            {config.correct || inner}
+            {correctVal}
           </span>
         );
       }
@@ -446,25 +517,27 @@ export function QuestionsPreviewModal({
 
   const renderPreviewOptions = (question) => {
     const type = question.type || 'MULTIPLE_CHOICE';
+    const n = normalizeQuestion(question);
 
     if (type === 'MULTIPLE_CHOICE') {
-      const opts = Array.isArray(question.options) ? question.options : [];
+      const correct = n.options?.correct_answer || '';
+      const merged = [correct, ...(n.options?.distractors || [])];
       return (
         <div className="flex flex-col gap-2">
-          {opts.map((opt, oIdx) => {
-            const isCorrect = question.correct_option_index === oIdx;
+          {merged.map((opt, oIdx) => {
+            const isCorrect = opt === correct;
             return (
-              <div 
-                key={oIdx} 
+              <div
+                key={oIdx}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-colors ${
-                  isCorrect 
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold shadow-xs' 
+                  isCorrect
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold shadow-xs'
                     : 'border-slate-100 bg-slate-50/50 text-slate-500'
                 }`}
               >
                 <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
-                  isCorrect 
-                    ? 'bg-emerald-500 text-white' 
+                  isCorrect
+                    ? 'bg-emerald-500 text-white'
                     : 'bg-slate-200 text-slate-600'
                 }`}>
                   {isCorrect ? '✓' : ['A', 'B', 'C', 'D'][oIdx]}
@@ -478,15 +551,15 @@ export function QuestionsPreviewModal({
     }
 
     if (type === 'SORTING') {
-      const opts = Array.isArray(question.options) ? question.options : [];
+      const opts = n.options?.correct_sequence || [];
       return (
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 flex items-center gap-1">
             <span><span>✨ Correct Sorted Order:</span></span>
           </div>
           {opts.map((opt, oIdx) => (
-            <div 
-              key={oIdx} 
+            <div
+              key={oIdx}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-medium text-xs shadow-xs"
             >
               <span className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 bg-emerald-500 text-white">
@@ -504,11 +577,11 @@ export function QuestionsPreviewModal({
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
-            {renderPreviewSentenceWithBlanks(question.options.sentence, question.options.correct)}
+            {renderPreviewSentenceWithBlanks(question.options.sentence)}
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 items-center">
             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Blanks:</span>
-            {(question.options.correct || []).map((word, wIdx) => (
+            {(n.options?.answers_in_order || []).map((word, wIdx) => (
               <span key={wIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
                 {word}
               </span>
@@ -523,13 +596,13 @@ export function QuestionsPreviewModal({
         <div className="flex flex-col gap-2">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
-            {renderPreviewSentenceWithDropdowns(question.options.sentence, question.options.dropdowns)}
+            {renderPreviewSentenceWithDropdowns(question.options.sentence)}
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5 items-center">
             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mr-1">Dropdowns:</span>
-            {(question.options.dropdowns || []).map((d, dIdx) => (
+            {(n.options?.dropdowns || []).map((d, dIdx) => (
               <span key={dIdx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
-                {d.correct}
+                {d.correct_answer || d.correct}
               </span>
             ))}
           </div>
@@ -581,22 +654,34 @@ export function QuestionsPreviewModal({
         {questionType === 'MULTIPLE_CHOICE' && (
           <div>
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Answer Choices & Correct Option</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Fill out the 4 choices and select the option representing the correct answer.
+              <label className="form-label">Correct Answer</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
+                Enter the correct answer first, then add 3 distractors below.
               </p>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Correct answer"
+                value={mcCorrectAnswer}
+                onChange={(e) => setMcCorrectAnswer(e.target.value)}
+                onKeyDown={preventSubmitOnEnter}
+              />
             </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Distractors (3 incorrect choices)</label>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
               gap: 16,
               marginBottom: 28
             }}>
-              {options.map((opt, idx) => (
-                <div 
-                  key={idx} 
-                  className={`teacher-option-input-card ${OPTION_CLASSES[idx]} ${correctOptionIndex === idx ? 'active' : ''}`}
+              {mcDistractors.map((dist, idx) => (
+                <div
+                  key={idx}
+                  className={`teacher-option-input-card ${OPTION_CLASSES[idx]}`}
                   style={{
                     background: '#ffffff',
                     border: '1px solid rgba(93, 107, 130, 0.15)',
@@ -607,32 +692,20 @@ export function QuestionsPreviewModal({
                     gap: 12
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {['A', 'B', 'C', 'D'][idx]}
-                      </span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                        Choice {idx + 1}
-                      </span>
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer', color: correctOptionIndex === idx ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      <input 
-                        type="radio" 
-                        name="correct-option" 
-                        checked={correctOptionIndex === idx}
-                        onChange={() => setCorrectOptionIndex(idx)}
-                        style={{ accentColor: 'var(--accent)' }}
-                      />
-                      Correct
-                    </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="option-icon" style={{ width: 20, height: 20, border: 'none', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {['A', 'B', 'C'][idx]}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                      Distractor {idx + 1}
+                    </span>
                   </div>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder={`Option ${idx + 1}`}
-                    value={opt}
-                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`Distractor ${idx + 1}`}
+                    value={dist}
+                    onChange={(e) => updateMcDistractor(idx, e.target.value)}
                     style={{ padding: '10px 14px', fontSize: '0.95rem' }}
                     onKeyDown={preventSubmitOnEnter}
                   />
@@ -648,20 +721,20 @@ export function QuestionsPreviewModal({
             <div className="form-group" style={{ marginBottom: 12 }}>
               <label className="form-label">Sorting Elements (Correct Order)</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Enter items in their **correct sorted order** (top to bottom). The game will shuffle them automatically for players.
+                Enter items in their <strong>correct sorted order</strong> (top to bottom). The game will shuffle them automatically for players.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28, maxWidth: '600px' }}>
-              {options.map((opt, idx) => (
+              {sortingItems.map((opt, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ width: 30, fontWeight: 700, color: 'var(--accent-light)' }}>#{idx + 1}</span>
-                  <input 
-                    type="text" 
-                    className="form-input" 
+                  <input
+                    type="text"
+                    className="form-input"
                     placeholder={`Sorted Item ${idx + 1}`}
                     value={opt}
-                    onChange={(e) => updateOptionValue(idx, e.target.value)}
+                    onChange={(e) => updateSortingItem(idx, e.target.value)}
                     onKeyDown={preventSubmitOnEnter}
                   />
                 </div>
@@ -678,8 +751,8 @@ export function QuestionsPreviewModal({
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
                 Write a sentence using placeholders like <code>[blank0]</code>, <code>[blank1]</code>, etc. for blank spaces.
               </p>
-              <textarea 
-                className="form-input" 
+              <textarea
+                className="form-input"
                 placeholder="e.g. In React, we use [blank0] to manage state and [blank1] for side effects."
                 rows={2}
                 value={dragSentence}
@@ -688,31 +761,50 @@ export function QuestionsPreviewModal({
             </div>
 
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Blank Words & Distractors</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Define the correct words matching the blanks, followed by incorrect distractor words.
-              </p>
+              <label className="form-label">Blank Answers (in sentence order)</label>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7 max-w-[600px]">
-              {dragChoices.map((choice, idx) => {
-                const isBlankValue = dragSentence.includes(`[blank${idx}]`);
+              {dragAnswers.map((answer, idx) => {
+                const isBlankUsed = dragSentence.includes(`[blank${idx}]`);
                 return (
                   <div key={idx} className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankValue ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                      {isBlankValue ? `Choice ${idx + 1} (Fills [blank${idx}])` : `Choice ${idx + 1} (Distractor Word)`}
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isBlankUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isBlankUsed ? `Answer for [blank${idx}]` : `Answer ${idx + 1} (Optional)`}
                     </label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder={isBlankValue ? `Correct word for [blank${idx}]` : `Distractor word`}
-                      value={choice}
-                      onChange={(e) => updateDragChoice(idx, e.target.value)}
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={`Correct word for [blank${idx}]`}
+                      value={answer}
+                      onChange={(e) => updateDragAnswer(idx, e.target.value)}
                       onKeyDown={preventSubmitOnEnter}
                     />
                   </div>
                 );
               })}
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">Distractor Words (decoys)</label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7 max-w-[600px]">
+              {dragDistractors.map((dist, idx) => (
+                <div key={idx} className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                    Distractor {idx + 1}
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`Distractor word ${idx + 1}`}
+                    value={dist}
+                    onChange={(e) => updateDragDistractor(idx, e.target.value)}
+                    onKeyDown={preventSubmitOnEnter}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -725,8 +817,8 @@ export function QuestionsPreviewModal({
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 12 }}>
                 Write a sentence using placeholders like <code>{"{{0}}"}</code>, <code>{"{{1}}"}</code> for the dropdowns.
               </p>
-              <textarea 
-                className="form-input" 
+              <textarea
+                className="form-input"
                 placeholder="e.g. PocketBase is written in {{0}} and uses {{1}} database."
                 rows={2}
                 value={dropdownSentence}
@@ -735,29 +827,43 @@ export function QuestionsPreviewModal({
             </div>
 
             <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label">Dropdown Selections Config</label>
+              <label className="form-label">Dropdown Configuration</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 16 }}>
-                Define comma-separated options. **The first option in the list is the correct answer**.
+                For each placeholder, enter the correct answer and at least 1 distractor.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, maxWidth: '600px' }}>
-              {dropdownOptions.map((choiceLine, idx) => {
-                const isDropdownUsed = dropdownSentence.includes(`{{${idx}}}`);
-                if (!isDropdownUsed && idx > 0) return null; // Show at least one config input
+              {dropdownConfig.map((dd, idx) => {
+                const isUsed = dropdownSentence.includes(`{{${idx}}}`);
+                if (!isUsed && idx > 0) return null;
                 return (
-                  <div key={idx} className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem', color: isDropdownUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
-                      {isDropdownUsed ? `Dropdown {{${idx}}} Options (Correct, Option2, Option3...)` : `Unused Dropdown Config`}
+                  <div key={idx} className="form-group" style={{ margin: 0, padding: 12, border: '1px solid rgba(93, 107, 130, 0.15)', borderRadius: 8 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: isUsed ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                      {isUsed ? `Dropdown {{${idx}}}` : `Unused Dropdown ${idx}`}
                     </label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Go, Rust, JavaScript, Python"
-                      value={choiceLine}
-                      onChange={(e) => updateDropdownOption(idx, e.target.value)}
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Correct answer"
+                      value={dd.correct_answer || ''}
+                      onChange={(e) => updateDropdownCorrect(idx, e.target.value)}
+                      style={{ marginBottom: 8 }}
                       onKeyDown={preventSubmitOnEnter}
                     />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {(dd.distractors || []).map((dist, dIdx) => (
+                        <input
+                          key={dIdx}
+                          type="text"
+                          className="form-input"
+                          placeholder={`Distractor ${dIdx + 1}`}
+                          value={dist}
+                          onChange={(e) => updateDropdownDistractor(idx, dIdx, e.target.value)}
+                          onKeyDown={preventSubmitOnEnter}
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
               })}

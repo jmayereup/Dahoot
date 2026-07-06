@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBracketInner } from '../utils/blankParsing';
+import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
 
 export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
@@ -77,14 +78,13 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
     const type = q.type || 'MULTIPLE_CHOICE';
 
     if (type === 'MULTIPLE_CHOICE') {
-      const idx = q.correct_option_index;
-      const optionText = Array.isArray(q.options) ? q.options[idx] : '';
+      const correctText = getMcCorrectAnswer(q);
       return (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Option:</div>
           <div className="flex items-center gap-2 bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-slate-700 font-semibold text-sm max-w-md">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold">✓</span>
-            {optionText}
+            {correctText}
           </div>
         </div>
       );
@@ -95,7 +95,7 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Sequence:</div>
           <div className="flex flex-col gap-1.5 max-w-md">
-            {q.options.map((opt, idx) => (
+            {getSortingCorrect(q).map((opt, idx) => (
               <div key={idx} className="flex items-center gap-3 bg-emerald-50/30 border border-emerald-100/50 rounded-lg p-2 text-slate-700 font-semibold text-xs">
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-[9px] font-bold">
                   {idx + 1}
@@ -110,7 +110,7 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
 
     if (type === 'DRAG_DROP') {
       const sentence = q.options.sentence || '';
-      const correctAnswers = q.options.correct || [];
+      const correctAnswers = getDragDropCorrect(q);
       const parts = splitBracketTokens(sentence);
       let sequential = 0;
       return (
@@ -129,13 +129,12 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
                 );
               }
               if (inner) {
-                let mapped = -1;
-                if (Array.isArray(correctAnswers)) mapped = correctAnswers.findIndex(c => c === inner);
+                const mapped = correctAnswers.findIndex(c => c === inner);
                 const valIdx = mapped !== -1 ? mapped : sequential;
                 if (mapped === -1) sequential += 1;
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {Array.isArray(correctAnswers) ? (correctAnswers[valIdx] || '???') : (inner || '???')}
+                    {correctAnswers[valIdx] || inner || '???'}
                   </strong>
                 );
               }
@@ -148,12 +147,10 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
 
     if (type === 'DROP_DOWN') {
       const sentence = q.options.sentence || '';
-      const dropdowns = q.options.dropdowns || [];
-      // Wait, let's make sure the regex works for both standard bracket and curly braces
-      // Let's use simple match for drop down sentence template:
-        const partsDropdown = splitCurlyTokens(sentence);
-        let sequential = 0;
-        return (
+      const dropdowns = normalizeQuestion(q)?.options?.dropdowns || [];
+      const partsDropdown = splitCurlyTokens(sentence);
+      let sequential = 0;
+      return (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
           <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
@@ -163,17 +160,19 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
               if (valIdx !== null) {
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {dropdowns[valIdx]?.correct || '???'}
+                    {getDropDownCorrect(q, valIdx) || '???'}
                   </strong>
                 );
               }
               if (inner) {
-                let mapped = dropdowns.findIndex(d => d.correct === inner);
+                const mapped = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
                 const idxToUse = mapped !== -1 ? mapped : sequential;
                 if (mapped === -1) sequential += 1;
+                const cfg = dropdowns[idxToUse];
+                const correctVal = cfg ? (cfg.correct_answer || cfg.correct || inner) : inner;
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {dropdowns[idxToUse]?.correct || inner}
+                    {correctVal}
                   </strong>
                 );
               }

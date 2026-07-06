@@ -1,18 +1,23 @@
 import React, { useMemo } from 'react';
 import { deterministicShuffle } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
+import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
 
 export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, playerSelectedIdx, roomCode }) {
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
-    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+    if (type !== 'MULTIPLE_CHOICE') return [];
+    const opts = getMcOptions(activeQuestion);
+    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
   }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
-  const renderFeedbackSentenceBlanks = (sentence, correct, playerAnswer) => {
+  const correctMcAnswer = useMemo(() => getMcCorrectAnswer(activeQuestion), [activeQuestion]);
+
+  const renderFeedbackSentenceBlanks = (sentence, playerAnswer) => {
     if (!sentence) return '';
+    const correctAnswers = getDragDropCorrect(activeQuestion);
     const parts = splitBracketTokens(sentence);
     let sequentialBlank = 0;
     return parts.map((part, idx) => {
@@ -21,12 +26,12 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
       if (numericIdx !== null) {
         const blankIdx = numericIdx;
         const playerWord = playerAnswer ? playerAnswer[blankIdx] : null;
-        const correctWord = correct ? correct[blankIdx] : '';
+        const correctWord = correctAnswers[blankIdx] || '';
         const isCorrect = playerWord === correctWord;
 
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
             style={{ cursor: 'default' }}
           >
@@ -41,8 +46,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         );
       }
       if (inner) {
-        let valIdx = -1;
-        if (Array.isArray(correct)) valIdx = correct.findIndex(c => c === inner);
+        const valIdx = correctAnswers.findIndex(c => c === inner);
         let blankIdx;
         let usedSequential = false;
         if (valIdx !== -1) {
@@ -53,13 +57,13 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         }
         if (usedSequential) sequentialBlank += 1;
 
-        const correctWord = Array.isArray(correct) ? correct[blankIdx] : inner;
+        const correctWord = correctAnswers[blankIdx] || inner;
         const playerWord = (playerAnswer && Array.isArray(playerAnswer)) ? playerAnswer[blankIdx] : null;
         const isCorrect = playerWord === correctWord;
 
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
             style={{ cursor: 'default' }}
           >
@@ -77,22 +81,22 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
     });
   };
 
-  const renderFeedbackSentenceDropdowns = (sentence, dropdowns, playerAnswer) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
+  const renderFeedbackSentenceDropdowns = (sentence, playerAnswer) => {
+    if (!sentence) return '';
+    const dropdowns = normalizeQuestion(activeQuestion)?.options?.dropdowns || [];
     const parts = splitCurlyTokens(sentence);
     let sequentialDrop = 0;
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const config = dropdowns[dropIdx];
+        const correctChoice = getDropDownCorrect(activeQuestion, dropIdx);
         const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
-        const correctChoice = config?.correct;
         const isCorrect = playerChoice === correctChoice;
 
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
           >
             {playerChoice ? (
@@ -100,14 +104,13 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
                 {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
               </span>
             ) : (
-              <span>_____ (Correct: {correctChoice})</span>
+              <span>_____ (Correct: ${correctChoice})</span>
             )}
           </span>
         );
       }
       if (inner) {
-        // If token contains explicit text, try to map to a dropdown by correct value; otherwise map sequentially
-        let guessedIdx = dropdowns.findIndex(d => d.correct === inner);
+        let guessedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         let usedSequential = false;
         if (guessedIdx === -1) {
           guessedIdx = sequentialDrop;
@@ -116,11 +119,11 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         if (usedSequential) sequentialDrop += 1;
         const config = guessedIdx !== -1 ? dropdowns[guessedIdx] : null;
         const playerChoice = playerAnswer && guessedIdx !== -1 ? playerAnswer[guessedIdx] : '';
-        const correctChoice = config?.correct || inner;
+        const correctChoice = config ? (config.correct_answer || config.correct || inner) : inner;
         const isCorrect = playerChoice === correctChoice;
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
           >
             {playerChoice ? (
@@ -128,7 +131,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
                 {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
               </span>
             ) : (
-              <span>_____ (Correct: {correctChoice})</span>
+              <span>_____ (Correct: ${correctChoice})</span>
             )}
           </span>
         );
@@ -151,12 +154,12 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         </div>
 
         {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
+        {type === 'MULTIPLE_CHOICE' && (
           <div className="options-grid">
             {shuffledMultipleChoiceOptions.map((item, idx) => {
-              const isCorrectAnswer = item.originalIdx === activeQuestion.correct_option_index;
-              const isPlayerChoice = item.originalIdx === playerSelectedIdx;
-              
+              const isCorrectAnswer = item.item === correctMcAnswer;
+              const isPlayerChoice = item.item === playerSelectedIdx;
+
               let cardClass = "";
               if (isCorrectAnswer) {
                 cardClass = "correct-feedback";
@@ -167,8 +170,8 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
               }
 
               return (
-                <div 
-                  key={item.originalIdx} 
+                <div
+                  key={item.item}
                   className={`option-card ${cardClass}`}
                 >
                   <div className="option-icon">
@@ -182,61 +185,63 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         )}
 
         {/* 2. SORTING */}
-        {type === 'SORTING' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-            {playerSelectedIdx && Array.isArray(playerSelectedIdx) ? (
-              playerSelectedIdx.map((item, idx) => {
-                const isItemCorrect = item === activeQuestion.options[idx];
-                return (
-                  <div 
-                    key={idx} 
+        {type === 'SORTING' && (() => {
+          const seq = getSortingCorrect(activeQuestion);
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+              {playerSelectedIdx && Array.isArray(playerSelectedIdx) ? (
+                playerSelectedIdx.map((item, idx) => {
+                  const isItemCorrect = item === seq[idx];
+                  return (
+                    <div
+                      key={idx}
+                      className="player-sorting-card"
+                      style={{
+                        background: isItemCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                        border: isItemCorrect ? '1.5px solid #10b981' : '1.5px solid #ef4444',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        color: isItemCorrect ? '#065f46' : '#991b1b'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="sorting-number" style={{
+                          background: isItemCorrect ? '#10b981' : '#ef4444',
+                          color: '#fff'
+                        }}>{idx + 1}</span>
+                        <span style={{ fontWeight: 600 }}>{item}</span>
+                      </div>
+                      <span style={{ fontWeight: 800 }}>{isItemCorrect ? '✓' : '✗'}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                seq.map((item, idx) => (
+                  <div
+                    key={idx}
                     className="player-sorting-card"
                     style={{
-                      background: isItemCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                      border: isItemCorrect ? '1.5px solid #10b981' : '1.5px solid #ef4444',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1.5px solid var(--panel-border)',
                       borderRadius: '8px',
                       padding: '12px 16px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      color: isItemCorrect ? '#065f46' : '#991b1b'
+                      gap: 12
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="sorting-number" style={{
-                        background: isItemCorrect ? '#10b981' : '#ef4444',
-                        color: '#fff'
-                      }}>{idx + 1}</span>
-                      <span style={{ fontWeight: 600 }}>{item}</span>
-                    </div>
-                    <span style={{ fontWeight: 800 }}>{isItemCorrect ? '✓' : '✗'}</span>
+                    <span className="sorting-number">{idx + 1}</span>
+                    <span style={{ fontWeight: 600 }}>{item} (Correct)</span>
                   </div>
-                );
-              })
-            ) : (
-              // Unanswered Sorting correct order
-              activeQuestion.options.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  className="player-sorting-card"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1.5px solid var(--panel-border)',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <span className="sorting-number">{idx + 1}</span>
-                  <span style={{ fontWeight: 600 }}>{item} (Correct)</span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                ))
+              )}
+            </div>
+          );
+        })()}
 
         {/* 3. DRAG & DROP */}
         {type === 'DRAG_DROP' && activeQuestion.options && (
@@ -245,8 +250,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
             fontSize: '1.15rem'
           }}>
             {renderFeedbackSentenceBlanks(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.correct, 
+              activeQuestion.options.sentence,
               playerSelectedIdx
             )}
           </div>
@@ -259,8 +263,7 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
             fontSize: '1.15rem'
           }}>
             {renderFeedbackSentenceDropdowns(
-              activeQuestion.options.sentence, 
-              activeQuestion.options.dropdowns, 
+              activeQuestion.options.sentence,
               playerSelectedIdx
             )}
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
+import { isAnswerCorrect } from '../utils/questionSchema';
 
 export function useMarathonGame(view, setView) {
   const [marathonState, setMarathonState] = useState('INTRO'); // 'INTRO' | 'QUESTION' | 'FEEDBACK' | 'PAUSED' | 'FINISHED'
@@ -108,30 +109,7 @@ export function useMarathonGame(view, setView) {
     setPlayerSelectedIdx(userAnswer);
     if (!currentQuestion) return;
 
-    let isCorrect = false;
-    const type = currentQuestion.type || 'MULTIPLE_CHOICE';
-
-    if (type === 'MULTIPLE_CHOICE') {
-      isCorrect = userAnswer === currentQuestion.correct_option_index;
-    } else if (type === 'SORTING') {
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === currentQuestion.options.length &&
-                  userAnswer.every((val, i) => val === currentQuestion.options[i]);
-    } else if (type === 'DRAG_DROP') {
-      const correctArr = currentQuestion.options.correct || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === correctArr.length &&
-                  userAnswer.every((val, i) => val === correctArr[i]);
-    } else if (type === 'DROP_DOWN') {
-      const dropdowns = currentQuestion.options.dropdowns || [];
-      isCorrect = Array.isArray(userAnswer) && 
-                  userAnswer.length === dropdowns.length &&
-                  userAnswer.every((val, i) => val === dropdowns[i]?.correct);
-    } else if (type === 'CATEGORIZE') {
-      const correctItems = currentQuestion.options.items || [];
-      isCorrect = typeof userAnswer === 'object' && userAnswer !== null &&
-                  correctItems.every(item => userAnswer[item.name] === item.category);
-    }
+    const isCorrect = isAnswerCorrect(currentQuestion, userAnswer);
 
     // Update stats
     setTotalAnswered(prev => prev + 1);

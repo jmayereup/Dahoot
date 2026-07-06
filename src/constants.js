@@ -1,30 +1,34 @@
 export const DEFAULT_QUESTIONS = [
   {
     text: "Which programming language was created by Brendan Eich in 1995 in just 10 days?",
-    options: ["Java", "JavaScript", "Python", "C++"],
-    correct_option_index: 1,
+    options: {
+      correct_answer: "JavaScript",
+      distractors: ["Java", "Python", "C++"]
+    },
     type: "MULTIPLE_CHOICE"
   },
   {
     text: "What does CSS stand for?",
-    options: ["Computer Style Sheets", "Cascading Style Sheets", "Creative Style Sheets", "Colorful Style Sheets"],
-    correct_option_index: 1,
+    options: {
+      correct_answer: "Cascading Style Sheets",
+      distractors: ["Computer Style Sheets", "Creative Style Sheets", "Colorful Style Sheets"]
+    },
     type: "MULTIPLE_CHOICE"
   },
   {
     text: "Sort these tech stack layers from front-end to back-end (client-side at the top, database at the bottom).",
-    options: ["UI CSS / HTML", "React Client Logic", "Express API Router", "PostgreSQL Database"],
-    correct_option_index: 0,
+    options: {
+      correct_sequence: ["UI CSS / HTML", "React Client Logic", "Express API Router", "PostgreSQL Database"]
+    },
     type: "SORTING"
   },
   {
     text: "Drag the correct hook names to complete the sentence.",
     options: {
       sentence: "In React, we use the [blank0] hook to manage local component state, and [blank1] to perform side effects.",
-      choices: ["useState", "useEffect", "useContext", "useRef"],
-      correct: ["useState", "useEffect"]
+      answers_in_order: ["useState", "useEffect"],
+      distractors: ["useContext", "useRef"]
     },
-    correct_option_index: 0,
     type: "DRAG_DROP"
   },
   {
@@ -32,11 +36,10 @@ export const DEFAULT_QUESTIONS = [
     options: {
       sentence: "PocketBase is written in {{0}} and uses {{1}} as its default embedded database engine.",
       dropdowns: [
-        { choices: ["Go", "Rust", "JavaScript"], correct: "Go" },
-        { choices: ["SQLite", "PostgreSQL", "MongoDB"], correct: "SQLite" }
+        { correct_answer: "Go", distractors: ["Rust", "JavaScript"] },
+        { correct_answer: "SQLite", distractors: ["PostgreSQL", "MongoDB"] }
       ]
     },
-    correct_option_index: 0,
     type: "DROP_DOWN"
   },
   {
@@ -52,7 +55,6 @@ export const DEFAULT_QUESTIONS = [
         { name: "Express", category: "Frameworks" }
       ]
     },
-    correct_option_index: 0,
     type: "CATEGORIZE"
   }
 ];

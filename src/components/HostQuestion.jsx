@@ -3,6 +3,7 @@ import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
+import { getMcOptions, getDragDropChoices, getSortingCorrect } from '../utils/questionSchema';
 
 export function HostQuestion({
   qIndex,
@@ -22,14 +23,15 @@ export function HostQuestion({
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE' || !Array.isArray(activeQuestion.options)) return [];
-    return deterministicShuffle(activeQuestion.options, `${roomCode}-${activeQuestion.id}`);
+    if (type !== 'MULTIPLE_CHOICE') return [];
+    const opts = getMcOptions(activeQuestion);
+    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
   }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
 
   // Shuffle sorting options once when question changes so they display out of order
   const shuffledSortingOptions = useMemo(() => {
-    if (type !== 'SORTING' || !Array.isArray(activeQuestion.options)) return [];
-    return shuffleArray(activeQuestion.options);
+    if (type !== 'SORTING') return [];
+    return shuffleArray(getSortingCorrect(activeQuestion));
   }, [activeQuestion.id, activeQuestion.options, type]);
 
   // Helper to parse drag and drop sentences
@@ -106,10 +108,10 @@ export function HostQuestion({
       <div className="question-content-area" style={{ marginTop: 24, width: '100%' }}>
         
         {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(activeQuestion.options) && (
+        {type === 'MULTIPLE_CHOICE' && (
           <div className="options-grid">
             {shuffledMultipleChoiceOptions.map((item, idx) => (
-              <div key={item.originalIdx} className={`option-card ${OPTION_CLASSES[idx]}`}>
+              <div key={item.item} className={`option-card ${OPTION_CLASSES[idx]}`}>
                 <div className="option-icon">{['A', 'B', 'C', 'D'][idx]}</div>
                 <span>{item.item}</span>
               </div>
@@ -161,9 +163,9 @@ export function HostQuestion({
             </div>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {activeQuestion.options.choices?.map((choice, idx) => (
-                <div 
-                  key={idx} 
+              {getDragDropChoices(activeQuestion).map((choice, idx) => (
+                <div
+                  key={idx}
                   style={{
                     background: '#ffffff',
                     border: '1px solid rgba(93, 107, 130, 0.15)',

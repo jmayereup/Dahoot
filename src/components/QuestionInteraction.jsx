@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
 import { shuffleArray } from '../utils/shuffle';
+import { normalizeQuestion, getMcOptions, getMcCorrectAnswer, getDragDropChoices, getDragDropCorrect, getDropDownChoices, getDropDownCorrect, getSortingCorrect, isScrambleSentence } from '../utils/questionSchema';
 
 export function QuestionInteraction({
   question,
@@ -30,17 +31,18 @@ export function QuestionInteraction({
 
   useEffect(() => {
     if (!question) return;
-    if (type === 'SORTING' && Array.isArray(question.options)) {
-      setSortingPool(shuffleArray(question.options));
+    const n = normalizeQuestion(question);
+    if (type === 'SORTING' && n?.options?.correct_sequence) {
+      setSortingPool(shuffleArray(n.options.correct_sequence));
       setSortedItems([]);
-    } else if (type === 'DRAG_DROP' && question.options) {
-      const correctLen = question.options.correct ? question.options.correct.length : 0;
+    } else if (type === 'DRAG_DROP' && n?.options) {
+      const correctLen = (n.options.answers_in_order || []).length;
       setPlacedWords(Array(correctLen).fill(null));
       setActiveBlankIdx(0);
-    } else if (type === 'DROP_DOWN' && question.options) {
-      const dropLen = question.options.dropdowns ? question.options.dropdowns.length : 0;
+    } else if (type === 'DROP_DOWN' && n?.options?.dropdowns) {
+      const dropLen = n.options.dropdowns.length;
       setDropdownSelections(Array(dropLen).fill(''));
-    } else if (type === 'CATEGORIZE' && question.options) {
+    } else if (type === 'CATEGORIZE' && n?.options) {
       effectiveSetCategorizeIdx(0);
       setCategoryAssignments({});
     }
@@ -125,7 +127,8 @@ export function QuestionInteraction({
       }
       if (inner) {
         let mappedIdx = -1;
-        if (question?.options?.correct) mappedIdx = question.options.correct.findIndex(c => c === inner);
+        const correctAnswers = getDragDropCorrect(question) || [];
+        if (correctAnswers.length) mappedIdx = correctAnswers.findIndex(c => c === inner);
         const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
         const word = placedWords[blankIdx];
         const isActive = blankIdx === activeBlankIdx;
@@ -151,7 +154,7 @@ export function QuestionInteraction({
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const config = dropdowns[dropIdx] || { choices: [] };
+        const choices = getDropDownChoices(question, dropIdx);
         return (
           <select
             key={idx}
@@ -160,20 +163,21 @@ export function QuestionInteraction({
             onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
           >
             <option value="">-- Choose --</option>
-            {config.choices.map((choice, cIdx) => (
+            {choices.map((choice, cIdx) => (
               <option key={cIdx} value={choice}>{choice}</option>
             ))}
           </select>
         );
       }
       if (inner) {
-        let mappedIdx = dropdowns.findIndex(d => d.correct === inner);
-        const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
-        if (mappedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { choices: [inner], correct: inner };
+        const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
+        const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
+        if (ddIdx === -1) sequentialDrop += 1;
+        const config = dropdowns[idxToUse] || { correct_answer: inner, distractors: [] };
+        const correctVal = config.correct_answer || config.correct || inner;
         return (
-          <select key={idx} className="player-sentence-select" disabled value={config.correct || inner}>
-            <option value={config.correct || inner}>{config.correct || inner}</option>
+          <select key={idx} className="player-sentence-select" disabled value={correctVal}>
+            <option value={correctVal}>{correctVal}</option>
           </select>
         );
       }
@@ -181,8 +185,9 @@ export function QuestionInteraction({
     });
   };
 
-  const renderFeedbackSentenceBlanks = (sentence, correct, pAnswer) => {
+  const renderFeedbackSentenceBlanks = (sentence, pAnswer) => {
     if (!sentence) return '';
+    const correctAnswers = getDragDropCorrect(question) || [];
     const parts = splitBracketTokens(sentence);
     let sequentialBlank = 0;
     return parts.map((part, idx) => {
@@ -191,7 +196,7 @@ export function QuestionInteraction({
       if (numericIdx !== null) {
         const blankIdx = numericIdx;
         const playerWord = pAnswer ? pAnswer[blankIdx] : null;
-        const correctWord = correct ? correct[blankIdx] : '';
+        const correctWord = correctAnswers[blankIdx] || '';
         const isBlankCorrect = playerWord === correctWord;
         return (
           <span
@@ -208,8 +213,7 @@ export function QuestionInteraction({
         );
       }
       if (inner) {
-        let valIdx = -1;
-        if (Array.isArray(correct)) valIdx = correct.findIndex(c => c === inner);
+        const valIdx = correctAnswers.findIndex(c => c === inner);
         let blankIdx;
         let usedSequential = false;
         if (valIdx !== -1) {
@@ -219,7 +223,7 @@ export function QuestionInteraction({
           usedSequential = true;
         }
         if (usedSequential) sequentialBlank += 1;
-        const correctWord = Array.isArray(correct) ? correct[blankIdx] : inner;
+        const correctWord = correctAnswers[blankIdx] || inner;
         const playerWord = (pAnswer && Array.isArray(pAnswer)) ? pAnswer[blankIdx] : null;
         const isBlankCorrect = playerWord === correctWord;
         return (
@@ -231,7 +235,7 @@ export function QuestionInteraction({
             {playerWord ? (
               <span>{playerWord} {isBlankCorrect ? '✓' : `(Correct: ${correctWord})`}</span>
             ) : (
-              <span>_____ (Correct: {correctWord})</span>
+              <span>_____ (Correct: ${correctWord})</span>
             )}
           </span>
         );
@@ -240,17 +244,17 @@ export function QuestionInteraction({
     });
   };
 
-  const renderFeedbackSentenceDropdowns = (sentence, dropdowns, pAnswer) => {
-    if (!sentence || !Array.isArray(dropdowns)) return '';
+  const renderFeedbackSentenceDropdowns = (sentence, pAnswer) => {
+    if (!sentence) return '';
+    const dropdowns = normalizeQuestion(question)?.options?.dropdowns || [];
     const parts = splitCurlyTokens(sentence);
     let sequentialDrop = 0;
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const config = dropdowns[dropIdx];
+        const correctChoice = getDropDownCorrect(question, dropIdx);
         const playerChoice = pAnswer ? pAnswer[dropIdx] : '';
-        const correctChoice = config?.correct;
         const isDropCorrect = playerChoice === correctChoice;
         return (
           <span
@@ -266,12 +270,12 @@ export function QuestionInteraction({
         );
       }
       if (inner) {
-        const guessedIdx = dropdowns.findIndex(d => d.correct === inner);
+        const guessedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = guessedIdx !== -1 ? guessedIdx : sequentialDrop;
         if (guessedIdx === -1) sequentialDrop += 1;
-        const config = dropdowns[idxToUse] || { correct: inner };
+        const config = dropdowns[idxToUse] || { correct_answer: inner };
+        const correctChoice = config.correct_answer || config.correct || inner;
         const playerChoice = pAnswer && idxToUse !== -1 ? pAnswer[idxToUse] : '';
-        const correctChoice = config?.correct || inner;
         const isDropCorrect = playerChoice === correctChoice;
         return (
           <span
@@ -305,92 +309,99 @@ export function QuestionInteraction({
           </div>
         </div>
 
-        {type === 'MULTIPLE_CHOICE' && Array.isArray(question.options) && (
-          <div className="options-grid">
-            {question.options.map((item, idx) => {
-              const isCorrectAnswer = idx === question.correct_option_index;
-              const isPlayerChoice = idx === playerAnswer;
-              let cardClass = "";
-              if (isCorrectAnswer) {
-                cardClass = "correct-feedback";
-              } else if (isPlayerChoice && !isCorrectAnswer) {
-                cardClass = "incorrect-feedback";
-              } else {
-                cardClass = "muted-feedback";
-              }
-              return (
-                <div key={idx} className={`option-card ${cardClass}`}>
-                  <div className="option-icon">
-                    {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : ['A', 'B', 'C', 'D'][idx])}
-                  </div>
-                  <span>{item}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {type === 'SORTING' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-            {playerAnswer && Array.isArray(playerAnswer) ? (
-              playerAnswer.map((item, idx) => {
-                const isItemCorrect = item === question.options[idx];
+        {type === 'MULTIPLE_CHOICE' && (() => {
+          const opts = getMcOptions(question);
+          const correct = getMcCorrectAnswer(question);
+          return (
+            <div className="options-grid">
+              {opts.map((item, idx) => {
+                const isCorrectAnswer = item === correct;
+                const isPlayerChoice = (playerAnswer && playerAnswer.item === item) || playerAnswer === item;
+                let cardClass = "";
+                if (isCorrectAnswer) {
+                  cardClass = "correct-feedback";
+                } else if (isPlayerChoice && !isCorrectAnswer) {
+                  cardClass = "incorrect-feedback";
+                } else {
+                  cardClass = "muted-feedback";
+                }
                 return (
+                  <div key={idx} className={`option-card ${cardClass}`}>
+                    <div className="option-icon">
+                      {isCorrectAnswer ? '✓' : (isPlayerChoice ? '✗' : ['A', 'B', 'C', 'D'][idx])}
+                    </div>
+                    <span>{item}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {type === 'SORTING' && (() => {
+          const seq = getSortingCorrect(question);
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+              {playerAnswer && Array.isArray(playerAnswer) ? (
+                playerAnswer.map((item, idx) => {
+                  const isItemCorrect = item === seq[idx];
+                  return (
+                    <div
+                      key={idx}
+                      className="player-sorting-card"
+                      style={{
+                        background: isItemCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                        border: isItemCorrect ? '1.5px solid #10b981' : '1.5px solid #ef4444',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        color: isItemCorrect ? '#065f46' : '#991b1b'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="sorting-number" style={{
+                          background: isItemCorrect ? '#10b981' : '#ef4444',
+                          color: '#fff'
+                        }}>{idx + 1}</span>
+                        <span style={{ fontWeight: 600 }}>{item}</span>
+                      </div>
+                      <span style={{ fontWeight: 800 }}>{isItemCorrect ? '✓' : '✗'}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                seq.map((item, idx) => (
                   <div
                     key={idx}
                     className="player-sorting-card"
                     style={{
-                      background: isItemCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                      border: isItemCorrect ? '1.5px solid #10b981' : '1.5px solid #ef4444',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1.5px solid var(--panel-border)',
                       borderRadius: '8px',
                       padding: '12px 16px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      color: isItemCorrect ? '#065f46' : '#991b1b'
+                      gap: 12
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="sorting-number" style={{
-                        background: isItemCorrect ? '#10b981' : '#ef4444',
-                        color: '#fff'
-                      }}>{idx + 1}</span>
-                      <span style={{ fontWeight: 600 }}>{item}</span>
-                    </div>
-                    <span style={{ fontWeight: 800 }}>{isItemCorrect ? '✓' : '✗'}</span>
+                    <span className="sorting-number">{idx + 1}</span>
+                    <span style={{ fontWeight: 600 }}>{item} (Correct)</span>
                   </div>
-                );
-              })
-            ) : (
-              question.options.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="player-sorting-card"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1.5px solid var(--panel-border)',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <span className="sorting-number">{idx + 1}</span>
-                  <span style={{ fontWeight: 600 }}>{item} (Correct)</span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                ))
+              )}
+            </div>
+          );
+        })()}
 
         {type === 'DRAG_DROP' && question.options && (
           <div className="player-sentence-container bg-white border border-slate-200/60 rounded-2xl p-5 relative shadow-sm text-slate-800" style={{
             lineHeight: '2.5rem',
             fontSize: '1.15rem'
           }}>
-            {renderFeedbackSentenceBlanks(question.options.sentence, question.options.correct, playerAnswer)}
+            {renderFeedbackSentenceBlanks(question.options.sentence, playerAnswer)}
           </div>
         )}
 
@@ -399,7 +410,7 @@ export function QuestionInteraction({
             lineHeight: '2.8rem',
             fontSize: '1.15rem'
           }}>
-            {renderFeedbackSentenceDropdowns(question.options.sentence, question.options.dropdowns, playerAnswer)}
+            {renderFeedbackSentenceDropdowns(question.options.sentence, playerAnswer)}
           </div>
         )}
 
@@ -473,20 +484,23 @@ export function QuestionInteraction({
 
         <div className="player-input-area" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
 
-          {type === 'MULTIPLE_CHOICE' && Array.isArray(question.options) && (
-            <div className="options-grid">
-              {question.options.map((option, idx) => (
-                <button
-                  key={idx}
-                  className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
-                  onClick={() => onSubmit(idx)}
-                >
-                  <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
-                  <span>{option}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {type === 'MULTIPLE_CHOICE' && (() => {
+            const opts = getMcOptions(question);
+            return (
+              <div className="options-grid">
+                {opts.map((option, idx) => (
+                  <button
+                    key={idx}
+                    className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
+                    onClick={() => onSubmit(option)}
+                  >
+                    <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
+                    <span>{option}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {type === 'SORTING' && (
             <div className="w-full flex flex-col">
@@ -551,9 +565,8 @@ export function QuestionInteraction({
           )}
 
           {type === 'DRAG_DROP' && question.options && (() => {
-            const isScramble = typeof question.options === 'object' &&
-              question.options.sentence &&
-              !question.options.sentence.replace(/\[blank\d+\]/g, '').trim();
+            const isScramble = isScrambleSentence(question);
+            const choices = getDragDropChoices(question);
             return (
               <div style={{ width: '100%' }}>
                 <div
@@ -593,7 +606,7 @@ export function QuestionInteraction({
                 </div>
 
                 <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                  {question.options.choices?.map((choice, idx) => {
+                  {choices.map((choice, idx) => {
                     const isPlaced = placedWords.includes(choice);
                     return (
                       <button

@@ -6,24 +6,20 @@ export function parseMarkdownQuestions(text) {
     const type = sections[i].toUpperCase();
     const content = sections[i + 1] || '';
     
-    // Parse question lines
     const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) continue;
     
     let textPrompt = '';
     
     if (type === 'MULTIPLE_CHOICE') {
-      const optionLines = [];
-      let correctIdx = 0;
+      const allOptions = [];
       
       for (const line of lines) {
         if (line.startsWith('-')) {
           let value = line.substring(1).trim();
-          if (value.startsWith('*')) {
-            correctIdx = optionLines.length;
-            value = value.substring(1).trim();
-          }
-          optionLines.push(value);
+          const isCorrect = value.startsWith('*');
+          if (isCorrect) value = value.substring(1).trim();
+          allOptions.push({ value, isCorrect });
         } else {
           if (!textPrompt) {
             textPrompt = line;
@@ -33,24 +29,27 @@ export function parseMarkdownQuestions(text) {
         }
       }
       
-      // Pad to exactly 4 options
-      while (optionLines.length < 4) optionLines.push('');
-      
-      questions.push({
-        type,
-        text: textPrompt.trim(),
-        options: optionLines.slice(0, 4),
-        correct_option_index: correctIdx
-      });
+      const correctEntry = allOptions.find(o => o.isCorrect);
+      if (correctEntry) {
+        const distractors = allOptions.filter(o => !o.isCorrect).map(o => o.value);
+        questions.push({
+          type,
+          text: textPrompt.trim(),
+          options: {
+            correct_answer: correctEntry.value,
+            distractors
+          }
+        });
+      }
     } 
     
     else if (type === 'SORTING') {
-      const optionLines = [];
+      const correctSequence = [];
       
       for (const line of lines) {
         const sortingMatch = line.match(/^\d+\.\s*(.*)/);
         if (sortingMatch) {
-          optionLines.push(sortingMatch[1].trim());
+          correctSequence.push(sortingMatch[1].trim());
         } else {
           if (!textPrompt) {
             textPrompt = line;
@@ -60,20 +59,19 @@ export function parseMarkdownQuestions(text) {
         }
       }
       
-      while (optionLines.length < 4) optionLines.push('');
-      
-      questions.push({
-        type,
-        text: textPrompt.trim(),
-        options: optionLines.slice(0, 4),
-        correct_option_index: 0
-      });
+      if (correctSequence.length > 0) {
+        questions.push({
+          type,
+          text: textPrompt.trim(),
+          options: { correct_sequence: correctSequence }
+        });
+      }
     } 
     
     else if (type === 'DRAG_DROP') {
       let sentence = '';
-      const choices = [];
-      const correct = [];
+      const correctAnswers = [];
+      const distractors = [];
       
       for (const line of lines) {
         if (line.toLowerCase().startsWith('sentence:')) {
@@ -83,11 +81,10 @@ export function parseMarkdownQuestions(text) {
           const isCorrect = value.startsWith('*');
           if (isCorrect) {
             value = value.substring(1).trim();
-            correct.push(value);
+            correctAnswers.push(value);
+          } else {
+            distractors.push(value);
           }
-          choices.push(value);
-        } else if (line.toLowerCase().startsWith('choices:')) {
-          // ignore choices header
         } else {
           if (!textPrompt) {
             textPrompt = line;
@@ -97,18 +94,17 @@ export function parseMarkdownQuestions(text) {
         }
       }
       
-      while (choices.length < 4) choices.push('');
-      
-      questions.push({
-        type,
-        text: textPrompt.trim(),
-        options: {
-          sentence,
-          choices: choices.slice(0, 4),
-          correct
-        },
-        correct_option_index: 0
-      });
+      if (sentence) {
+        questions.push({
+          type,
+          text: textPrompt.trim(),
+          options: {
+            sentence,
+            answers_in_order: correctAnswers,
+            distractors
+          }
+        });
+      }
     } 
     
     else if (type === 'DROP_DOWN') {
@@ -123,15 +119,16 @@ export function parseMarkdownQuestions(text) {
           if (currentDropdown) {
             dropdowns.push(currentDropdown);
           }
-          currentDropdown = { choices: [], correct: '' };
+          currentDropdown = { correct_answer: '', distractors: [] };
         } else if (line.startsWith('-') && currentDropdown) {
           let value = line.substring(1).trim();
           const isCorrect = value.startsWith('*');
           if (isCorrect) {
             value = value.substring(1).trim();
-            currentDropdown.correct = value;
+            currentDropdown.correct_answer = value;
+          } else {
+            currentDropdown.distractors.push(value);
           }
-          currentDropdown.choices.push(value);
         } else {
           if (!textPrompt) {
             textPrompt = line;
@@ -145,15 +142,13 @@ export function parseMarkdownQuestions(text) {
         dropdowns.push(currentDropdown);
       }
       
-      questions.push({
-        type,
-        text: textPrompt.trim(),
-        options: {
-          sentence,
-          dropdowns
-        },
-        correct_option_index: 0
-      });
+      if (sentence) {
+        questions.push({
+          type,
+          text: textPrompt.trim(),
+          options: { sentence, dropdowns }
+        });
+      }
     } 
     
     else if (type === 'CATEGORIZE') {
@@ -186,11 +181,7 @@ export function parseMarkdownQuestions(text) {
       questions.push({
         type,
         text: textPrompt.trim(),
-        options: {
-          categories,
-          items
-        },
-        correct_option_index: 0
+        options: { categories, items }
       });
     }
   }
@@ -205,15 +196,17 @@ export function compileQuestionsToMarkdown(questions) {
     let output = `# ${q.type}\n${q.text}\n`;
     
     if (q.type === 'MULTIPLE_CHOICE') {
-      const opts = Array.isArray(q.options) ? q.options : [];
-      opts.forEach((opt, idx) => {
-        output += idx === q.correct_option_index ? `- *${opt}\n` : `- ${opt}\n`;
-      });
+      const opts = q.options && !Array.isArray(q.options) ? q.options : null;
+      if (opts) {
+        output += `- *${opts.correct_answer}\n`;
+        (opts.distractors || []).forEach(opt => { output += `- ${opt}\n`; });
+      }
     } 
     
     else if (q.type === 'SORTING') {
-      const opts = Array.isArray(q.options) ? q.options : [];
-      opts.forEach((opt, idx) => {
+      const opts = q.options && !Array.isArray(q.options) ? q.options : null;
+      const seq = opts?.correct_sequence || (Array.isArray(q.options) ? q.options : []);
+      seq.forEach((opt, idx) => {
         output += `${idx + 1}. ${opt}\n`;
       });
     } 
@@ -221,14 +214,12 @@ export function compileQuestionsToMarkdown(questions) {
     else if (q.type === 'DRAG_DROP') {
       const opts = q.options || {};
       const sentence = opts.sentence || '';
-      const choices = Array.isArray(opts.choices) ? opts.choices : [];
-      const correct = Array.isArray(opts.correct) ? opts.correct : [];
+      const answers = opts.answers_in_order || opts.correct || [];
+      const distractors = opts.distractors || [];
       
       output += `sentence: ${sentence}\n`;
-      choices.forEach(choice => {
-        const isCorrect = correct.includes(choice);
-        output += isCorrect ? `- *${choice}\n` : `- ${choice}\n`;
-      });
+      answers.forEach(word => { output += `- *${word}\n`; });
+      distractors.forEach(word => { output += `- ${word}\n`; });
     } 
     
     else if (q.type === 'DROP_DOWN') {
@@ -239,10 +230,16 @@ export function compileQuestionsToMarkdown(questions) {
       output += `sentence: ${sentence}\n`;
       dropdowns.forEach(dd => {
         output += `dropdown\n`;
-        const choices = Array.isArray(dd.choices) ? dd.choices : [];
-        choices.forEach(choice => {
-          output += choice === dd.correct ? `- *${choice}\n` : `- ${choice}\n`;
-        });
+        if (dd.correct_answer) output += `- *${dd.correct_answer}\n`;
+        else if (dd.correct) output += `- *${dd.correct}\n`;
+        (dd.distractors || []).forEach(d => { output += `- ${d}\n`; });
+        if (dd.choices && Array.isArray(dd.choices)) {
+          dd.choices.forEach(c => {
+            if (c !== dd.correct_answer && c !== dd.correct && !(dd.distractors || []).includes(c)) {
+              output += `- ${c}\n`;
+            }
+          });
+        }
       });
     } 
     
@@ -260,4 +257,3 @@ export function compileQuestionsToMarkdown(questions) {
     return output;
   }).join('\n');
 }
-
