@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { pb } from './pb';
 import { useHostGame } from './hooks/useHostGame';
 import { usePlayerGame } from './hooks/usePlayerGame';
@@ -9,15 +9,28 @@ import { useMarathonHost } from './hooks/useMarathonHost';
 import { useMarathonPlayer } from './hooks/useMarathonPlayer';
 import { useAdSense } from './hooks/useAdSense';
 import { LandingPageView } from './components/LandingPageView';
-import { HostView } from './components/HostView';
-import { PlayerView } from './components/PlayerView';
-import { TeacherDashboard } from './components/TeacherDashboard';
-import { AuthView } from './components/AuthView';
-import { PracticeView } from './components/PracticeView';
-import { MarathonView } from './components/MarathonView';
-import { MarathonHostView } from './components/MarathonHostView';
-import { MarathonPlayerView } from './components/MarathonPlayerView';
-import { CookieConsent } from './components/CookieConsent';
+
+// Lazy load secondary views and heavy modules to optimize chunk size
+const HostView = lazy(() => import('./components/HostView').then(m => ({ default: m.HostView })));
+const PlayerView = lazy(() => import('./components/PlayerView').then(m => ({ default: m.PlayerView })));
+const TeacherDashboard = lazy(() => import('./components/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
+const AuthView = lazy(() => import('./components/AuthView').then(m => ({ default: m.AuthView })));
+const PracticeView = lazy(() => import('./components/PracticeView').then(m => ({ default: m.PracticeView })));
+const MarathonView = lazy(() => import('./components/MarathonView').then(m => ({ default: m.MarathonView })));
+const MarathonHostView = lazy(() => import('./components/MarathonHostView').then(m => ({ default: m.MarathonHostView })));
+const MarathonPlayerView = lazy(() => import('./components/MarathonPlayerView').then(m => ({ default: m.MarathonPlayerView })));
+const CookieConsent = lazy(() => import('./components/CookieConsent').then(m => ({ default: m.CookieConsent })));
+
+function ViewLoader({ message = "Loading view..." }) {
+  return (
+    <div className="app-container">
+      <div className="panel">
+        <div className="spinner" />
+        <h2>{message}</h2>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [view, setView] = useState('selection');
@@ -137,7 +150,9 @@ function App() {
           shouldScrollToSettings={shouldScrollToSettings}
           onSettingsScrolled={() => setShouldScrollToSettings(false)}
         />
-        <CookieConsent />
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
       </>
     );
   }
@@ -145,7 +160,7 @@ function App() {
   // 2. HOST VIEW
   if (view === 'host' && hostGame.hostRoom) {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Host View..." />}>
         <HostView
           hostRoom={hostGame.hostRoom}
           hostPlayers={hostGame.hostPlayers}
@@ -161,15 +176,17 @@ function App() {
           hostEndGame={hostGame.hostEndGame}
           hostCancelTimer={hostGame.hostCancelTimer}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
   // 3. PLAYER VIEW
   if (view === 'player' && playerGame.playerRoom && playerGame.playerRecord) {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Player View..." />}>
         <PlayerView
           playerRoom={playerGame.playerRoom}
           playerRecord={playerGame.playerRecord}
@@ -182,8 +199,10 @@ function App() {
           disconnectSession={playerGame.disconnectSession}
           exitGame={playerGame.exitGame}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
@@ -191,19 +210,21 @@ function App() {
   if (view === 'teacher') {
     if (!isAuthenticated || !currentUser?.dahoot_info) {
       return (
-        <>
+        <Suspense fallback={<ViewLoader message="Loading Authentication..." />}>
           <AuthView 
             onSuccess={() => setView('teacher')}
             onCancel={() => setView('selection')}
             pocketbaseStatus={pocketbaseStatus}
           />
-          <CookieConsent />
-        </>
+          <Suspense fallback={null}>
+            <CookieConsent />
+          </Suspense>
+        </Suspense>
       );
     }
 
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Teacher Dashboard..." />}>
         <TeacherDashboard
           gamesList={teacherDashboard.gamesList}
           selectedGame={teacherDashboard.selectedGame}
@@ -292,15 +313,17 @@ function App() {
             setView('selection');
           }}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
   // 5. PRACTICE VIEW (SOLO SELF-PACED MASTERY)
   if (view === 'practice') {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Practice View..." />}>
         <PracticeView
           practiceState={practiceGame.practiceState}
           selectedGame={practiceGame.selectedGame}
@@ -324,15 +347,17 @@ function App() {
           startNextRound={practiceGame.startNextRound}
           exitPractice={practiceGame.exitPractice}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
   // 6. MARATHON HOST VIEW
   if (view === 'marathonHost' && marathonHost.hostRoom) {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Marathon Host..." />}>
         <MarathonHostView
           hostRoom={marathonHost.hostRoom}
           hostPlayers={marathonHost.hostPlayers}
@@ -354,15 +379,17 @@ function App() {
           hostEndMarathon={marathonHost.hostEndMarathon}
           exitMarathon={marathonHost.exitMarathon}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
   // 7. MARATHON PLAYER VIEW
   if (view === 'marathonPlayer' && marathonPlayer.playerRoom && marathonPlayer.playerRecord) {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Marathon Player..." />}>
         <MarathonPlayerView
           playerRoom={marathonPlayer.playerRoom}
           playerRecord={marathonPlayer.playerRecord}
@@ -379,15 +406,17 @@ function App() {
           advanceToNextQuestion={marathonPlayer.advanceToNextQuestion}
           exitGame={marathonPlayer.exitMarathon}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
   // 6. MARATHON VIEW (ENDLESS PRACTICE)
   if (view === 'marathon') {
     return (
-      <>
+      <Suspense fallback={<ViewLoader message="Loading Marathon View..." />}>
         <MarathonView
           marathonState={marathonGame.marathonState}
           selectedGame={marathonGame.selectedGame}
@@ -414,8 +443,10 @@ function App() {
           exitMarathon={marathonGame.exitMarathon}
           restartMarathon={marathonGame.restartMarathon}
         />
-        <CookieConsent />
-      </>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 

@@ -403,27 +403,6 @@ export function LandingPageView({
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <h2 style={{ margin: 0 }}>Host a Game</h2>
-              {selectedGameId && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const game = gamesList.find(g => g.id === selectedGameId);
-                    if (game) {
-                      const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
-                      navigator.clipboard.writeText(shareUrl)
-                        .then(() => {
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        })
-                        .catch(err => console.error("Failed to copy share link:", err));
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
-                </button>
-              )}
             </div>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
               Open a new game lobby on this screen and project it for the class.
@@ -655,8 +634,9 @@ export function LandingPageView({
             {selectedGameId && gameQuestions.length > 0 && (
               <div 
                 ref={settingsRef}
-                className="animate-fade-in" 
+                className="animate-fade-in relative" 
                 style={{ 
+                  position: 'relative',
                   textAlign: 'left', 
                   marginBottom: 20, 
                   padding: '16px', 
@@ -671,6 +651,25 @@ export function LandingPageView({
                 <span className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   ⚙️ Game Settings
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const game = gamesList.find(g => g.id === selectedGameId);
+                    if (game) {
+                      const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
+                      navigator.clipboard.writeText(shareUrl)
+                        .then(() => {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        })
+                        .catch(err => console.error("Failed to copy share link:", err));
+                    }
+                  }}
+                  className="absolute top-4 right-4 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
+                </button>
                 
                 {/* Randomize Option */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>

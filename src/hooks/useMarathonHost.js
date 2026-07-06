@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { pb } from '../pb';
-import QRCode from 'qrcode';
 import { shuffleArray } from '../utils/shuffle';
 
 export function useMarathonHost(view, setView) {
@@ -125,16 +124,20 @@ export function useMarathonHost(view, setView) {
   useEffect(() => {
     if (hostRoom?.code) {
       const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}`;
-      QRCode.toDataURL(joinUrlStr, {
-        width: 256,
-        margin: 1,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff'
-        }
-      })
-      .then(url => setQrCodeUrl(url))
-      .catch(err => console.error("Error generating QR code:", err));
+      import('qrcode')
+        .then(({ default: QRCode }) => {
+          QRCode.toDataURL(joinUrlStr, {
+            width: 256,
+            margin: 1,
+            color: {
+              dark: '#0f172a',
+              light: '#ffffff'
+            }
+          })
+          .then(url => setQrCodeUrl(url))
+          .catch(err => console.error("Error generating QR code:", err));
+        })
+        .catch(err => console.error("Failed to load qrcode library dynamically:", err));
     } else {
       setQrCodeUrl('');
     }

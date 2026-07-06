@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { pb } from '../pb';
-import QRCode from 'qrcode';
 import { DEFAULT_QUESTIONS, SAMPLE_GAMES } from '../constants';
 
 export function useHostGame(view, setView, hasPinFromUrl = false) {
@@ -36,16 +35,20 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   useEffect(() => {
     if (hostRoom?.code) {
       const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}`;
-      QRCode.toDataURL(joinUrlStr, {
-        width: 256,
-        margin: 1,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff'
-        }
-      })
-      .then(url => setQrCodeUrl(url))
-      .catch(err => console.error("Error generating QR code:", err));
+      import('qrcode')
+        .then(({ default: QRCode }) => {
+          QRCode.toDataURL(joinUrlStr, {
+            width: 256,
+            margin: 1,
+            color: {
+              dark: '#0f172a',
+              light: '#ffffff'
+            }
+          })
+          .then(url => setQrCodeUrl(url))
+          .catch(err => console.error("Error generating QR code:", err));
+        })
+        .catch(err => console.error("Failed to load qrcode library dynamically:", err));
     } else {
       setQrCodeUrl('');
     }
