@@ -403,6 +403,7 @@ export function TeacherDashboard({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
+  const [copiedGameId, setCopiedGameId] = useState('');
 
   // Sync role when userInfo prop is available
   useEffect(() => {
@@ -1409,6 +1410,19 @@ export function TeacherDashboard({
   const closePreviewGame = () => {
     setPreviewGame(null);
     setPreviewQuestions([]);
+  };
+
+  const handleShareQuiz = (game, e) => {
+    if (e) e.stopPropagation();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        setCopiedGameId(game.id);
+        setTimeout(() => setCopiedGameId(''), 2000);
+      })
+      .catch(err => {
+        console.error("Failed to copy share link:", err);
+      });
   };
 
 
@@ -3615,7 +3629,7 @@ Sort these numbers from lowest to highest.
                               startPreviewGame(game);
                             }}
                           >
-                            📋 Questions
+                            📋 Preview
                           </button>
                         </>
                       ) : (
@@ -3631,19 +3645,26 @@ Sort these numbers from lowest to highest.
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-[1fr_1fr_40px] gap-2">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-1.5">
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => handleStartEditingGame(game, e)}
                         title="Edit lesson title, description, and metadata"
                       >
-                        ✏️ Edit Info
+                        ✏️ Edit
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => handleCopyGame(game, e)}
                       >
                         📋 Copy
+                      </button>
+                      <button 
+                        className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
+                        onClick={(e) => handleShareQuiz(game, e)}
+                        title="Copy share link for other teachers"
+                      >
+                        {copiedGameId === game.id ? '✅ Copied' : '🔗 Share'}
                       </button>
                       <button 
                         className="btn-card-action btn-card-action-danger py-1.5 text-xs" 

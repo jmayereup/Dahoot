@@ -30,6 +30,18 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid && !!pb.authStore.record);
   const [currentUser, setCurrentUser] = useState(pb.authStore.record);
   const [showSyncReset, setShowSyncReset] = useState(false);
+  const [shouldScrollToSettings, setShouldScrollToSettings] = useState(false);
+
+  // Extract shared quiz ID on mount to preselect it in SelectionView
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const quizParam = params.get('quiz');
+    if (quizParam) {
+      setSelectedGameId(quizParam);
+      setShouldScrollToSettings(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useAdSense();
 
@@ -122,6 +134,8 @@ function App() {
           onLogout={handleLogout}
           selectedGameId={selectedGameId}
           setSelectedGameId={setSelectedGameId}
+          shouldScrollToSettings={shouldScrollToSettings}
+          onSettingsScrolled={() => setShouldScrollToSettings(false)}
         />
         <CookieConsent />
       </>

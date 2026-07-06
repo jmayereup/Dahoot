@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
@@ -28,11 +28,14 @@ export function SelectionView({
   userInfo = null,
   onLogout,
   selectedGameId,
-  setSelectedGameId
+  setSelectedGameId,
+  shouldScrollToSettings = false,
+  onSettingsScrolled = null
 }) {
 
   // Custom game options
   const [randomize, setRandomize] = useState(true);
+  const [copied, setCopied] = useState(false);
   const [gameQuestions, setGameQuestions] = useState([]);
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState([
     'MULTIPLE_CHOICE',
@@ -43,6 +46,20 @@ export function SelectionView({
   ]);
   const [maxQuestions, setMaxQuestions] = useState('');
   const [timerDuration, setTimerDuration] = useState(20);
+  const settingsRef = useRef(null);
+
+  // Scroll to game settings when shared quiz is loaded
+  useEffect(() => {
+    if (shouldScrollToSettings && gameQuestions.length > 0 && settingsRef.current) {
+      const timer = setTimeout(() => {
+        settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (onSettingsScrolled) {
+          onSettingsScrolled();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldScrollToSettings, gameQuestions, onSettingsScrolled]);
 
   // Fetch questions when game is selected
   useEffect(() => {
@@ -245,7 +262,7 @@ export function SelectionView({
                 window.history.replaceState({}, document.title, window.location.pathname);
               }}
             >
-              ← Join with different PIN / Host a quiz
+              ← Join with different PIN / Host a Dahoot
             </button>
           </div>
         </div>
@@ -348,7 +365,30 @@ export function SelectionView({
 
           {/* Host Panel */}
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
-            <h2>Host a Quiz</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h2 style={{ margin: 0 }}>Host a Game</h2>
+              {selectedGameId && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const game = gamesList.find(g => g.id === selectedGameId);
+                    if (game) {
+                      const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
+                      navigator.clipboard.writeText(shareUrl)
+                        .then(() => {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        })
+                        .catch(err => console.error("Failed to copy share link:", err));
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
+                </button>
+              )}
+            </div>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
               Open a new game lobby on this screen and project it for the class.
             </p>
@@ -492,6 +532,7 @@ export function SelectionView({
 
             {selectedGameId && gameQuestions.length > 0 && (
               <div 
+                ref={settingsRef}
                 className="animate-fade-in" 
                 style={{ 
                   textAlign: 'left', 
