@@ -11,6 +11,7 @@ export function useMarathonPlayer(view, setView) {
   const [currentLapQuestions, setCurrentLapQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [removedReason, setRemovedReason] = useState(''); // 'removed' or 'closed'
 
   const isStudentPaced = playerRoom?.pacing_mode === 'student';
 
@@ -49,6 +50,7 @@ export function useMarathonPlayer(view, setView) {
 
   const joinMarathon = async (pin, playerName) => {
     setError('');
+    setRemovedReason('');
     setLoading(true);
     try {
       const room = await pb.collection('dahoot_rooms').getFirstListItem(
@@ -64,6 +66,7 @@ export function useMarathonPlayer(view, setView) {
       }
 
       const playerFilter = pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName });
+      let existingPlayer = null;
       try {
         existingPlayer = await pb.collection('dahoot_players').getFirstListItem(playerFilter);
       } catch (_e) {
@@ -113,7 +116,6 @@ export function useMarathonPlayer(view, setView) {
     } catch (err) {
       console.error(err);
       setError('Failed to join marathon: ' + err.message);
-      alert('Failed to join marathon: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -272,14 +274,15 @@ export function useMarathonPlayer(view, setView) {
 
         setPlayerRoom(updatedRoom);
       } else if (e.action === 'delete') {
-        alert('The marathon room has been closed by the host.');
-        disconnectSession();
+        setRemovedReason('closed');
       }
     }).then(unsub => { roomUnsub = unsub; });
 
     pb.collection('dahoot_players').subscribe(playerRecord.id, (e) => {
       if (e.action === 'update') {
         setPlayerRecord(e.record);
+      } else if (e.action === 'delete') {
+        setRemovedReason('removed');
       }
     }).then(unsub => { playerUnsub = unsub; });
 
@@ -308,6 +311,7 @@ export function useMarathonPlayer(view, setView) {
     submitAnswer,
     advanceToNextQuestion,
     disconnectSession,
-    exitMarathon
+    exitMarathon,
+    removedReason
   };
 }

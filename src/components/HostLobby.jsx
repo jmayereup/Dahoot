@@ -9,7 +9,8 @@ export function HostLobby({
   copied,
   handleCopyLink,
   hostStartGame,
-  hostEndGame
+  hostEndGame,
+  hostRemovePlayer
 }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -78,8 +79,19 @@ export function HostLobby({
               </div>
             ) : (
               hostPlayers.map((player) => (
-                <div key={player.id} className="player-badge">
-                  {player.name}
+                <div key={player.id} className="player-badge flex items-center justify-between gap-3 pl-5 pr-2 py-2">
+                  <span className="truncate max-w-[140px]" title={player.name}>{player.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => hostRemovePlayer && hostRemovePlayer(player.id)}
+                    className="text-slate-400 hover:text-red-500 rounded-full p-1 hover:bg-slate-100 transition-colors duration-150 cursor-pointer focus:outline-none flex items-center justify-center"
+                    title={`Remove ${player.name}`}
+                    aria-label={`Remove ${player.name}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               ))
             )}

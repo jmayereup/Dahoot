@@ -183,6 +183,10 @@ p.subtitle {
   }
 }
 
+@utility players-grid {
+  @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4;
+}
+
 @utility empty-state {
   @apply text-slate-400 text-base font-medium text-center py-10 border-2 border-dashed border-slate-200 rounded-xl col-span-full;
 }

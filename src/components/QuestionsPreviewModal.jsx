@@ -867,7 +867,7 @@ export function QuestionsPreviewModal({
               )}
               <button 
                 onClick={onClose}
-                className="bg-white/5 hover:bg-white/10"
+                className="bg-black/[0.04] hover:bg-black/[0.08]"
                 style={{
                   border: 'none',
                   color: 'var(--text-secondary)',

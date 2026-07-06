@@ -311,6 +311,14 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   };
 
+  const hostRemovePlayer = async (playerId) => {
+    try {
+      await pb.collection('dahoot_players').delete(playerId);
+    } catch (err) {
+      console.error("Error removing player:", err);
+    }
+  };
+
   return {
     gamesList,
     hostRoom,
@@ -330,6 +338,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     hostEndGame,
     hostCancelTimer,
     seedQuestions,
-    refreshGames: fetchGames
+    refreshGames: fetchGames,
+    hostRemovePlayer
   };
 }

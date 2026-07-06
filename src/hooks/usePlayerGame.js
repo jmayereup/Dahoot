@@ -11,6 +11,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
   const [playerTimeLeft, setPlayerTimeLeft] = useState(20);
   const [playerSelectedIdx, setPlayerSelectedIdx] = useState(null);
   const [playerFeedback, setPlayerFeedback] = useState(null); // { correct: boolean, points: number }
+  const [removedReason, setRemovedReason] = useState(''); // 'removed' or 'closed'
   
   const [hasPinFromUrl, setHasPinFromUrl] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
 
   const attemptReconnect = async (playerId, roomId) => {
     try {
+      setRemovedReason('');
       setLoading(true);
       const room = await pb.collection('dahoot_rooms').getOne(roomId);
       const player = await pb.collection('dahoot_players').getOne(playerId);
@@ -87,8 +89,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
 
         setPlayerRoom(updatedRoom);
       } else if (e.action === 'delete') {
-        alert('The room has been closed by the host.');
-        disconnectSession();
+        setRemovedReason('closed');
       }
     });
 
@@ -97,8 +98,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       if (e.action === 'update') {
         setPlayerRecord(e.record);
       } else if (e.action === 'delete') {
-        alert('You have been removed from the room.');
-        disconnectSession();
+        setRemovedReason('removed');
       }
     });
 
@@ -141,6 +141,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
   const joinGame = async (e) => {
     e.preventDefault();
     setError('');
+    setRemovedReason('');
     if (!joinPin || !playerName) {
       setError('Please fill in both fields.');
       return;
@@ -315,6 +316,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     joinGame,
     submitAnswer,
     disconnectSession,
-    exitGame
+    exitGame,
+    removedReason
   };
 }

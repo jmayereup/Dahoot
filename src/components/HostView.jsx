@@ -18,7 +18,8 @@ export function HostView({
   hostShowLeaderboard,
   hostNextQuestion,
   hostEndGame,
-  hostCancelTimer
+  hostCancelTimer,
+  hostRemovePlayer
 }) {
   const qIndex = hostRoom.current_question_index;
   const activeQuestion = questions[qIndex];
@@ -39,6 +40,7 @@ export function HostView({
             handleCopyLink={handleCopyLink}
             hostStartGame={hostStartGame}
             hostEndGame={hostEndGame}
+            hostRemovePlayer={hostRemovePlayer}
           />
         )}
 

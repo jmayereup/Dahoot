@@ -350,6 +350,14 @@ export function useMarathonHost(view, setView) {
     }
   }, [hostPlayers, hostRoom?.status]);
 
+  const hostRemovePlayer = async (playerId) => {
+    try {
+      await pb.collection('dahoot_players').delete(playerId);
+    } catch (err) {
+      console.error('Error removing player:', err);
+    }
+  };
+
   return {
     hostRoom,
     hostPlayers,
@@ -372,6 +380,7 @@ export function useMarathonHost(view, setView) {
     hostNextQuestion,
     hostCancelTimer,
     hostEndMarathon,
-    exitMarathon
+    exitMarathon,
+    hostRemovePlayer
   };
 }

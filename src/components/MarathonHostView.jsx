@@ -24,7 +24,8 @@ export function MarathonHostView({
   exitMarathon,
   hostCancelTimer,
   hostShowMarathonLeaderboard,
-  hostStartWrapUp
+  hostStartWrapUp,
+  hostRemovePlayer
 }) {
   const qIndex = hostRoom.current_question_index;
   const activeQuestion = questions[qIndex];
@@ -59,6 +60,7 @@ export function MarathonHostView({
             handleCopyLink={handleCopyLink}
             hostStartGame={hostStartMarathon}
             hostEndGame={hostEndMarathon}
+            hostRemovePlayer={hostRemovePlayer}
           />
         )}
 

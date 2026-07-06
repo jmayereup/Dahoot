@@ -9,6 +9,7 @@ import { useMarathonHost } from './hooks/useMarathonHost';
 import { useMarathonPlayer } from './hooks/useMarathonPlayer';
 import { useAdSense } from './hooks/useAdSense';
 import { LandingPageView } from './components/LandingPageView';
+import { ConfirmModal } from './components/ConfirmModal';
 
 // Lazy load secondary views and heavy modules to optimize chunk size
 const HostView = lazy(() => import('./components/HostView').then(m => ({ default: m.HostView })));
@@ -114,6 +115,49 @@ function App() {
   const marathonHost = useMarathonHost(view, setView);
   const marathonPlayer = useMarathonPlayer(view, setView);
 
+  // Handle player kicked/removed or room closed modals
+  if (playerGame.removedReason) {
+    const isClosed = playerGame.removedReason === 'closed';
+    return (
+      <div className="app-container">
+        <ConfirmModal
+          isOpen={true}
+          onClose={playerGame.disconnectSession}
+          onConfirm={playerGame.disconnectSession}
+          title={isClosed ? "Room Closed" : "Removed from Game"}
+          message={isClosed 
+            ? "The game room has been closed by the host/teacher." 
+            : "You have been removed from the game room by the teacher/host."}
+          confirmText="OK"
+          cancelText={null}
+          variant="warning"
+          icon={isClosed ? "🛑" : "🚪"}
+        />
+      </div>
+    );
+  }
+
+  if (marathonPlayer.removedReason) {
+    const isClosed = marathonPlayer.removedReason === 'closed';
+    return (
+      <div className="app-container">
+        <ConfirmModal
+          isOpen={true}
+          onClose={marathonPlayer.disconnectSession}
+          onConfirm={marathonPlayer.disconnectSession}
+          title={isClosed ? "Marathon Closed" : "Removed from Marathon"}
+          message={isClosed 
+            ? "The marathon room has been closed by the host/teacher." 
+            : "You have been removed from the marathon by the teacher/host."}
+          confirmText="OK"
+          cancelText={null}
+          variant="warning"
+          icon={isClosed ? "🛑" : "🚪"}
+        />
+      </div>
+    );
+  }
+
   // 1. SELECTION VIEW
   if (view === 'selection') {
     const loading = hostGame.loading || playerGame.loading;
@@ -175,6 +219,7 @@ function App() {
           hostNextQuestion={hostGame.hostNextQuestion}
           hostEndGame={hostGame.hostEndGame}
           hostCancelTimer={hostGame.hostCancelTimer}
+          hostRemovePlayer={hostGame.hostRemovePlayer}
         />
         <Suspense fallback={null}>
           <CookieConsent />
@@ -378,6 +423,7 @@ function App() {
           hostCancelTimer={marathonHost.hostCancelTimer}
           hostEndMarathon={marathonHost.hostEndMarathon}
           exitMarathon={marathonHost.exitMarathon}
+          hostRemovePlayer={marathonHost.hostRemovePlayer}
         />
         <Suspense fallback={null}>
           <CookieConsent />

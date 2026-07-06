@@ -1994,14 +1994,14 @@ export function TeacherDashboard({
                 setCopySuggestionGame(null);
                 copyGame(game);
               }}
-              className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-white border border-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer"
+              className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 font-bold text-sm rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
             >
               📋 Copy Game Anyway
             </button>
             <button
               type="button"
               onClick={() => setCopySuggestionGame(null)}
-              className="w-full py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold bg-transparent border-none cursor-pointer"
+              className="w-full py-2 text-slate-500 hover:text-slate-700 text-xs font-semibold bg-transparent border-none cursor-pointer transition-colors"
             >
               Cancel
             </button>
@@ -2083,7 +2083,7 @@ export function TeacherDashboard({
               )}
               <button 
                 onClick={closePreviewGame}
-                className="bg-white/5 hover:bg-white/10"
+                className="bg-black/[0.04] hover:bg-black/[0.08]"
                 style={{
                   border: 'none',
                   color: 'var(--text-secondary)',
@@ -2777,7 +2777,7 @@ Question Schemas by Type:
                 setIsGenModalOpen(false);
                 setGenError('');
               }}
-              className="bg-white/5 hover:bg-white/10"
+              className="bg-black/[0.04] hover:bg-black/[0.08]"
               style={{
                 border: 'none',
                 color: 'var(--text-secondary)',
