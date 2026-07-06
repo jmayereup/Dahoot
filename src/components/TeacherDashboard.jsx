@@ -3,7 +3,7 @@ import { OPTION_CLASSES } from '../constants';
 import { pb } from '../pb';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { compileQuestionsToMarkdown, parseMarkdownQuestions } from '../utils/markdownParser';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import {
   splitCurlyTokens,
   getCurlyIndex,
@@ -181,6 +181,7 @@ export function TeacherDashboard({
   const [filterLanguage, setFilterLanguage] = useState([]);
   const [filterCreator, setFilterCreator] = useState([]);
   const [libraryTab, setLibraryTab] = useState('all'); // 'all' | 'my'
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'alphabetical'
 
   // Preview Game state
   const [previewGame, setPreviewGame] = useState(null);
@@ -256,8 +257,7 @@ export function TeacherDashboard({
         type: q.type
       }));
       setPreviewQuestions(prev => [...prev, ...newQs]);
-      setIsImporting(false);
-      setImportText('');
+      cancelImporting();
       setSelectedGame(null);
     } else {
       await saveImportedQuestions(e);
@@ -3196,17 +3196,31 @@ Sort these numbers from lowest to highest.
   const ITEMS_PER_PAGE = 9;
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset pagination to page 1 when filters change
+  // Reset pagination to page 1 when filters or sorting change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterSubject, filterCefr, filterLanguage, filterCreator, libraryTab]);
+  }, [filterSubject, filterCefr, filterLanguage, filterCreator, libraryTab, sortBy]);
 
-  const totalPages = Math.ceil(filteredGamesList.length / ITEMS_PER_PAGE);
+  const sortedGamesList = useMemo(() => {
+    const list = [...filteredGamesList];
+    if (sortBy === 'newest') {
+      return list.sort((a, b) => new Date(b.created) - new Date(a.created));
+    }
+    if (sortBy === 'oldest') {
+      return list.sort((a, b) => new Date(a.created) - new Date(b.created));
+    }
+    if (sortBy === 'alphabetical') {
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return list;
+  }, [filteredGamesList, sortBy]);
+
+  const totalPages = Math.ceil(sortedGamesList.length / ITEMS_PER_PAGE);
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages || 1));
   const paginatedGamesList = useMemo(() => {
     const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
-    return filteredGamesList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredGamesList, effectivePage]);
+    return sortedGamesList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedGamesList, effectivePage]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -3638,25 +3652,42 @@ Sort these numbers from lowest to highest.
 
           {/* Filtering Panel */}
           <div className="filter-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
               <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                🔍 Filter Dahoots {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({filteredGamesList.length} matches)</span>}
+                🔍 Filter Dahoots {hasActiveFilters && <span style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>({sortedGamesList.length} matches)</span>}
               </span>
-              {hasActiveFilters && (
-                <button 
-                  onClick={clearAllFilters}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#ff4b60',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
-                >
-                  Clear Filters
-                </button>
-              )}
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="flex items-center gap-1.5 flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-300 transition-all">
+                  <ArrowUpDown className="text-slate-400 w-3.5 h-3.5" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="text-xs font-semibold text-slate-600 bg-transparent border-none cursor-pointer focus:outline-none focus:ring-0 p-0"
+                    style={{ outline: 'none', WebkitAppearance: 'menulist', border: 'none', background: 'transparent', margin: 0, padding: 0 }}
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="alphabetical">Title (A-Z)</option>
+                  </select>
+                </div>
+
+                {hasActiveFilters && (
+                  <button 
+                    onClick={clearAllFilters}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ff4b60',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
@@ -3757,7 +3788,7 @@ Sort these numbers from lowest to highest.
             marginBottom: 32,
             textAlign: 'left'
           }}>
-            {filteredGamesList.length === 0 ? (
+            {sortedGamesList.length === 0 ? (
               <div style={{ 
                 gridColumn: '1 / -1',
                 textAlign: 'center', 
@@ -3944,9 +3975,9 @@ Sort these numbers from lowest to highest.
                   <p className="text-xs text-slate-500">
                     Showing <span className="font-semibold text-slate-700">{(effectivePage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
                     <span className="font-semibold text-slate-700">
-                      {Math.min(effectivePage * ITEMS_PER_PAGE, filteredGamesList.length)}
+                      {Math.min(effectivePage * ITEMS_PER_PAGE, sortedGamesList.length)}
                     </span>{' '}
-                    of <span className="font-semibold text-slate-700">{filteredGamesList.length}</span> results
+                    of <span className="font-semibold text-slate-700">{sortedGamesList.length}</span> results
                   </p>
                 </div>
                 <div>

@@ -17,7 +17,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   const fetchGames = async () => {
     try {
       const list = await pb.collection('dahoot_games').getFullList({
-        sort: 'created'
+        sort: '-created'
       });
       setGamesList(list);
     } catch (err) {

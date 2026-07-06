@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { QuestionsPreviewModal } from './QuestionsPreviewModal';
 
 
@@ -212,13 +212,14 @@ export function LandingPageView({
     }
   }, [filteredGames, selectedGameId, gamesList, setSelectedGameId]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'alphabetical'
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset pagination when filters or search query change
+  // Reset pagination when filters, search query, or sorting change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterSubject, filterCefr]);
+  }, [searchQuery, filterSubject, filterCefr, sortBy]);
 
   // Filter games based on typed search query (by title, description, subject, or creator)
   const searchedGames = useMemo(() => {
@@ -246,12 +247,26 @@ export function LandingPageView({
     });
   }, [filteredGames, searchQuery, currentUser, userInfo]);
 
-  const totalPages = Math.ceil(searchedGames.length / ITEMS_PER_PAGE);
+  const sortedGames = useMemo(() => {
+    const list = [...searchedGames];
+    if (sortBy === 'newest') {
+      return list.sort((a, b) => new Date(b.created) - new Date(a.created));
+    }
+    if (sortBy === 'oldest') {
+      return list.sort((a, b) => new Date(a.created) - new Date(b.created));
+    }
+    if (sortBy === 'alphabetical') {
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return list;
+  }, [searchedGames, sortBy]);
+
+  const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages || 1));
   const paginatedGames = useMemo(() => {
     const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
-    return searchedGames.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [searchedGames, effectivePage]);
+    return sortedGames.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedGames, effectivePage]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -441,8 +456,22 @@ export function LandingPageView({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={loading}
-                    style={{ padding: '8px 12px', fontSize: '0.9rem', margin: 0 }}
+                    style={{ padding: '8px 12px', fontSize: '0.9rem', margin: 0, flex: 1 }}
                   />
+                  <div className="flex items-center gap-1.5 flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-300 transition-all">
+                    <ArrowUpDown className="text-slate-400 w-3.5 h-3.5" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      disabled={loading}
+                      className="text-xs font-semibold text-slate-600 bg-transparent border-none cursor-pointer focus:outline-none focus:ring-0 p-0"
+                      style={{ outline: 'none', WebkitAppearance: 'menulist', border: 'none', background: 'transparent', margin: 0, padding: 0 }}
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="alphabetical">Title (A-Z)</option>
+                    </select>
+                  </div>
                   {(searchQuery || hasActiveFilters) && (
                     <button
                       type="button"
@@ -501,14 +530,14 @@ export function LandingPageView({
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 20px' }}>
                 No games found. Click "Reset & Seed Demo Questions" to create one.
               </p>
-            ) : searchedGames.length === 0 ? (
+            ) : sortedGames.length === 0 ? (
               <p style={{ color: '#ff4b60', fontSize: '0.85rem', margin: '4px 0 20px' }}>
                 No games match your search.
               </p>
             ) : (
               <>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                  Showing {searchedGames.length === 0 ? 0 : (effectivePage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(searchedGames.length, effectivePage * ITEMS_PER_PAGE)} of {searchedGames.length} games {searchedGames.length < gamesList.length && `(filtered from ${gamesList.length} total)`}
+                  Showing {sortedGames.length === 0 ? 0 : (effectivePage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(sortedGames.length, effectivePage * ITEMS_PER_PAGE)} of {sortedGames.length} games {sortedGames.length < gamesList.length && `(filtered from ${gamesList.length} total)`}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   {paginatedGames.map(g => {
@@ -590,9 +619,9 @@ export function LandingPageView({
                         <p className="text-xs text-slate-500">
                           Showing <span className="font-semibold text-slate-700">{(effectivePage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
                           <span className="font-semibold text-slate-700">
-                            {Math.min(effectivePage * ITEMS_PER_PAGE, searchedGames.length)}
+                            {Math.min(effectivePage * ITEMS_PER_PAGE, sortedGames.length)}
                           </span>{' '}
-                          of <span className="font-semibold text-slate-700">{searchedGames.length}</span> results
+                          of <span className="font-semibold text-slate-700">{sortedGames.length}</span> results
                         </p>
                       </div>
                       <div>

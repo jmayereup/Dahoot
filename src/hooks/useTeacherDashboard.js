@@ -74,7 +74,7 @@ export function useTeacherDashboard(view, currentUser) {
     setError('');
     try {
       const games = await pb.collection('dahoot_games').getFullList({
-        sort: 'created'
+        sort: '-created'
       });
       
       // Fetch question counts for each game
