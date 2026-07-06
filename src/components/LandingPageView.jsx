@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 export function LandingPageView({
@@ -190,10 +191,17 @@ export function LandingPageView({
     }
   }, [filteredGames, selectedGameId, gamesList, setSelectedGameId]);
   const [searchQuery, setSearchQuery] = useState('');
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when filters or search query change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterSubject, filterCefr]);
 
   // Filter games based on typed search query (by title, description, subject, or creator)
   const searchedGames = useMemo(() => {
-    if (!searchQuery) return filteredGames.slice(0, 10);
+    if (!searchQuery) return filteredGames;
     const q = searchQuery.toLowerCase();
     return filteredGames.filter(game => {
       const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
@@ -216,6 +224,34 @@ export function LandingPageView({
         (effectiveCreator && effectiveCreator.toLowerCase().includes(q));
     });
   }, [filteredGames, searchQuery, currentUser, userInfo]);
+
+  const totalPages = Math.ceil(searchedGames.length / ITEMS_PER_PAGE);
+  const effectivePage = Math.max(1, Math.min(currentPage, totalPages || 1));
+  const paginatedGames = useMemo(() => {
+    const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
+    return searchedGames.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [searchedGames, effectivePage]);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (effectivePage > 3) pages.push('...');
+      
+      const start = Math.max(2, effectivePage - 1);
+      const end = Math.min(totalPages - 1, effectivePage + 1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (effectivePage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div className="app-container">
@@ -472,10 +508,10 @@ export function LandingPageView({
             ) : (
               <>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                  Showing {searchedGames.length} of {gamesList.length} games
+                  Showing {searchedGames.length === 0 ? 0 : (effectivePage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(searchedGames.length, effectivePage * ITEMS_PER_PAGE)} of {searchedGames.length} games {searchedGames.length < gamesList.length && `(filtered from ${gamesList.length} total)`}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                  {searchedGames.map(g => {
+                  {paginatedGames.map(g => {
                     const isSelected = g.id === selectedGameId;
                     return (
                       <div
@@ -527,6 +563,92 @@ export function LandingPageView({
                     );
                   })}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-white/50 px-4 py-3 sm:px-6 mt-4 rounded-xl shadow-xs">
+                    <div className="flex flex-1 justify-between sm:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={effectivePage === 1}
+                        className="relative inline-flex items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={effectivePage === totalPages}
+                        className="relative ml-3 inline-flex items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">
+                          Showing <span className="font-semibold text-slate-700">{(effectivePage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
+                          <span className="font-semibold text-slate-700">
+                            {Math.min(effectivePage * ITEMS_PER_PAGE, searchedGames.length)}
+                          </span>{' '}
+                          of <span className="font-semibold text-slate-700">{searchedGames.length}</span> results
+                        </p>
+                      </div>
+                      <div>
+                        <nav className="isolate inline-flex -space-x-px rounded-lg border border-slate-200 bg-white shadow-xs" aria-label="Pagination">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={effectivePage === 1}
+                            className="relative inline-flex items-center rounded-l-lg px-2.5 py-1.5 text-slate-400 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          >
+                            <span className="sr-only">Previous</span>
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          
+                          {getPageNumbers().map((page, idx) => {
+                            if (page === '...') {
+                              return (
+                                <span
+                                  key={`ellipsis-${idx}`}
+                                  className="relative inline-flex items-center px-3 py-1.5 text-xs font-semibold text-slate-400 border-l border-slate-200 select-none"
+                                >
+                                  ...
+                                </span>
+                              );
+                            }
+                            const isCurrent = page === effectivePage;
+                            return (
+                              <button
+                                key={page}
+                                type="button"
+                                onClick={() => setCurrentPage(page)}
+                                className={`relative inline-flex items-center px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                                  isCurrent
+                                    ? 'z-10 bg-rose-500 text-white hover:bg-rose-600'
+                                    : 'text-slate-600 hover:bg-slate-50 border-l border-slate-200'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          })}
+
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={effectivePage === totalPages}
+                            className="relative inline-flex items-center rounded-r-lg px-2.5 py-1.5 text-slate-400 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-l border-slate-200 transition-all cursor-pointer"
+                          >
+                            <span className="sr-only">Next</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

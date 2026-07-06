@@ -91,10 +91,10 @@ function App() {
   }, []);
 
   // Initialize hooks
-  const hostGame = useHostGame(view, setView);
   const playerGame = usePlayerGame(view, setView, (pin, name) => {
     marathonPlayer.joinMarathon(pin, name);
   });
+  const hostGame = useHostGame(view, setView, playerGame.hasPinFromUrl);
   const teacherDashboard = useTeacherDashboard(view, currentUser);
   const practiceGame = usePracticeGame(view, setView);
   const marathonGame = useMarathonGame(view, setView);

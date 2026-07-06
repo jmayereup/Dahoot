@@ -3,7 +3,7 @@ import { pb } from '../pb';
 import QRCode from 'qrcode';
 import { DEFAULT_QUESTIONS, SAMPLE_GAMES } from '../constants';
 
-export function useHostGame(view, setView) {
+export function useHostGame(view, setView, hasPinFromUrl = false) {
   const [gamesList, setGamesList] = useState([]);
   const [hostRoom, setHostRoom] = useState(null);
   const [hostPlayers, setHostPlayers] = useState([]);
@@ -27,10 +27,10 @@ export function useHostGame(view, setView) {
   };
 
   useEffect(() => {
-    if (view === 'selection') {
+    if (view === 'selection' && !hasPinFromUrl) {
       fetchGames();
     }
-  }, [view]);
+  }, [view, hasPinFromUrl]);
 
   // Generate QR code whenever the host room code is generated
   useEffect(() => {
