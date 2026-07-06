@@ -70,7 +70,7 @@ export function HostLobby({
             Students will appear here as they enter the PIN.
           </p>
 
-          <div className="players-grid">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {hostPlayers.length === 0 ? (
               <div className="empty-state">
                 No players in the lobby yet.
@@ -79,8 +79,8 @@ export function HostLobby({
               </div>
             ) : (
               hostPlayers.map((player) => (
-                <div key={player.id} className="player-badge flex items-center justify-between gap-3 pl-5 pr-2 py-2">
-                  <span className="truncate max-w-[140px]" title={player.name}>{player.name}</span>
+                <div key={player.id} className="player-badge flex items-center justify-between gap-2 pl-4 pr-2 py-2 min-w-0">
+                  <span className="truncate flex-1" title={player.name}>{player.name}</span>
                   <button
                     type="button"
                     onClick={() => hostRemovePlayer && hostRemovePlayer(player.id)}
