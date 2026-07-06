@@ -3,6 +3,7 @@ import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
 import { pb } from '../pb';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { QuestionsPreviewModal } from './QuestionsPreviewModal';
 
 
 export function LandingPageView({
@@ -38,6 +39,26 @@ export function LandingPageView({
   const [randomize, setRandomize] = useState(true);
   const [copied, setCopied] = useState(false);
   const [gameQuestions, setGameQuestions] = useState([]);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  const refreshQuestions = async () => {
+    if (!selectedGameId) return;
+    try {
+      const res = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameId })
+      });
+      setGameQuestions(res);
+      setMaxQuestions(prev => {
+        const prevNum = parseInt(prev);
+        if (isNaN(prevNum) || prevNum > res.length || prev === '') {
+          return res.length.toString();
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error("Error refreshing questions:", err);
+    }
+  };
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState([
     'MULTIPLE_CHOICE',
     'SORTING',
@@ -651,25 +672,37 @@ export function LandingPageView({
                 <span className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   ⚙️ Game Settings
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const game = gamesList.find(g => g.id === selectedGameId);
-                    if (game) {
-                      const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
-                      navigator.clipboard.writeText(shareUrl)
-                        .then(() => {
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        })
-                        .catch(err => console.error("Failed to copy share link:", err));
-                    }
-                  }}
-                  className="absolute top-4 right-4 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
-                </button>
+                <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const game = gamesList.find(g => g.id === selectedGameId);
+                      if (game) {
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
+                        navigator.clipboard.writeText(shareUrl)
+                          .then(() => {
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          })
+                          .catch(err => console.error("Failed to copy share link:", err));
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPreviewModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    Preview / Edit
+                  </button>
+                </div>
                 
                 {/* Randomize Option */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
@@ -823,6 +856,18 @@ export function LandingPageView({
       </>
     )}
       <SchoolFooter status={pocketbaseStatus} />
+
+      <QuestionsPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        gameId={selectedGameId}
+        gamesList={gamesList}
+        isAuthenticated={isAuthenticated}
+        currentUser={currentUser}
+        userInfo={userInfo}
+        gameQuestions={gameQuestions}
+        refreshQuestions={refreshQuestions}
+      />
     </div>
   );
 }
