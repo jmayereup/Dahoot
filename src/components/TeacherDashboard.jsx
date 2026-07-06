@@ -488,12 +488,12 @@ JSON Response Schema:
     return (
       <div className="app-container">
         <BulkImportBuilder
-          game={selectedGame}
+          selectedGame={selectedGame}
           importText={importText}
           setImportText={setImportText}
           error={error}
           loading={loading}
-          onSave={handleSaveImportedQuestions}
+          onSubmit={handleSaveImportedQuestions}
           onCancel={handleCancelImporting}
         />
         {ConfirmDialog}
