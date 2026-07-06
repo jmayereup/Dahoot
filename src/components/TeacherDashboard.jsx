@@ -109,8 +109,41 @@ export function TeacherDashboard({
   startHosting = null
 }) {
   const { confirm, ConfirmDialog } = useConfirm();
+  const [copySuggestionGame, setCopySuggestionGame] = useState(null);
 
+  const canEditGame = (game) => {
+    if (!game) return false;
+    if (userRole === 'TEACHER' || userRole === 'ADMIN') return true;
 
+    const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+    const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+    const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+    const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+    const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+
+    return (myDahootUsername && creatorName === myDahootUsername) ||
+           (myName && creatorName === myName) || 
+           (myEmail && creatorName === myEmail) || 
+           (myUsername && creatorName === myUsername) || 
+           (currentUser?.id && creatorName === currentUser.id);
+  };
+
+  const canDeleteGame = (game) => {
+    if (!game) return false;
+    if (userRole === 'ADMIN') return true;
+
+    const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
+    const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
+    const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
+    const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
+    const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
+
+    return (myDahootUsername && creatorName === myDahootUsername) ||
+           (myName && creatorName === myName) || 
+           (myEmail && creatorName === myEmail) || 
+           (myUsername && creatorName === myUsername) || 
+           (currentUser?.id && creatorName === currentUser.id);
+  };
 
   const handleDeleteGame = async (id, e) => {
     if (e) e.stopPropagation();
@@ -125,17 +158,9 @@ export function TeacherDashboard({
     if (ok) deleteGame(id);
   };
 
-  const handleCopyGame = async (game, e) => {
+  const handleCopyGame = (game, e) => {
     if (e) e.stopPropagation();
-    const ok = await confirm({
-      title: 'Copy this game?',
-      message: `A duplicate of "${game.title}" will be created with "(Copy)" appended to its title.`,
-      confirmText: 'Copy Game',
-      cancelText: 'Cancel',
-      variant: 'primary',
-      icon: '📋'
-    });
-    if (ok) copyGame(game);
+    setCopySuggestionGame(game);
   };
 
   const handleDeleteQuestion = async (id) => {
@@ -1657,6 +1682,10 @@ export function TeacherDashboard({
   // Save question from within the preview edit modal
   const savePreviewQuestion = async () => {
     setPreviewEditError('');
+    if (!canEditGame(previewGame)) {
+      setPreviewEditError('You do not have permission to edit this game.');
+      return;
+    }
     if (!questionText.trim()) {
       setPreviewEditError('Question text is required.');
       return;
@@ -1740,6 +1769,10 @@ export function TeacherDashboard({
 
   // Delete a question from within preview
   const deletePreviewQuestion = async (questionId) => {
+    if (!canEditGame(previewGame)) {
+      setPreviewError('You do not have permission to delete questions from this game.');
+      return;
+    }
     const ok = await confirm({
       title: 'Delete this question?',
       message: 'This action cannot be undone.',
@@ -1828,8 +1861,160 @@ export function TeacherDashboard({
     );
   };
 
+  const renderCopySuggestionModal = () => {
+    if (!copySuggestionGame) return null;
+
+    const hasEditPermission = canEditGame(copySuggestionGame);
+
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(9, 10, 15, 0.85)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          animation: 'fade-in 0.2s ease-out'
+        }}
+        role="dialog"
+        aria-modal="true"
+        onClick={() => setCopySuggestionGame(null)}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="panel animate-pop-in"
+          style={{
+            width: '100%',
+            maxWidth: '460px',
+            padding: '28px 24px',
+            textAlign: 'center',
+            position: 'relative',
+            border: '1px solid var(--panel-border)'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setCopySuggestionGame(null)}
+            className="bg-black/[0.04] hover:bg-black/[0.08]"
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(139, 92, 246, 0.12)',
+              color: '#8B5CF6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              margin: '0 auto 16px',
+              fontWeight: '700'
+            }}
+          >
+            📋
+          </div>
+
+          <h2
+            style={{
+              fontSize: '1.35rem',
+              fontWeight: '800',
+              color: 'var(--text-primary)',
+              marginBottom: '8px'
+            }}
+          >
+            Copy this game?
+          </h2>
+
+          <p
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: '0.95rem',
+              lineHeight: 1.5,
+              marginBottom: '24px'
+            }}
+          >
+            {hasEditPermission ? (
+              <>
+                Are you copying <strong>"{copySuggestionGame.title}"</strong> to fix mistakes or improve it? If so, please consider editing the original directly so everyone benefits from the corrections!
+              </>
+            ) : (
+              <>
+                A duplicate of <strong>"{copySuggestionGame.title}"</strong> will be created with "(Copy)" appended to its title. If you notice any mistakes, you can edit your copy or let the creator know.
+              </>
+            )}
+          </p>
+
+          <div className="flex flex-col gap-2.5 w-full">
+            {hasEditPermission && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const game = copySuggestionGame;
+                  setCopySuggestionGame(null);
+                  await handleStartEditingGame(game);
+                }}
+                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/20 active:scale-95 border-none"
+              >
+                ✏️ Edit Original (Fix Mistakes)
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const game = copySuggestionGame;
+                setCopySuggestionGame(null);
+                copyGame(game);
+              }}
+              className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-white border border-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer"
+            >
+              📋 Copy Game Anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setCopySuggestionGame(null)}
+              className="w-full py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold bg-transparent border-none cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderPreviewModal = () => {
     if (!previewGame || isEditingGame) return null;
+
+    const canEdit = canEditGame(previewGame);
 
     return (
       <div style={{
@@ -1876,13 +2061,15 @@ export function TeacherDashboard({
               <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{previewGame.title}</h2>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={openPreviewAddQuestion}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-              >
-                ➕ Add Question
-              </button>
-              {startImporting && (
+              {canEdit && (
+                <button
+                  onClick={openPreviewAddQuestion}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  ➕ Add Question
+                </button>
+              )}
+              {canEdit && startImporting && (
                 <button
                   onClick={() => {
                     setSelectedGame(previewGame);
@@ -1930,7 +2117,9 @@ export function TeacherDashboard({
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
               <div className="flex gap-3 justify-center flex-wrap">
-                <button className="btn btn-primary" onClick={openPreviewAddQuestion} style={{ width: 'auto' }}>➕ Add Question</button>
+                {canEdit && (
+                  <button className="btn btn-primary" onClick={openPreviewAddQuestion} style={{ width: 'auto' }}>➕ Add Question</button>
+                )}
                 <button className="btn btn-secondary" onClick={closePreviewGame} style={{ width: 'auto' }}>Close</button>
               </div>
             </div>
@@ -1953,22 +2142,24 @@ export function TeacherDashboard({
                             {(question.type || 'MULTIPLE_CHOICE').replace('_', ' ')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => openPreviewEditQuestion(question)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
-                            title="Edit question"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            onClick={() => deletePreviewQuestion(question.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg transition-colors cursor-pointer"
-                            title="Delete question"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        {canEdit && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openPreviewEditQuestion(question)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-lg transition-colors cursor-pointer"
+                              title="Edit question"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => deletePreviewQuestion(question.id)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg transition-colors cursor-pointer"
+                              title="Delete question"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Question text */}
@@ -3578,7 +3769,9 @@ Sort these numbers from lowest to highest.
                 No Dahoots match the selected filters. Clear filters or create a new Dahoot.
               </div>
             ) : (
-              paginatedGamesList.map((game) => (
+              paginatedGamesList.map((game) => {
+                const canEdit = canEditGame(game);
+                return (
                 <div 
                   key={game.id} 
                   className="game-card animate-pop-in"
@@ -3677,19 +3870,25 @@ Sort these numbers from lowest to highest.
                             startPreviewGame(game);
                           }}
                         >
-                          📋 View / Edit Questions
+                          {canEdit ? '📋 View / Edit Questions' : '📋 View Questions'}
                         </button>
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-1.5">
-                      <button 
-                        className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
-                        onClick={(e) => handleStartEditingGame(game, e)}
-                        title="Edit lesson title, description, and metadata"
-                      >
-                        ✏️ Edit
-                      </button>
+                    <div className={
+                      canEdit 
+                        ? (canDeleteGame(game) ? "grid grid-cols-[1fr_1fr_1fr_40px] gap-1.5" : "grid grid-cols-[1fr_1fr_1fr] gap-1.5") 
+                        : "grid grid-cols-[1fr_1fr] gap-1.5"
+                    }>
+                      {canEdit && (
+                        <button 
+                          className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
+                          onClick={(e) => handleStartEditingGame(game, e)}
+                          title="Edit lesson title, description, and metadata"
+                        >
+                          ✏️ Edit
+                        </button>
+                      )}
                       <button 
                         className="btn-card-action btn-card-action-secondary py-1.5 px-1 text-[11px] font-semibold" 
                         onClick={(e) => handleCopyGame(game, e)}
@@ -3703,16 +3902,19 @@ Sort these numbers from lowest to highest.
                       >
                         {copiedGameId === game.id ? '✅ Copied' : '🔗 Share'}
                       </button>
-                      <button 
-                        className="btn-card-action btn-card-action-danger py-1.5 text-xs" 
-                        onClick={(e) => handleDeleteGame(game.id, e)}
-                      >
-                        🗑️
-                      </button>
+                      {canDeleteGame(game) && (
+                        <button 
+                          className="btn-card-action btn-card-action-danger py-1.5 text-xs" 
+                          onClick={(e) => handleDeleteGame(game.id, e)}
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))
+              );
+            })
             )}
           </div>
 
@@ -3813,6 +4015,7 @@ Sort these numbers from lowest to highest.
           </div>
         </div>
         {renderPreviewModal()}
+        {renderCopySuggestionModal()}
         {ConfirmDialog}
       </div>
     );

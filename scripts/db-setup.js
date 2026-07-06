@@ -424,7 +424,7 @@ async function runSetup() {
     viewRule: '',
     createRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
     updateRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")',
-    deleteRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "TEACHER" || @request.auth.dahoot_info.role = "ADMIN")'
+    deleteRule: '@request.auth.id != "" && (@request.auth.dahoot_info.role = "ADMIN" || creator = @request.auth.id || creator = @request.auth.username || creator = @request.auth.email || creator = @request.auth.name || creator = @request.auth.dahoot_info.dahoot_username)'
   });
 
   // 4. Setup 'dahoot_rooms' collection
