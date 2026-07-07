@@ -396,7 +396,7 @@ function App() {
           onLogout={handleLogout}
           startHosting={(gameId) => {
             setSelectedGameId(gameId);
-            setView('selection');
+            setView('hostGame');
           }}
         />
         <Suspense fallback={null}>
