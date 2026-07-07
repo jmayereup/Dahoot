@@ -26,10 +26,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   };
 
   useEffect(() => {
-    if (view === 'selection' && !hasPinFromUrl) {
-      fetchGames();
-    }
-  }, [view, hasPinFromUrl]);
+    fetchGames();
+  }, []);
 
   // Generate QR code whenever the host room code is generated
   useEffect(() => {

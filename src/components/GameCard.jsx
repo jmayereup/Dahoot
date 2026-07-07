@@ -1,14 +1,12 @@
-export function GameCard({ game, isSelected, onClick, currentUser, userInfo }) {
+export function GameCard({ game, onClick, currentUser, userInfo }) {
   return (
     <div
-      key={game.id}
       onClick={onClick}
-      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-        isSelected
-          ? 'border-rose-300 bg-rose-50/50 shadow-md'
-          : 'border-slate-200 bg-white hover:border-rose-200 hover:shadow-sm'
-      }`}
+      className="group relative p-4 rounded-xl border-2 border-slate-200 bg-white cursor-pointer transition-all hover:border-rose-300 hover:shadow-md hover:-translate-y-0.5"
     >
+      <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        Open →
+      </span>
       <h3 className="font-bold text-slate-800 text-sm mb-1.5">{game.title}</h3>
       {game.description && (
         <p className="text-xs text-slate-600 mb-2 line-clamp-2">{game.description}</p>

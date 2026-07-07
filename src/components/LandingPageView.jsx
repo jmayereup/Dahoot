@@ -1,14 +1,11 @@
 import { useLandingPage } from '../hooks/useLandingPage';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
-import { PreviewModal } from './PreviewModal';
 import { TeacherPortalHeader } from './TeacherPortalHeader';
 import { JoinGamePanel } from './JoinGamePanel';
 import { JoinGameViaUrlPanel } from './JoinGameViaUrlPanel';
 import { GameFilters } from './GameFilters';
 import { GameCardGrid } from './GameCardGrid';
-import { GameSettings } from './GameSettings';
-import { GameModeButtons } from './GameModeButtons';
 
 export function LandingPageView({
   hasPinFromUrl,
@@ -16,7 +13,6 @@ export function LandingPageView({
   playerName, setPlayerName,
   loading, pocketbaseStatus, error,
   joinGame,
-  startHosting, startSoloPractice, startMarathonHosting,
   setHasPinFromUrl, setView,
   gamesList = [],
   availableSubjects = [],
@@ -24,14 +20,11 @@ export function LandingPageView({
   isAuthenticated, currentUser, userInfo = null,
   onLogout,
   selectedGameId, setSelectedGameId,
-  shouldScrollToSettings = false,
-  onSettingsScrolled = null,
+  onGameClick,
 }) {
   const landingPage = useLandingPage({
     selectedGameId,
     setSelectedGameId,
-    shouldScrollToSettings,
-    onSettingsScrolled,
     gamesList,
     currentUser,
     userInfo,
@@ -80,7 +73,7 @@ export function LandingPageView({
                 <h2 style={{ margin: 0 }}>Host a Game</h2>
               </div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-                Open a new game lobby on this screen and project it for the class.
+                Pick a quiz to open its host lobby. You can configure game settings before starting.
               </p>
 
               {gamesList.length > 0 && (
@@ -105,8 +98,6 @@ export function LandingPageView({
                 gamesList={gamesList}
                 sortedGames={landingPage.sortedGames}
                 paginatedGames={landingPage.paginatedGames}
-                selectedGameId={selectedGameId}
-                setSelectedGameId={setSelectedGameId}
                 setCurrentPage={landingPage.setCurrentPage}
                 effectivePage={landingPage.effectivePage}
                 totalPages={landingPage.totalPages}
@@ -114,41 +105,7 @@ export function LandingPageView({
                 itemsPerPage={landingPage.ITEMS_PER_PAGE}
                 currentUser={currentUser}
                 userInfo={userInfo}
-              />
-
-              <GameSettings
-                settingsRef={landingPage.settingsRef}
-                selectedGameId={selectedGameId}
-                randomize={landingPage.randomize}
-                setRandomize={landingPage.setRandomize}
-                gameQuestions={landingPage.gameQuestions}
-                totalQuestions={landingPage.totalQuestions}
-                availableQuestionTypes={landingPage.availableQuestionTypes}
-                selectedQuestionTypes={landingPage.selectedQuestionTypes}
-                toggleQuestionType={landingPage.toggleQuestionType}
-                getQuestionTypeLabel={landingPage.getQuestionTypeLabel}
-                getQuestionTypeCount={landingPage.getQuestionTypeCount}
-                maxQuestions={landingPage.maxQuestions}
-                setMaxQuestions={landingPage.setMaxQuestions}
-                timerDuration={landingPage.timerDuration}
-                setTimerDuration={landingPage.setTimerDuration}
-                copied={landingPage.copied}
-                handleCopyShareLink={landingPage.handleCopyShareLink}
-                handleOpenPreview={landingPage.handleOpenPreview}
-              />
-
-              <GameModeButtons
-                loading={loading}
-                pocketbaseStatus={pocketbaseStatus}
-                selectedGameId={selectedGameId}
-                totalQuestions={landingPage.totalQuestions}
-                startHosting={startHosting}
-                startMarathonHosting={startMarathonHosting}
-                startSoloPractice={startSoloPractice}
-                randomize={landingPage.randomize}
-                maxQuestions={landingPage.maxQuestions}
-                timerDuration={landingPage.timerDuration}
-                selectedQuestionTypes={landingPage.selectedQuestionTypes}
+                onGameClick={onGameClick}
               />
             </div>
           </div>
@@ -156,17 +113,6 @@ export function LandingPageView({
       )}
 
       <SchoolFooter status={pocketbaseStatus} />
-
-      <PreviewModal
-        isOpen={landingPage.isPreviewModalOpen}
-        onClose={() => landingPage.setIsPreviewModalOpen(false)}
-        game={gamesList.find(g => g.id === selectedGameId)}
-        gameId={selectedGameId}
-        canEdit={isAuthenticated && (userInfo?.role === 'TEACHER' || userInfo?.role === 'ADMIN')}
-        currentUser={currentUser}
-        userInfo={userInfo}
-        standalone
-      />
     </div>
   );
 }
