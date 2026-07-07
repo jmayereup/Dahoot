@@ -342,7 +342,7 @@ export function TeacherDashboard({
   const handleGenerateQuestions = async (params) => {
     const { prompt, counts, language, cefrLevel, subject } = params;
     const systemPrompt = `You are an expert curriculum designer and language/subject assessment expert.
-Generate educational questions. You MUST respond with a single, valid JSON object matching the JSON schema below.
+Generate educational questions. You MUST respond with a single, valid JSON object matching the JSON schema and examples below.
 
 Target Student Profile:
 - Language of questions/answers: ${language || 'English'}
@@ -352,15 +352,83 @@ Target Student Profile:
 Generate the following question counts:
 - Multiple Choice (MULTIPLE_CHOICE): ${counts.MULTIPLE_CHOICE}
 - Sorting (SORTING): ${counts.SORTING}
-- Categorization (CATEGORIZE): ${counts.CATEGORIZE}
+- Categorization (CATEGORIZE): ${counts.CATEGORIZATION || counts.CATEGORIZE}
 - Drag & Drop (DRAG_DROP): ${counts.DRAG_DROP}
 - Drop Down (DROP_DOWN): ${counts.DROP_DOWN}
 
 JSON Response Schema:
 {
   "description": "An engaging 1-2 sentence description for this game",
-  "questions": []
-}`;
+  "questions": [
+    // ...one entry per question, using the exact "type" and "options" shape shown in the examples below
+  ]
+}
+
+Question Type Examples (use these exact shapes):
+
+1) MULTIPLE_CHOICE — single correct answer plus 2-3 distractors
+{
+  "text": "What is the past tense of 'go'?",
+  "type": "MULTIPLE_CHOICE",
+  "options": {
+    "correct_answer": "went",
+    "distractors": ["goed", "gone", "goes"]
+  }
+}
+
+2) SORTING — items in the correct order (chronological, logical, alphabetical, size, etc.)
+{
+  "text": "Put these events in chronological order.",
+  "type": "SORTING",
+  "options": {
+    "correct_sequence": ["Birth", "School", "University", "Career", "Retirement"]
+  }
+}
+
+3) CATEGORIZE — items mapped to one of the given categories
+{
+  "text": "Sort each word into the correct part of speech.",
+  "type": "CATEGORIZE",
+  "options": {
+    "categories": ["Noun", "Verb", "Adjective"],
+    "items": [
+      { "name": "happiness", "category": "Noun" },
+      { "name": "run", "category": "Verb" },
+      { "name": "beautiful", "category": "Adjective" },
+      { "name": "teacher", "category": "Noun" }
+    ]
+  }
+}
+
+4) DRAG_DROP — fill missing words in a sentence; use [word] brackets in the sentence, list words in answers_in_order in left-to-right order, and add 1-3 unrelated distractors
+{
+  "text": "Fill in the missing words.",
+  "type": "DRAG_DROP",
+  "options": {
+    "sentence": "She [drinks] coffee every [morning] before work.",
+    "answers_in_order": ["drinks", "morning"],
+    "distractors": ["drank", "evening", "tea"]
+  }
+}
+
+5) DROP_DOWN — same idea, but each blank has its own small choice set
+{
+  "text": "Select the correct word for each blank.",
+  "type": "DROP_DOWN",
+  "options": {
+    "sentence": "If I [were] rich, I would [travel] the world.",
+    "dropdowns": [
+      { "correct_answer": "were", "distractors": ["was", "am", "be"] },
+      { "correct_answer": "travel", "distractors": ["travels", "travelled", "traveling"] }
+    ]
+  }
+}
+
+Important rules:
+- The "type" field must be exactly one of: MULTIPLE_CHOICE, SORTING, CATEGORIZE, DRAG_DROP, DROP_DOWN.
+- For DRAG_DROP, every answer in answers_in_order must appear as a [word] bracket in the sentence, in the same order.
+- For DROP_DOWN, the number of dropdowns must match the number of blanks in the sentence.
+- Output ONLY a single valid JSON object. No prose, no markdown fences.`;
 
     const userPromptContent = prompt
       ? `Source text/Instructions:\n"""\n${prompt}\n"""\n\nGenerate the questions based on the source text/instructions above.`

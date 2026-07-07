@@ -124,6 +124,7 @@ export function useMarathonPlayer(view, setView) {
 
   const submitAnswer = async (userAnswer) => {
     if (playerSelectedIdx !== null || !playerRoom || !playerRecord || !currentQuestion) return;
+    if (playerRoom.status === 'LOBBY' || playerRoom.status === 'FINISHED') return;
 
     setPlayerSelectedIdx(userAnswer);
 
@@ -187,6 +188,7 @@ export function useMarathonPlayer(view, setView) {
   };
 
   const advanceToNextQuestion = async () => {
+    if (!playerRoom || playerRoom.status === 'LOBBY' || playerRoom.status === 'FINISHED') return;
     if (isStudentPaced && playerQuestionIndex >= currentLapQuestions.length) {
       const newIds = shuffleArray(currentLapQuestions.map(q => q.id));
       const newLap = (playerRecord.marathon_stats?.lap || 0) + 1;

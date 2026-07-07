@@ -285,7 +285,7 @@ export function useMarathonHost(view, setView) {
   useEffect(() => {
     if (!hostRoom) return;
 
-    const roomUnsub = pb.collection('dahoot_rooms').subscribe(hostRoom.id, async (e) => {
+    pb.collection('dahoot_rooms').subscribe(hostRoom.id, async (e) => {
       if (e.action === 'update') {
         setHostRoom(e.record);
       } else if (e.action === 'delete') {
@@ -294,7 +294,7 @@ export function useMarathonHost(view, setView) {
       }
     });
 
-    const playersUnsub = pb.collection('dahoot_players').subscribe('*', (e) => {
+    pb.collection('dahoot_players').subscribe('*', (e) => {
       if (e.record.room_id === hostRoom.id) {
         fetchPlayers();
       }
@@ -303,8 +303,8 @@ export function useMarathonHost(view, setView) {
     fetchPlayers();
 
     return () => {
-      roomUnsub();
-      playersUnsub();
+      pb.collection('dahoot_rooms').unsubscribe(hostRoom.id);
+      pb.collection('dahoot_players').unsubscribe('*');
     };
   }, [hostRoom?.id]);
 

@@ -90,7 +90,7 @@ export function LandingPageView({
             />
 
             <div className="panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '8px' }}>
                 <h2 style={{ margin: 0 }}>Host a Game</h2>
               </div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
