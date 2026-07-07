@@ -187,7 +187,6 @@ function App() {
           setHasPinFromUrl={playerGame.setHasPinFromUrl}
           setView={setView}
           gamesList={hostGame.gamesList}
-          refreshGames={hostGame.refreshGames}
           availableSubjects={availableSubjects}
           availableCefrLevels={availableCefrLevels}
           isAuthenticated={isAuthenticated}
