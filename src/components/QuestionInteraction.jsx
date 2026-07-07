@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
-import { shuffleArray } from '../utils/shuffle';
-import { normalizeQuestion, getMcOptions, getMcCorrectAnswer, getDragDropChoices, getDragDropCorrect, getDropDownChoices, getDropDownCorrect, getSortingCorrect, isScrambleSentence } from '../utils/questionSchema';
+import { normalizeQuestion, getMcCorrectAnswer, getDragDropCorrect, getDropDownChoices, getDropDownCorrect, getSortingCorrect, isScrambleSentence } from '../utils/questionSchema';
+import { useShuffledOptions } from '../hooks/useShuffledOptions';
 
 export function QuestionInteraction({
   question,
@@ -26,6 +26,8 @@ export function QuestionInteraction({
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
 
+  const { mcOptions: shuffledMcOptions, sortingPool: shuffledSortingPool, dragDropChoices: shuffledDragDropChoices, dropDownChoices: shuffledDropDownChoices, categorizeItems: shuffledCategorizeItems, categorizeCategories: shuffledCategorizeCategories } = useShuffledOptions(question, question?.id);
+
   const effectiveCategorizeIdx = externalCategorizeIdx !== undefined ? externalCategorizeIdx : categorizeIdx;
   const effectiveSetCategorizeIdx = onCategorizeIdxChange || setCategorizeIdx;
 
@@ -33,7 +35,7 @@ export function QuestionInteraction({
     if (!question) return;
     const n = normalizeQuestion(question);
     if (type === 'SORTING' && n?.options?.correct_sequence) {
-      setSortingPool(shuffleArray(n.options.correct_sequence));
+      setSortingPool(shuffledSortingPool);
       setSortedItems([]);
     } else if (type === 'DRAG_DROP' && n?.options) {
       const correctLen = (n.options.answers_in_order || []).length;
@@ -46,7 +48,7 @@ export function QuestionInteraction({
       effectiveSetCategorizeIdx(0);
       setCategoryAssignments({});
     }
-  }, [question, type, effectiveSetCategorizeIdx]);
+  }, [question, type, shuffledSortingPool, effectiveSetCategorizeIdx]);
 
   const handlePoolItemClick = (item) => {
     if (sortedItems.includes(item)) return;
@@ -154,7 +156,7 @@ export function QuestionInteraction({
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const choices = getDropDownChoices(question, dropIdx);
+        const choices = shuffledDropDownChoices[dropIdx] || getDropDownChoices(question, dropIdx);
         return (
           <select
             key={idx}
@@ -173,7 +175,7 @@ export function QuestionInteraction({
         const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
         if (ddIdx === -1) sequentialDrop += 1;
-        const choices = getDropDownChoices(question, idxToUse);
+        const choices = shuffledDropDownChoices[idxToUse] || getDropDownChoices(question, idxToUse);
         return (
           <select
             key={idx}
@@ -317,11 +319,11 @@ export function QuestionInteraction({
         </div>
 
         {type === 'MULTIPLE_CHOICE' && (() => {
-          const opts = getMcOptions(question);
           const correct = getMcCorrectAnswer(question);
           return (
             <div className="options-grid">
-              {opts.map((item, idx) => {
+              {shuffledMcOptions.map((entry, idx) => {
+                const item = entry.item;
                 const isCorrectAnswer = item === correct;
                 const isPlayerChoice = (playerAnswer && playerAnswer.item === item) || playerAnswer === item;
                 let cardClass = "";
@@ -491,23 +493,20 @@ export function QuestionInteraction({
 
         <div className="player-input-area" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
 
-          {type === 'MULTIPLE_CHOICE' && (() => {
-            const opts = getMcOptions(question);
-            return (
-              <div className="options-grid">
-                {opts.map((option, idx) => (
-                  <button
-                    key={idx}
-                    className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
-                    onClick={() => onSubmit(option)}
-                  >
-                    <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
-                    <span>{option}</span>
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+          {type === 'MULTIPLE_CHOICE' && (
+            <div className="options-grid">
+              {shuffledMcOptions.map((option, idx) => (
+                <button
+                  key={idx}
+                  className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
+                  onClick={() => onSubmit(option.item)}
+                >
+                  <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
+                  <span>{option.item}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {type === 'SORTING' && (
             <div className="w-full flex flex-col">
@@ -573,7 +572,6 @@ export function QuestionInteraction({
 
           {type === 'DRAG_DROP' && question.options && (() => {
             const isScramble = isScrambleSentence(question);
-            const choices = getDragDropChoices(question);
             return (
               <div style={{ width: '100%' }}>
                 <div
@@ -613,7 +611,7 @@ export function QuestionInteraction({
                 </div>
 
                 <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                  {choices.map((choice, idx) => {
+                  {shuffledDragDropChoices.map((choice, idx) => {
                     const isPlaced = placedWords.includes(choice);
                     return (
                       <button
@@ -668,25 +666,25 @@ export function QuestionInteraction({
                     className="categorize-deck-card bg-slate-50 border border-slate-200 p-8 rounded-2xl font-bold text-xl shadow-md w-full max-w-sm text-center"
                     style={{ animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
                   >
-                    {question.options.items[effectiveCategorizeIdx]?.name}
+                    {shuffledCategorizeItems[effectiveCategorizeIdx]?.name}
                   </div>
 
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: question.options.categories?.length > 2 ? '1fr 1fr' : '1fr',
+                    gridTemplateColumns: shuffledCategorizeCategories.length > 2 ? '1fr 1fr' : '1fr',
                     gap: 12,
                     width: '100%',
                     maxWidth: '380px',
                     marginTop: 12
                   }}>
-                    {question.options.categories?.map((cat, idx) => {
+                    {shuffledCategorizeCategories.map((cat, idx) => {
                       const colorSet = BUCKET_COLORS[idx % BUCKET_COLORS.length];
                       return (
                         <button
                           key={idx}
                           type="button"
                           className="btn"
-                          onClick={() => handleCategorizeChoice(question.options.items[effectiveCategorizeIdx].name, cat)}
+                          onClick={() => handleCategorizeChoice(shuffledCategorizeItems[effectiveCategorizeIdx].name, cat)}
                           style={{
                             background: colorSet.background,
                             border: colorSet.border,

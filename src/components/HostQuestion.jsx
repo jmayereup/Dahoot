@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
-import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitBracketTokens, getBlankIndex, getBracketInner, splitCurlyTokens, getCurlyIndex, getCurlyInner } from '../utils/blankParsing';
 import { ConfirmModal } from './ConfirmModal';
-import { getMcOptions, getDragDropChoices, getSortingCorrect } from '../utils/questionSchema';
+import { useShuffledOptions } from '../hooks/useShuffledOptions';
 
 export function HostQuestion({
   qIndex,
@@ -21,18 +20,7 @@ export function HostQuestion({
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
-  // Shuffle multiple choice options deterministically based on roomCode and question ID
-  const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE') return [];
-    const opts = getMcOptions(activeQuestion);
-    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
-  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
-
-  // Shuffle sorting options once when question changes so they display out of order
-  const shuffledSortingOptions = useMemo(() => {
-    if (type !== 'SORTING') return [];
-    return shuffleArray(getSortingCorrect(activeQuestion));
-  }, [activeQuestion.id, activeQuestion.options, type]);
+  const { mcOptions: shuffledMultipleChoiceOptions, sortingPool: shuffledSortingOptions, dragDropChoices: shuffledDragDropChoices, categorizeItems: shuffledCategorizeItems } = useShuffledOptions(activeQuestion, `${roomCode}-${activeQuestion.id}`);
 
   // Helper to parse drag and drop sentences
   const renderSentenceWithBlanks = (sentence) => {
@@ -163,7 +151,7 @@ export function HostQuestion({
             </div>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {getDragDropChoices(activeQuestion).map((choice, idx) => (
+              {shuffledDragDropChoices.map((choice, idx) => (
                 <div
                   key={idx}
                   style={{
@@ -230,9 +218,9 @@ export function HostQuestion({
             </div>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {activeQuestion.options.items?.map((item, idx) => (
-                <div 
-                  key={idx} 
+              {shuffledCategorizeItems.map((item, idx) => (
+                <div
+                  key={idx}
                   style={{
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid var(--panel-border)',
