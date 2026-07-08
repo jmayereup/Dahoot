@@ -34,6 +34,29 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     }
   }, []);
 
+  const restoreCachedAnswers = (room, questions) => {
+    const cachedFeedbackStr = localStorage.getItem('dahoot_last_feedback');
+    if (cachedFeedbackStr) {
+      try {
+        const cachedFeedback = JSON.parse(cachedFeedbackStr);
+        const currentQuestion = questions[room.current_question_index];
+        if (currentQuestion && cachedFeedback.questionId === currentQuestion.id) {
+          setPlayerFeedback(cachedFeedback.feedback);
+        }
+      } catch (e) {}
+    }
+    const cachedSelectedStr = localStorage.getItem('dahoot_last_selected_idx');
+    if (cachedSelectedStr) {
+      try {
+        const cachedSelected = JSON.parse(cachedSelectedStr);
+        const currentQuestion = questions[room.current_question_index];
+        if (currentQuestion && cachedSelected.questionId === currentQuestion.id) {
+          setPlayerSelectedIdx(cachedSelected.selectedIdx);
+        }
+      } catch (e) {}
+    }
+  };
+
   const attemptReconnect = async (playerId, roomId) => {
     try {
       setRemovedReason('');
@@ -57,6 +80,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setPlayerRoom(room);
       setPlayerRecord(player);
       setPlayerQuestions(finalQuestions);
+      restoreCachedAnswers(room, finalQuestions);
       setView('player');
     } catch (err) {
       console.warn("Could not auto-reconnect to previous session:", err);
@@ -70,6 +94,8 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
   const disconnectSession = () => {
     localStorage.removeItem('dahoot_player_id');
     localStorage.removeItem('dahoot_room_id');
+    localStorage.removeItem('dahoot_last_feedback');
+    localStorage.removeItem('dahoot_last_selected_idx');
     window.location.reload();
   };
 
@@ -86,6 +112,8 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         if (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION') {
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
+          localStorage.removeItem('dahoot_last_feedback');
+          localStorage.removeItem('dahoot_last_selected_idx');
         }
 
         setPlayerRoom(updatedRoom);
@@ -165,24 +193,26 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         return;
       }
 
-      if (room.status !== 'LOBBY') {
-        throw new Error('Game already started or finished.');
+      if (room.status === 'FINISHED') {
+        throw new Error('Game already finished.');
       }
 
       const existing = await pb.collection('dahoot_players').getList(1, 1, {
         filter: pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName.trim() })
       });
+      
+      let player;
       if (existing.totalItems > 0) {
-        throw new Error('Name taken in this room. Choose another.');
+        player = existing.items[0];
+      } else {
+        player = await pb.collection('dahoot_players').create({
+          room_id: room.id,
+          name: playerName.trim().substring(0, 15),
+          score: 0,
+          last_answered_index: -1,
+          answers: {}
+        });
       }
-
-      const player = await pb.collection('dahoot_players').create({
-        room_id: room.id,
-        name: playerName.trim().substring(0, 15),
-        score: 0,
-        last_answered_index: -1,
-        answers: {}
-      });
 
       const qList = await pb.collection('dahoot_questions').getFullList({
         filter: pb.filter("game_id = {:gameId}", { gameId: room.game_id })
@@ -204,6 +234,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setPlayerRoom(room);
       setPlayerRecord(player);
       setPlayerQuestions(finalQuestions);
+      restoreCachedAnswers(room, finalQuestions);
       setView('player');
     } catch (err) {
       setError(err.message);
@@ -258,6 +289,16 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       });
       setPlayerRecord(updatedPlayer);
       setPlayerFeedback({ correct: isCorrect, points });
+
+      // Save feedback and selection to localStorage for reconnect support
+      localStorage.setItem('dahoot_last_feedback', JSON.stringify({
+        questionId: activeQuestion.id,
+        feedback: { correct: isCorrect, points }
+      }));
+      localStorage.setItem('dahoot_last_selected_idx', JSON.stringify({
+        questionId: activeQuestion.id,
+        selectedIdx: userAnswer
+      }));
     } catch (err) {
       console.error("Error submitting answer:", err);
       setError("Failed to submit answer. Try again.");

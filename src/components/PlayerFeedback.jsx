@@ -311,6 +311,8 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
     );
   };
 
+  const hasAnswered = playerRecord.answers && playerRecord.answers[activeQuestion.id] !== undefined;
+
   return (
     <div className="feedback-screen">
       {playerFeedback ? (
@@ -331,12 +333,25 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
         </div>
       ) : (
         <div>
-          <div className="feedback-icon feedback-incorrect">✗</div>
-          <h2>No Answer</h2>
-          <div className="points-text feedback-incorrect">+0 pts</div>
-          <p style={{ color: '#334155', marginBottom: 12 }}>
-            You did not submit an answer in time!
-          </p>
+          {hasAnswered ? (
+            <div>
+              <div className="feedback-icon feedback-correct">✓</div>
+              <h2>Answer Submitted</h2>
+              <div className="points-text feedback-correct">Result on host screen</div>
+              <p style={{ color: '#334155', marginBottom: 12 }}>
+                You have successfully reconnected!
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="feedback-icon feedback-incorrect">✗</div>
+              <h2>No Answer</h2>
+              <div className="points-text feedback-incorrect">+0 pts</div>
+              <p style={{ color: '#334155', marginBottom: 12 }}>
+                You did not submit an answer in time!
+              </p>
+            </div>
+          )}
         </div>
       )}
 
