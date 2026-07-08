@@ -12,6 +12,14 @@ export function useMarathonHost(view, setView) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [gamesList, setGamesList] = useState([]);
+  const [currentOptions, setCurrentOptions] = useState({});
+
+  useEffect(() => {
+    pb.collection('dahoot_games').getFullList({ sort: '-created' })
+      .then(list => setGamesList(list))
+      .catch(err => console.error("Error fetching games list in marathon host:", err));
+  }, []);
 
   const isStudentPaced = hostRoom?.pacing_mode === 'student';
 
@@ -66,6 +74,7 @@ export function useMarathonHost(view, setView) {
     setError('');
     setLoading(true);
     try {
+      setCurrentOptions({ ...options, marathonMode: true });
       const game = await pb.collection('dahoot_games').getOne(gameId);
 
       const qList = await pb.collection('dahoot_questions').getFullList({
@@ -119,6 +128,143 @@ export function useMarathonHost(view, setView) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const adoptRoom = (room, activeQuestions, players) => {
+    setHostRoom(room);
+    setQuestions(activeQuestions);
+    setHostPlayers(players);
+  };
+
+  const clearRoom = () => {
+    setHostRoom(null);
+    setQuestions([]);
+    setHostPlayers([]);
+  };
+
+  const restartRoomWithGame = async (gameId, options = {}) => {
+    if (!hostRoom) return;
+    setError('');
+    setLoading(true);
+    try {
+      let qList = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId })
+      });
+      
+      if (qList.length === 0) {
+        throw new Error('This game has no questions. Please add questions in the Question Bank Manager first.');
+      }
+      
+      // Filter by question types if specified
+      let activeQuestions = [...qList];
+      if (options.questionTypes && options.questionTypes.length > 0) {
+        activeQuestions = activeQuestions.filter(q => options.questionTypes.includes(q.type || 'MULTIPLE_CHOICE'));
+      }
+
+      if (activeQuestions.length === 0) {
+        throw new Error('This game has no questions matching the selected question types.');
+      }
+
+      // Shuffle if randomize option is enabled
+      const shouldRandomize = options.randomize !== false;
+      if (shouldRandomize) {
+        for (let i = activeQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [activeQuestions[i], activeQuestions[j]] = [activeQuestions[j], activeQuestions[i]];
+        }
+      } else {
+        // Default sort by created
+        activeQuestions.sort((a, b) => a.created.localeCompare(b.created));
+      }
+
+      // Limit question count if specified and valid
+      if (options.maxQuestions && options.maxQuestions > 0) {
+        activeQuestions = activeQuestions.slice(0, options.maxQuestions);
+      }
+      
+      setQuestions(activeQuestions);
+      const questionIds = activeQuestions.map(q => q.id);
+
+      // Reset all players currently in this room: score=0, answers={}, last_answered_index=-1
+      const playerUpdates = hostPlayers.map(p => {
+        const updateData = {
+          score: 0,
+          answers: {},
+          last_answered_index: -1
+        };
+        if (options.marathonMode) {
+          const shuffle = (arr) => {
+            const res = [...arr];
+            for (let i = res.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [res[i], res[j]] = [res[j], res[i]];
+            }
+            return res;
+          };
+          updateData.lap_question_ids = shouldRandomize
+            ? shuffle(questionIds)
+            : [...questionIds];
+          updateData.marathon_stats = {
+            total_answered: 0,
+            correct_count: 0,
+            current_streak: 0,
+            best_streak: 0,
+            longest_streak: 0,
+            fastest_correct: null,
+            lap: 0,
+            question_history: []
+          };
+          updateData.session_start_time = new Date().toISOString();
+          updateData.last_answer_time = null;
+        }
+        return pb.collection('dahoot_players').update(p.id, updateData);
+      });
+      await Promise.all(playerUpdates);
+
+      // Update room to transition back to LOBBY
+      const updatePayload = {
+        game_id: gameId,
+        current_question_index: 0,
+        status: 'LOBBY',
+        current_question_start_time: '',
+        question_ids: questionIds,
+        timer_duration: options.marathonMode ? 0 : (options.timerDuration !== undefined ? options.timerDuration : 20),
+        pacing_mode: options.marathonMode ? 'student' : '',
+        marathon_mode: !!options.marathonMode,
+        wrap_up_timer: options.marathonMode ? 60 : 0,
+        wrap_up_start_time: null,
+        question_pool_size: activeQuestions.length,
+        max_questions: options.maxQuestions || null,
+        randomize_questions: shouldRandomize
+      };
+
+      const updatedRoom = await pb.collection('dahoot_rooms').update(hostRoom.id, updatePayload);
+
+      setHostRoom(updatedRoom);
+      setCurrentOptions(options);
+
+      // Transition the teacher view if pacing mode changed
+      if (options.marathonMode) {
+        setView('marathonHost');
+      } else {
+        setView('host');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to restart game: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hostPlayAgain = async () => {
+    if (!hostRoom) return;
+    await restartRoomWithGame(hostRoom.game_id, currentOptions);
+  };
+
+  const hostChangeGame = async (gameId, options = {}) => {
+    if (!hostRoom) return;
+    await restartRoomWithGame(gameId, options);
   };
 
   useEffect(() => {
@@ -381,6 +527,11 @@ export function useMarathonHost(view, setView) {
     hostCancelTimer,
     hostEndMarathon,
     exitMarathon,
-    hostRemovePlayer
+    hostRemovePlayer,
+    gamesList,
+    hostPlayAgain,
+    hostChangeGame,
+    adoptRoom,
+    clearRoom
   };
 }

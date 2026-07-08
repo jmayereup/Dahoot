@@ -118,6 +118,29 @@ function App() {
   const marathonHost = useMarathonHost(view, setView);
   const marathonPlayer = useMarathonPlayer(view, setView);
 
+  // Sync room state between standard host and marathon host when view transitions
+  useEffect(() => {
+    if (view === 'host' && marathonHost.hostRoom && !hostGame.hostRoom) {
+      hostGame.adoptRoom(marathonHost.hostRoom, marathonHost.questions, marathonHost.hostPlayers);
+      marathonHost.clearRoom();
+    } else if (view === 'marathonHost' && hostGame.hostRoom && !marathonHost.hostRoom) {
+      marathonHost.adoptRoom(hostGame.hostRoom, hostGame.questions, hostGame.hostPlayers);
+      hostGame.clearRoom();
+    }
+  }, [
+    view,
+    hostGame.hostRoom,
+    marathonHost.hostRoom,
+    hostGame.adoptRoom,
+    hostGame.clearRoom,
+    hostGame.questions,
+    hostGame.hostPlayers,
+    marathonHost.adoptRoom,
+    marathonHost.clearRoom,
+    marathonHost.questions,
+    marathonHost.hostPlayers
+  ]);
+
   // Handle player kicked/removed or room closed modals
   if (playerGame.removedReason) {
     const isClosed = playerGame.removedReason === 'closed';
@@ -268,6 +291,9 @@ function App() {
           hostEndGame={hostGame.hostEndGame}
           hostCancelTimer={hostGame.hostCancelTimer}
           hostRemovePlayer={hostGame.hostRemovePlayer}
+          hostPlayAgain={hostGame.hostPlayAgain}
+          hostChangeGame={hostGame.hostChangeGame}
+          gamesList={hostGame.gamesList}
         />
         <Suspense fallback={null}>
           <CookieConsent />
@@ -465,6 +491,9 @@ function App() {
           hostEndMarathon={marathonHost.hostEndMarathon}
           exitMarathon={marathonHost.exitMarathon}
           hostRemovePlayer={marathonHost.hostRemovePlayer}
+          hostPlayAgain={marathonHost.hostPlayAgain}
+          hostChangeGame={marathonHost.hostChangeGame}
+          gamesList={marathonHost.gamesList}
         />
         <Suspense fallback={null}>
           <CookieConsent />

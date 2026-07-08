@@ -26,13 +26,15 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setJoinPin(pinParam.replace(/\D/g, '').substring(0, 4));
       setHasPinFromUrl(true);
     } else {
-      const cachedPlayerId = localStorage.getItem('dahoot_player_id');
-      const cachedRoomId = localStorage.getItem('dahoot_room_id');
-      if (cachedPlayerId && cachedRoomId) {
-        attemptReconnect(cachedPlayerId, cachedRoomId);
+      if (view === 'player' || view === 'selection') {
+        const cachedPlayerId = localStorage.getItem('dahoot_player_id');
+        const cachedRoomId = localStorage.getItem('dahoot_room_id');
+        if (cachedPlayerId && cachedRoomId && !playerRoom) {
+          attemptReconnect(cachedPlayerId, cachedRoomId);
+        }
       }
     }
-  }, []);
+  }, [view]);
 
   const restoreCachedAnswers = (room, questions) => {
     const cachedFeedbackStr = localStorage.getItem('dahoot_last_feedback');
@@ -108,8 +110,22 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       if (e.action === 'update') {
         const updatedRoom = e.record;
         
-        // Reset player choice on new question
-        if (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION') {
+        if (updatedRoom.marathon_mode && onMarathonRoom) {
+          pb.collection('dahoot_rooms').unsubscribe(playerRoom.id);
+          pb.collection('dahoot_players').unsubscribe(playerRecord.id);
+          
+          setPlayerRoom(null);
+          setPlayerRecord(null);
+          setPlayerQuestions([]);
+          setPlayerSelectedIdx(null);
+          setPlayerFeedback(null);
+          
+          onMarathonRoom(updatedRoom.code, playerRecord.name);
+          return;
+        }
+
+        // Reset player choice on new question or lobby transition
+        if (updatedRoom.status === 'LOBBY' || (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION')) {
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
           localStorage.removeItem('dahoot_last_feedback');
@@ -136,6 +152,40 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       pb.collection('dahoot_players').unsubscribe(playerRecord.id);
     };
   }, [view, playerRoom?.id, playerRecord?.id]);
+
+  // Dynamically update player questions when the game room changes quiz/questions
+  useEffect(() => {
+    if (!playerRoom?.id) return;
+
+    let isMounted = true;
+    const loadQuestionsForRoom = async () => {
+      try {
+        const qList = await pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: playerRoom.game_id })
+        });
+        
+        let finalQuestions = qList;
+        if (playerRoom.question_ids && Array.isArray(playerRoom.question_ids) && playerRoom.question_ids.length > 0) {
+          const idMap = new Map(playerRoom.question_ids.map((id, index) => [id, index]));
+          finalQuestions = qList
+            .filter(q => idMap.has(q.id))
+            .sort((a, b) => idMap.get(a.id) - idMap.get(b.id));
+        } else {
+          finalQuestions.sort((a, b) => a.created.localeCompare(b.created));
+        }
+        if (isMounted) {
+          setPlayerQuestions(finalQuestions);
+        }
+      } catch (err) {
+        console.error("Error updating player questions:", err);
+      }
+    };
+
+    loadQuestionsForRoom();
+    return () => {
+      isMounted = false;
+    };
+  }, [playerRoom?.game_id, JSON.stringify(playerRoom?.question_ids)]);
 
   // Player Timer Control
   useEffect(() => {

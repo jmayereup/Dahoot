@@ -1,10 +1,137 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { pb } from '../pb';
+import { GameSettings } from './GameSettings';
 import { BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBracketInner } from '../utils/blankParsing';
 import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
+import { RotateCcw, Shuffle, Home } from 'lucide-react';
 
-export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) {
+export function HostFinished({ 
+  hostPlayers = [], 
+  hostEndGame, 
+  questions = [],
+  hostPlayAgain,
+  hostChangeGame,
+  gamesList = []
+}) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
+  const [showChangeGameModal, setShowChangeGameModal] = useState(false);
+  const [selectedNewGameId, setSelectedNewGameId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [newRandomize, setNewRandomize] = useState(true);
+  const [newTimerDuration, setNewTimerDuration] = useState(20);
+  const [newMaxQuestions, setNewMaxQuestions] = useState('');
+  const [newPacingMode, setNewPacingMode] = useState('teacher');
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [modalQuestions, setModalQuestions] = useState([]);
+  const [newSelectedQuestionTypes, setNewSelectedQuestionTypes] = useState(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
+
+  useEffect(() => {
+    if (!selectedNewGameId) {
+      setModalQuestions([]);
+      return;
+    }
+    let isMounted = true;
+    pb.collection('dahoot_questions').getFullList({
+      filter: pb.filter("game_id = {:gameId}", { gameId: selectedNewGameId })
+    })
+    .then(res => {
+      if (isMounted) {
+        setModalQuestions(res);
+        // Pre-populate available question types
+        const types = new Set();
+        res.forEach(q => types.add(q.type || 'MULTIPLE_CHOICE'));
+        setNewSelectedQuestionTypes(Array.from(types));
+        // Reset maxQuestions when game changes
+        setNewMaxQuestions('');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      if (isMounted) setModalQuestions([]);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedNewGameId]);
+
+  const availableQuestionTypes = useMemo(() => {
+    const types = new Set();
+    modalQuestions.forEach(q => {
+      types.add(q.type || 'MULTIPLE_CHOICE');
+    });
+    return Array.from(types);
+  }, [modalQuestions]);
+
+  const getQuestionTypeCount = (type) => {
+    return modalQuestions.filter(q => (q.type || 'MULTIPLE_CHOICE') === type).length;
+  };
+
+  const getQuestionTypeLabel = (type) => {
+    const QUESTION_TYPE_LABELS = {
+      MULTIPLE_CHOICE: 'Multiple Choice',
+      SORTING: 'Sorting Order',
+      DRAG_DROP: 'Drag & Drop (Blanks)',
+      DROP_DOWN: 'Drop-Down (Select Blanks)',
+      CATEGORIZE: 'Categorization Groups'
+    };
+    return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');
+  };
+
+  const toggleQuestionType = (type) => {
+    setNewSelectedQuestionTypes(prev => 
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const totalQuestions = useMemo(() => {
+    return modalQuestions.filter(q => {
+      const type = q.type || 'MULTIPLE_CHOICE';
+      return newSelectedQuestionTypes.includes(type);
+    }).length;
+  }, [modalQuestions, newSelectedQuestionTypes]);
+
+  const filteredGames = useMemo(() => {
+    if (!gamesList) return [];
+    return gamesList.filter(g => 
+      g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.subject && g.subject.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [gamesList, searchQuery]);
+
+  const handleStartChangeGame = async () => {
+    if (!selectedNewGameId) return;
+    setIsRestarting(true);
+    try {
+      const options = {
+        randomize: newRandomize,
+        timerDuration: newTimerDuration,
+        maxQuestions: newMaxQuestions ? parseInt(newMaxQuestions) : null,
+        questionTypes: newSelectedQuestionTypes,
+        marathonMode: newPacingMode === 'student'
+      };
+      await hostChangeGame(selectedNewGameId, options);
+      setShowChangeGameModal(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
+  const handlePlayAgain = async () => {
+    if (!hostPlayAgain) return;
+    setIsRestarting(true);
+    try {
+      await hostPlayAgain();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRestarting(false);
+    }
+  };
 
   const streakChampion = useMemo(() => {
     if (!hostPlayers.length) return null;
@@ -316,13 +443,51 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
             </div>
           )}
 
-          <button className="btn btn-primary w-full mt-auto" onClick={hostEndGame}>
-            Close Room & Return Home
-          </button>
+          <div className="w-full mt-auto flex flex-col gap-3 pt-6">
+            {hostPlayAgain && (
+              <button 
+                className="btn btn-primary"
+                onClick={handlePlayAgain}
+                disabled={isRestarting}
+              >
+                {isRestarting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent shrink-0" />
+                    Resetting Session...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 shrink-0" />
+                    Play Again (Same Quiz)
+                  </>
+                )}
+              </button>
+            )}
+            
+            {hostChangeGame && gamesList && gamesList.length > 0 && (
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setShowChangeGameModal(true)}
+                disabled={isRestarting}
+              >
+                <Shuffle className="w-4 h-4 shrink-0" />
+                Host a Different Quiz
+              </button>
+            )}
+
+            <button 
+              className="btn bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 hover:shadow-md"
+              onClick={hostEndGame}
+              disabled={isRestarting}
+            >
+              <Home className="w-4 h-4 shrink-0" />
+              Close Room & Return Home
+            </button>
+          </div>
         </div>
 
         {/* Right Column: Question Difficulty Insights */}
-        <div className="lg:w-7/12 bg-slate-50/50 border border-slate-150 rounded-2xl p-6 shadow-inner flex flex-col">
+        <div className="lg:w-7/12 bg-slate-50/50 border border-slate-150 rounded-2xl p-6 shadow-sm flex flex-col">
           <div className="mb-4">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <span>📊</span> Class Performance Review
@@ -332,7 +497,7 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
             </p>
           </div>
 
-          <div className="space-y-3 overflow-y-auto max-h-[460px] pr-1">
+          <div className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
             {questionStats.map((stats, idx) => {
               const q = stats.question;
               const isExpanded = expandedQuestionId === q.id;
@@ -419,6 +584,165 @@ export function HostFinished({ hostPlayers = [], hostEndGame, questions = [] }) 
           </div>
         </div>
       </div>
+
+      {showChangeGameModal && (
+        <div 
+          className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-[1300] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowChangeGameModal(false)}
+        >
+          <div 
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-xl animate-pop-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="text-left">
+                <h2 className="text-xl font-bold text-slate-800">Host a Different Game</h2>
+                <p className="text-xs text-slate-500 mt-1">Select a game and customize settings. Students will automatically transition.</p>
+              </div>
+              <button 
+                onClick={() => setShowChangeGameModal(false)}
+                className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer border-none bg-transparent"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+              {/* Search bar */}
+              <div className="relative">
+                <input 
+                  type="text"
+                  placeholder="Search quizzes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-205 focus:border-rose-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
+                />
+              </div>
+
+              {/* Games list */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto pr-1">
+                {filteredGames.length === 0 ? (
+                  <div className="col-span-2 text-center py-8 text-slate-400 italic text-sm">
+                    No games found.
+                  </div>
+                ) : (
+                  filteredGames.map((game) => {
+                    const isSelected = selectedNewGameId === game.id;
+                    return (
+                      <button
+                        key={game.id}
+                        onClick={() => setSelectedNewGameId(game.id)}
+                        className={`text-left p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected 
+                            ? 'border-rose-500 bg-rose-50/30 ring-1 ring-rose-500' 
+                            : 'border-slate-150 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{game.title}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-2 mt-1">{game.description || 'No description.'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-3">
+                          {game.subject && (
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              📚 {game.subject}
+                            </span>
+                          )}
+                          {game.cefr_level && (
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              🎓 {game.cefr_level}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Settings Section (only if game selected) */}
+              {selectedNewGameId && modalQuestions.length > 0 && (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 text-left">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
+                      Pacing Mode
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="new-pacing" 
+                          value="teacher"
+                          checked={newPacingMode === 'teacher'}
+                          onChange={() => setNewPacingMode('teacher')}
+                          className="h-4 w-4 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                        />
+                        🏫 Teacher-Paced (Class Game)
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="new-pacing" 
+                          value="student"
+                          checked={newPacingMode === 'student'}
+                          onChange={() => setNewPacingMode('student')}
+                          className="h-4 w-4 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                        />
+                        🏃 Student-Paced (Marathon)
+                      </label>
+                    </div>
+                  </div>
+
+                  <GameSettings
+                    selectedGameId={selectedNewGameId}
+                    randomize={newRandomize}
+                    setRandomize={setNewRandomize}
+                    gameQuestions={modalQuestions}
+                    totalQuestions={totalQuestions}
+                    availableQuestionTypes={availableQuestionTypes}
+                    selectedQuestionTypes={newSelectedQuestionTypes}
+                    toggleQuestionType={toggleQuestionType}
+                    getQuestionTypeLabel={getQuestionTypeLabel}
+                    getQuestionTypeCount={getQuestionTypeCount}
+                    maxQuestions={newMaxQuestions}
+                    setMaxQuestions={setNewMaxQuestions}
+                    timerDuration={newTimerDuration}
+                    setTimerDuration={setNewTimerDuration}
+                    pacingMode={newPacingMode}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowChangeGameModal(false)}
+                className="btn btn-secondary cursor-pointer"
+                disabled={isRestarting}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleStartChangeGame}
+                disabled={!selectedNewGameId || isRestarting}
+                className="btn btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isRestarting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                    Starting...
+                  </>
+                ) : (
+                  'Start Hosting Quiz'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

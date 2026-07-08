@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 const TRACKS = [
   { id: 'offbeat', name: 'Slightly Offbeat (Lobby)', path: '/gameMusic/slightly-offbeat-soundroll-main-version-48700-01-30.mp3' },
   { id: 'recess', name: 'Recess Logic (Thinking)', path: '/gameMusic/Recess_Logic.mp3' },
+  { id: 'golden_hour', name: 'Golden Hour Market (Gameplay)', path: '/gameMusic/Golden_Hour_Market.mp3' },
+  { id: 'lotus_bloom', name: 'Lotus Bloom Bounce (Gameplay)', path: '/gameMusic/Lotus_Bloom_Bounce.mp3' },
+  { id: 'paddy_field', name: 'Paddy Field Shuffle (Gameplay)', path: '/gameMusic/Paddy_Field_Shuffle.mp3' },
   { id: 'sunday', name: 'Sunday High (Celebration)', path: '/gameMusic/Sunday_High.mp3' }
 ];
 
@@ -30,6 +33,7 @@ export function GameMusicController({ gameStatus }) {
   // Keep refs in sync with state for access in intervals without stale closures
   const currentVolumeRef = useRef(volume);
   const isMutedRef = useRef(isMuted);
+  const prevStatusRef = useRef(gameStatus);
 
   useEffect(() => {
     currentVolumeRef.current = volume;
@@ -47,16 +51,31 @@ export function GameMusicController({ gameStatus }) {
 
   // Sync game phase to active track when autoSync is active
   useEffect(() => {
-    if (!autoSync) return;
+    if (!autoSync) {
+      prevStatusRef.current = gameStatus;
+      return;
+    }
 
-    let targetTrackId = 'offbeat';
+    let targetTrackId = currentTrackId;
     let shouldPlay = true;
 
     if (gameStatus === 'LOBBY') {
       targetTrackId = 'offbeat';
       shouldPlay = true;
     } else if (gameStatus === 'QUESTION') {
-      targetTrackId = 'recess';
+      const gameplayTracks = ['recess', 'golden_hour', 'lotus_bloom', 'paddy_field'];
+      const isCurrentGameplay = gameplayTracks.includes(currentTrackId);
+      const transitionedToQuestion = prevStatusRef.current !== 'QUESTION';
+
+      if (transitionedToQuestion || !isCurrentGameplay) {
+        // Exclude the current track if possible to avoid playing the same track twice in a row
+        const available = gameplayTracks.filter(id => id !== currentTrackId);
+        const choice = available.length > 0 ? available : gameplayTracks;
+        const randomIndex = Math.floor(Math.random() * choice.length);
+        targetTrackId = choice[randomIndex];
+      } else {
+        targetTrackId = currentTrackId;
+      }
       shouldPlay = true;
     } else if (gameStatus === 'LEADERBOARD') {
       // Pause while the answer is being shown so the teacher can explain things
@@ -74,6 +93,8 @@ export function GameMusicController({ gameStatus }) {
     } else {
       setIsPlaying(false);
     }
+
+    prevStatusRef.current = gameStatus;
   }, [gameStatus, autoSync, currentTrackId]);
 
   // Handle track source changes and play/pause state with smooth fades/transitions
