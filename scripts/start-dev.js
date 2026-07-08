@@ -48,9 +48,19 @@ async function start() {
 
   console.log(`\x1b[35m[Dahoot]\x1b[0m Starting PocketBase server...`);
   
-  const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
+  // Check parent directory first, then fallback to local project pocketbase
+  let pbDir = path.resolve(rootDir, '..', 'pocketbase');
+  let pbExecutable = path.join(pbDir, 'pocketbase');
+  let pbCwd = pbDir;
+
+  if (!fs.existsSync(pbExecutable)) {
+    pbDir = path.join(rootDir, 'pocketbase');
+    pbExecutable = path.join(pbDir, 'pocketbase');
+    pbCwd = rootDir;
+  }
+  
   const pbProcess = spawn(pbExecutable, ['serve'], {
-    cwd: rootDir,
+    cwd: pbCwd,
     stdio: 'inherit',
     env: process.env
   });

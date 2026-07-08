@@ -10,6 +10,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
+// Resolve local pocketbase directory path, prioritizing the parent directory
+let pbDir = path.resolve(rootDir, '..', 'pocketbase');
+if (!fs.existsSync(path.join(pbDir, 'pocketbase'))) {
+  pbDir = path.join(rootDir, 'pocketbase');
+}
+
 // Helper to load .env variables
 function loadEnv() {
   dotenv.config({ path: path.resolve(rootDir, '.env') });
@@ -56,14 +62,14 @@ async function ensureDevDbRunning(devUrl) {
   }
 
   console.log(`\x1b[35m[Dahoot Deploy]\x1b[0m Dev PocketBase is not running. Starting in the background...`);
-  const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
+  const pbExecutable = path.join(pbDir, 'pocketbase');
 
   const logFile = path.join(rootDir, 'pocketbase_dev.log');
   const out = fs.openSync(logFile, 'a');
   const err = fs.openSync(logFile, 'a');
 
   const child = spawn(pbExecutable, ['serve', `--http=127.0.0.1:${port}`], {
-    cwd: rootDir,
+    cwd: pbDir,
     detached: true,
     stdio: ['ignore', out, err]
   });
@@ -238,7 +244,7 @@ async function compareVersions(connectionString, targetPath, env) {
 
   let localVersion = null;
   try {
-    const pbExecutable = path.join(rootDir, 'pocketbase', 'pocketbase');
+    const pbExecutable = path.join(pbDir, 'pocketbase');
     const out = execSync(`"${pbExecutable}" --version`, { encoding: 'utf8' }).trim();
     const match = out.match(/version\s+([0-9.]+)/i);
     localVersion = match ? match[1] : out;
@@ -345,7 +351,7 @@ async function deploy() {
   }
 
   // Step 4: Deploy PocketBase migrations (if exists)
-  const localMigrationsDir = path.join(rootDir, 'pocketbase', 'pb_migrations');
+  const localMigrationsDir = path.join(pbDir, 'pb_migrations');
   if (fs.existsSync(localMigrationsDir)) {
     console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase migrations...\x1b[0m');
     try {
@@ -358,7 +364,7 @@ async function deploy() {
   }
 
   // Step 4b: Deploy PocketBase JS VM hooks (if exists)
-  const localHooksDir = path.join(rootDir, 'pocketbase', 'pb_hooks');
+  const localHooksDir = path.join(pbDir, 'pb_hooks');
   if (fs.existsSync(localHooksDir)) {
     console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
     try {
