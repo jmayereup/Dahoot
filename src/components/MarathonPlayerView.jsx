@@ -122,7 +122,21 @@ export function MarathonPlayerView({
           </div>
         )}
 
-        {!isFinished && currentQuestion && !playerFeedback && (
+        {!isFinished && playerRoom.status === 'LOBBY' && (
+          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🏃</div>
+            <h2 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>You're in!</h2>
+            <p className="waiting-message" style={{ marginBottom: '4px' }}>
+              See your nickname <strong>{playerRecord.name}</strong> on the projector.
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '24px' }}>
+              Waiting for the host to start the marathon…
+            </p>
+            <div className="spinner" style={{ width: '32px', height: '32px', borderWidth: '3px', margin: '0 auto 24px' }} />
+          </div>
+        )}
+
+        {!isFinished && currentQuestion && !playerFeedback && playerRoom.status !== 'LOBBY' && (
           <div>
             <div style={{
               display: 'flex',
@@ -180,7 +194,7 @@ export function MarathonPlayerView({
           </div>
         )}
 
-        {!isFinished && playerFeedback && (
+        {!isFinished && playerFeedback && playerRoom.status !== 'LOBBY' && (
           <div style={{ padding: '32px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '12px' }}>
               {playerFeedback.correct ? '✅' : '❌'}
@@ -256,7 +270,7 @@ export function MarathonPlayerView({
           </div>
         )}
 
-        {!isFinished && !currentQuestion && (
+        {!isFinished && !currentQuestion && playerRoom.status !== 'LOBBY' && (
           <div style={{ padding: '32px 20px', textAlign: 'center' }}>
             <div className="spinner" style={{ width: '32px', height: '32px', borderWidth: '3px', margin: '0 auto 16px' }} />
             <p style={{ color: 'var(--text-secondary)' }}>Loading question...</p>

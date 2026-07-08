@@ -225,24 +225,11 @@ export function GameForm({
               </div>
             </div>
 
-            {previewLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
-                <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
-              </div>
-            ) : previewQuestions.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '32px 16px',
-                background: 'rgba(93, 107, 130, 0.02)',
-                border: '1px dashed rgba(93, 107, 130, 0.15)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-muted)'
-              }}>
-                No questions yet. Click <strong>➕ Add Question</strong> to get started.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+            {previewQuestions.length > 0 ? (
+              <div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4"
+                style={{ opacity: previewLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}
+              >
                 {previewQuestions.map((question, qIdx) => (
                   <QuestionPreviewCard
                     key={question.id}
@@ -253,6 +240,22 @@ export function GameForm({
                     onDelete={onDeleteQuestion}
                   />
                 ))}
+              </div>
+            ) : previewLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+                <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+              </div>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '32px 16px',
+                background: 'rgba(93, 107, 130, 0.02)',
+                border: '1px dashed rgba(93, 107, 130, 0.15)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--text-muted)'
+              }}>
+                No questions yet. Click <strong>➕ Add Question</strong> to get started.
               </div>
             )}
           </div>

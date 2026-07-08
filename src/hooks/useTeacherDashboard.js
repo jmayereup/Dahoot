@@ -327,7 +327,7 @@ export function useTeacherDashboard(view, currentUser) {
       setMcDistractors(dists);
     } else if (type === 'SORTING') {
       const seq = [...(n.options?.correct_sequence || [])];
-      while (seq.length < 4) seq.push('');
+      while (seq.length < 2) seq.push('');
       setSortingItems(seq);
     } else if (type === 'DRAG_DROP') {
       const rawSentence = n.options?.sentence || '';
@@ -355,21 +355,33 @@ export function useTeacherDashboard(view, currentUser) {
   };
 
   const updateMcDistractor = (index, value) => {
-    const updated = [...mcDistractors];
-    updated[index] = value;
-    setMcDistractors(updated);
+    if (Array.isArray(index)) {
+      setMcDistractors(index);
+    } else {
+      const updated = [...mcDistractors];
+      updated[index] = value;
+      setMcDistractors(updated);
+    }
   };
 
   const updateSortingItem = (index, value) => {
-    const updated = [...sortingItems];
-    updated[index] = value;
-    setSortingItems(updated);
+    if (Array.isArray(index)) {
+      setSortingItems(index);
+    } else {
+      const updated = [...sortingItems];
+      updated[index] = value;
+      setSortingItems(updated);
+    }
   };
 
   const updateDragDistractor = (index, value) => {
-    const updated = [...dragDistractors];
-    updated[index] = value;
-    setDragDistractors(updated);
+    if (Array.isArray(index)) {
+      setDragDistractors(index);
+    } else {
+      const updated = [...dragDistractors];
+      updated[index] = value;
+      setDragDistractors(updated);
+    }
   };
 
   const saveQuestion = async (e) => {
@@ -404,8 +416,12 @@ export function useTeacherDashboard(view, currentUser) {
     }
 
     else if (questionType === 'SORTING') {
+      if (sortingItems.length < 2) {
+        setError('A sorting question must have at least 2 items.');
+        return;
+      }
       if (sortingItems.some(opt => !opt.trim())) {
-        setError('All 4 sorting items must be filled out.');
+        setError('All sorting items must be filled out.');
         return;
       }
       optionsPayload = {

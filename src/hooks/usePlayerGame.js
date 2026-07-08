@@ -26,13 +26,38 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setJoinPin(pinParam.replace(/\D/g, '').substring(0, 4));
       setHasPinFromUrl(true);
     } else {
-      const cachedPlayerId = localStorage.getItem('dahoot_player_id');
-      const cachedRoomId = localStorage.getItem('dahoot_room_id');
-      if (cachedPlayerId && cachedRoomId) {
-        attemptReconnect(cachedPlayerId, cachedRoomId);
+      if (view === 'player' || view === 'selection') {
+        const cachedPlayerId = localStorage.getItem('dahoot_player_id');
+        const cachedRoomId = localStorage.getItem('dahoot_room_id');
+        if (cachedPlayerId && cachedRoomId && !playerRoom) {
+          attemptReconnect(cachedPlayerId, cachedRoomId);
+        }
       }
     }
-  }, []);
+  }, [view]);
+
+  const restoreCachedAnswers = (room, questions) => {
+    const cachedFeedbackStr = localStorage.getItem('dahoot_last_feedback');
+    if (cachedFeedbackStr) {
+      try {
+        const cachedFeedback = JSON.parse(cachedFeedbackStr);
+        const currentQuestion = questions[room.current_question_index];
+        if (currentQuestion && cachedFeedback.questionId === currentQuestion.id) {
+          setPlayerFeedback(cachedFeedback.feedback);
+        }
+      } catch (e) {}
+    }
+    const cachedSelectedStr = localStorage.getItem('dahoot_last_selected_idx');
+    if (cachedSelectedStr) {
+      try {
+        const cachedSelected = JSON.parse(cachedSelectedStr);
+        const currentQuestion = questions[room.current_question_index];
+        if (currentQuestion && cachedSelected.questionId === currentQuestion.id) {
+          setPlayerSelectedIdx(cachedSelected.selectedIdx);
+        }
+      } catch (e) {}
+    }
+  };
 
   const attemptReconnect = async (playerId, roomId) => {
     try {
@@ -57,6 +82,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setPlayerRoom(room);
       setPlayerRecord(player);
       setPlayerQuestions(finalQuestions);
+      restoreCachedAnswers(room, finalQuestions);
       setView('player');
     } catch (err) {
       console.warn("Could not auto-reconnect to previous session:", err);
@@ -70,6 +96,8 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
   const disconnectSession = () => {
     localStorage.removeItem('dahoot_player_id');
     localStorage.removeItem('dahoot_room_id');
+    localStorage.removeItem('dahoot_last_feedback');
+    localStorage.removeItem('dahoot_last_selected_idx');
     window.location.reload();
   };
 
@@ -82,10 +110,26 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       if (e.action === 'update') {
         const updatedRoom = e.record;
         
-        // Reset player choice on new question
-        if (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION') {
+        if (updatedRoom.marathon_mode && onMarathonRoom) {
+          pb.collection('dahoot_rooms').unsubscribe(playerRoom.id);
+          pb.collection('dahoot_players').unsubscribe(playerRecord.id);
+          
+          setPlayerRoom(null);
+          setPlayerRecord(null);
+          setPlayerQuestions([]);
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
+          
+          onMarathonRoom(updatedRoom.code, playerRecord.name);
+          return;
+        }
+
+        // Reset player choice on new question or lobby transition
+        if (updatedRoom.status === 'LOBBY' || (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION')) {
+          setPlayerSelectedIdx(null);
+          setPlayerFeedback(null);
+          localStorage.removeItem('dahoot_last_feedback');
+          localStorage.removeItem('dahoot_last_selected_idx');
         }
 
         setPlayerRoom(updatedRoom);
@@ -108,6 +152,40 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       pb.collection('dahoot_players').unsubscribe(playerRecord.id);
     };
   }, [view, playerRoom?.id, playerRecord?.id]);
+
+  // Dynamically update player questions when the game room changes quiz/questions
+  useEffect(() => {
+    if (!playerRoom?.id) return;
+
+    let isMounted = true;
+    const loadQuestionsForRoom = async () => {
+      try {
+        const qList = await pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: playerRoom.game_id })
+        });
+        
+        let finalQuestions = qList;
+        if (playerRoom.question_ids && Array.isArray(playerRoom.question_ids) && playerRoom.question_ids.length > 0) {
+          const idMap = new Map(playerRoom.question_ids.map((id, index) => [id, index]));
+          finalQuestions = qList
+            .filter(q => idMap.has(q.id))
+            .sort((a, b) => idMap.get(a.id) - idMap.get(b.id));
+        } else {
+          finalQuestions.sort((a, b) => a.created.localeCompare(b.created));
+        }
+        if (isMounted) {
+          setPlayerQuestions(finalQuestions);
+        }
+      } catch (err) {
+        console.error("Error updating player questions:", err);
+      }
+    };
+
+    loadQuestionsForRoom();
+    return () => {
+      isMounted = false;
+    };
+  }, [playerRoom?.game_id, JSON.stringify(playerRoom?.question_ids)]);
 
   // Player Timer Control
   useEffect(() => {
@@ -165,24 +243,26 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         return;
       }
 
-      if (room.status !== 'LOBBY') {
-        throw new Error('Game already started or finished.');
+      if (room.status === 'FINISHED') {
+        throw new Error('Game already finished.');
       }
 
       const existing = await pb.collection('dahoot_players').getList(1, 1, {
         filter: pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName.trim() })
       });
+      
+      let player;
       if (existing.totalItems > 0) {
-        throw new Error('Name taken in this room. Choose another.');
+        player = existing.items[0];
+      } else {
+        player = await pb.collection('dahoot_players').create({
+          room_id: room.id,
+          name: playerName.trim().substring(0, 15),
+          score: 0,
+          last_answered_index: -1,
+          answers: {}
+        });
       }
-
-      const player = await pb.collection('dahoot_players').create({
-        room_id: room.id,
-        name: playerName.trim().substring(0, 15),
-        score: 0,
-        last_answered_index: -1,
-        answers: {}
-      });
 
       const qList = await pb.collection('dahoot_questions').getFullList({
         filter: pb.filter("game_id = {:gameId}", { gameId: room.game_id })
@@ -204,6 +284,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       setPlayerRoom(room);
       setPlayerRecord(player);
       setPlayerQuestions(finalQuestions);
+      restoreCachedAnswers(room, finalQuestions);
       setView('player');
     } catch (err) {
       setError(err.message);
@@ -258,6 +339,16 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       });
       setPlayerRecord(updatedPlayer);
       setPlayerFeedback({ correct: isCorrect, points });
+
+      // Save feedback and selection to localStorage for reconnect support
+      localStorage.setItem('dahoot_last_feedback', JSON.stringify({
+        questionId: activeQuestion.id,
+        feedback: { correct: isCorrect, points }
+      }));
+      localStorage.setItem('dahoot_last_selected_idx', JSON.stringify({
+        questionId: activeQuestion.id,
+        selectedIdx: userAnswer
+      }));
     } catch (err) {
       console.error("Error submitting answer:", err);
       setError("Failed to submit answer. Try again.");

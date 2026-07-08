@@ -7,9 +7,9 @@ export function LogoContainer() {
     <>
       <div className="logo-container">
         {!imgFailed ? (
-          <img 
-            src="/logo.png" 
-            alt="Datdaruni School Logo" 
+          <img
+            src="/logo.png"
+            alt="Datdaruni School Logo"
             className="logo-img"
             onError={() => setImgFailed(true)}
           />
@@ -18,7 +18,7 @@ export function LogoContainer() {
         )}
         <h1>Dahoot</h1>
       </div>
-      <p className="subtitle">Self-Hosted Educational Quiz Platform</p>
+      <p className="subtitle">Datdaruni School Educational Quiz Platform</p>
     </>
   );
 }

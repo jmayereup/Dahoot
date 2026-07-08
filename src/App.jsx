@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { pb } from './pb';
 import { useHostGame } from './hooks/useHostGame';
+import { useHostGameSetup } from './hooks/useHostGameSetup';
 import { usePlayerGame } from './hooks/usePlayerGame';
 import { useTeacherDashboard } from './hooks/useTeacherDashboard';
 import { usePracticeGame } from './hooks/usePracticeGame';
@@ -13,6 +14,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 
 // Lazy load secondary views and heavy modules to optimize chunk size
 const HostView = lazy(() => import('./components/HostView').then(m => ({ default: m.HostView })));
+const HostGameView = lazy(() => import('./components/HostGameView').then(m => ({ default: m.HostGameView })));
 const PlayerView = lazy(() => import('./components/PlayerView').then(m => ({ default: m.PlayerView })));
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
 const AuthView = lazy(() => import('./components/AuthView').then(m => ({ default: m.AuthView })));
@@ -44,15 +46,14 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid && !!pb.authStore.record);
   const [currentUser, setCurrentUser] = useState(pb.authStore.record);
   const [showSyncReset, setShowSyncReset] = useState(false);
-  const [shouldScrollToSettings, setShouldScrollToSettings] = useState(false);
 
-  // Extract shared quiz ID on mount to preselect it in LandingPageView
+  // Extract shared quiz ID on mount to deep-link directly into the host setup view
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const quizParam = params.get('quiz');
     if (quizParam) {
       setSelectedGameId(quizParam);
-      setShouldScrollToSettings(true);
+      setView('hostGame');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -77,6 +78,7 @@ function App() {
   const handleLogout = () => {
     pb.authStore.clear();
     setSelectedGameId('');
+    hostGameSetup.reset();
     setView('selection');
   };
 
@@ -109,11 +111,35 @@ function App() {
     marathonPlayer.joinMarathon(pin, name);
   });
   const hostGame = useHostGame(view, setView, playerGame.hasPinFromUrl);
+  const hostGameSetup = useHostGameSetup();
   const teacherDashboard = useTeacherDashboard(view, currentUser);
   const practiceGame = usePracticeGame(view, setView);
   const marathonGame = useMarathonGame(view, setView);
   const marathonHost = useMarathonHost(view, setView);
   const marathonPlayer = useMarathonPlayer(view, setView);
+
+  // Sync room state between standard host and marathon host when view transitions
+  useEffect(() => {
+    if (view === 'host' && marathonHost.hostRoom && !hostGame.hostRoom) {
+      hostGame.adoptRoom(marathonHost.hostRoom, marathonHost.questions, marathonHost.hostPlayers);
+      marathonHost.clearRoom();
+    } else if (view === 'marathonHost' && hostGame.hostRoom && !marathonHost.hostRoom) {
+      marathonHost.adoptRoom(hostGame.hostRoom, hostGame.questions, hostGame.hostPlayers);
+      hostGame.clearRoom();
+    }
+  }, [
+    view,
+    hostGame.hostRoom,
+    marathonHost.hostRoom,
+    hostGame.adoptRoom,
+    hostGame.clearRoom,
+    hostGame.questions,
+    hostGame.hostPlayers,
+    marathonHost.adoptRoom,
+    marathonHost.clearRoom,
+    marathonHost.questions,
+    marathonHost.hostPlayers
+  ]);
 
   // Handle player kicked/removed or room closed modals
   if (playerGame.removedReason) {
@@ -163,6 +189,11 @@ function App() {
     const loading = hostGame.loading || playerGame.loading;
     const error = playerGame.error || hostGame.error;
 
+    const handleGameClick = (gameId) => {
+      setSelectedGameId(gameId);
+      setView('hostGame');
+    };
+
     return (
       <>
         <LandingPageView
@@ -175,14 +206,10 @@ function App() {
           pocketbaseStatus={pocketbaseStatus}
           error={error}
           joinGame={playerGame.joinGame}
-          startHosting={hostGame.startHosting}
-          startSoloPractice={practiceGame.startSoloPractice}
           startMarathon={marathonGame.startMarathon}
-          startMarathonHosting={marathonHost.startMarathonHosting}
           setHasPinFromUrl={playerGame.setHasPinFromUrl}
           setView={setView}
           gamesList={hostGame.gamesList}
-          refreshGames={hostGame.refreshGames}
           availableSubjects={availableSubjects}
           availableCefrLevels={availableCefrLevels}
           isAuthenticated={isAuthenticated}
@@ -191,13 +218,57 @@ function App() {
           onLogout={handleLogout}
           selectedGameId={selectedGameId}
           setSelectedGameId={setSelectedGameId}
-          shouldScrollToSettings={shouldScrollToSettings}
-          onSettingsScrolled={() => setShouldScrollToSettings(false)}
+          onGameClick={handleGameClick}
         />
         <Suspense fallback={null}>
           <CookieConsent />
         </Suspense>
       </>
+    );
+  }
+
+  // 1b. HOST GAME SETUP VIEW
+  if (view === 'hostGame' && selectedGameId) {
+    const game = hostGame.gamesList.find(g => g.id === selectedGameId) || null;
+    return (
+      <Suspense fallback={<ViewLoader message="Loading host setup..." />}>
+        <HostGameView
+          selectedGameId={selectedGameId}
+          game={game}
+          loading={hostGame.loading}
+          pocketbaseStatus={pocketbaseStatus}
+          onBack={() => setView('selection')}
+          startHosting={hostGame.startHosting}
+          startMarathonHosting={marathonHost.startMarathonHosting}
+          startSoloPractice={practiceGame.startSoloPractice}
+          currentUser={currentUser}
+          userInfo={teacherDashboard.userInfo}
+          setup={hostGameSetup}
+          setActiveGame={hostGameSetup.setActiveGame}
+          randomize={hostGameSetup.randomize}
+          setRandomize={hostGameSetup.setRandomize}
+          gameQuestions={hostGameSetup.gameQuestions}
+          totalQuestions={hostGameSetup.totalQuestions}
+          availableQuestionTypes={hostGameSetup.availableQuestionTypes}
+          selectedQuestionTypes={hostGameSetup.selectedQuestionTypes}
+          toggleQuestionType={hostGameSetup.toggleQuestionType}
+          getQuestionTypeLabel={hostGameSetup.getQuestionTypeLabel}
+          getQuestionTypeCount={hostGameSetup.getQuestionTypeCount}
+          maxQuestions={hostGameSetup.maxQuestions}
+          setMaxQuestions={hostGameSetup.setMaxQuestions}
+          timerDuration={hostGameSetup.timerDuration}
+          setTimerDuration={hostGameSetup.setTimerDuration}
+          copied={hostGameSetup.copied}
+          handleCopyShareLink={hostGameSetup.handleCopyShareLink}
+          handleOpenPreview={hostGameSetup.handleOpenPreview}
+          isPreviewModalOpen={hostGameSetup.isPreviewModalOpen}
+          closePreview={hostGameSetup.closePreview}
+          settingsRef={hostGameSetup.settingsRef}
+        />
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </Suspense>
     );
   }
 
@@ -220,6 +291,9 @@ function App() {
           hostEndGame={hostGame.hostEndGame}
           hostCancelTimer={hostGame.hostCancelTimer}
           hostRemovePlayer={hostGame.hostRemovePlayer}
+          hostPlayAgain={hostGame.hostPlayAgain}
+          hostChangeGame={hostGame.hostChangeGame}
+          gamesList={hostGame.gamesList}
         />
         <Suspense fallback={null}>
           <CookieConsent />
@@ -348,7 +422,7 @@ function App() {
           onLogout={handleLogout}
           startHosting={(gameId) => {
             setSelectedGameId(gameId);
-            setView('selection');
+            setView('hostGame');
           }}
         />
         <Suspense fallback={null}>
@@ -417,6 +491,9 @@ function App() {
           hostEndMarathon={marathonHost.hostEndMarathon}
           exitMarathon={marathonHost.exitMarathon}
           hostRemovePlayer={marathonHost.hostRemovePlayer}
+          hostPlayAgain={marathonHost.hostPlayAgain}
+          hostChangeGame={marathonHost.hostChangeGame}
+          gamesList={marathonHost.gamesList}
         />
         <Suspense fallback={null}>
           <CookieConsent />

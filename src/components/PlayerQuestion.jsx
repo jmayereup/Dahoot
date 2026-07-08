@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OPTION_CLASSES, BUCKET_COLORS } from '../constants';
-import { deterministicShuffle, shuffleArray } from '../utils/shuffle';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBlankIndex, getBracketInner } from '../utils/blankParsing';
-import { getMcOptions, getDragDropChoices, getDragDropCorrect, getDropDownChoices, getSortingCorrect, isScrambleSentence } from '../utils/questionSchema';
+import { getDragDropCorrect, getDropDownChoices, isScrambleSentence } from '../utils/questionSchema';
+import { useShuffledOptions } from '../hooks/useShuffledOptions';
 
 export function PlayerQuestion({
   qIndex,
@@ -18,12 +18,7 @@ export function PlayerQuestion({
   const isTimerActive = timerDuration !== 0;
   const isTimeUp = isTimerActive && playerTimeLeft !== null && playerTimeLeft <= 0;
 
-  // Shuffle multiple choice options deterministically based on roomCode and question ID
-  const shuffledMultipleChoiceOptions = useMemo(() => {
-    if (type !== 'MULTIPLE_CHOICE') return [];
-    const opts = getMcOptions(activeQuestion);
-    return deterministicShuffle(opts, `${roomCode}-${activeQuestion.id}`).map(o => ({ item: o.item, originalIdx: opts.indexOf(o.item) }));
-  }, [activeQuestion.id, activeQuestion.options, roomCode, type]);
+  const { mcOptions: shuffledMultipleChoiceOptions, sortingPool: shuffledSortingPool, dragDropChoices: shuffledDragDropChoices, dropDownChoices: shuffledDropDownChoices, categorizeItems: shuffledCategorizeItems } = useShuffledOptions(activeQuestion, `${roomCode}-${activeQuestion.id}`);
 
   // ----------------------------------------------------
   // SORTING (Tap to Order) STATE & HANDLERS
@@ -33,13 +28,12 @@ export function PlayerQuestion({
 
   useEffect(() => {
     if (type === 'SORTING') {
-      const seq = getSortingCorrect(activeQuestion);
-      if (seq.length) {
-        setSortingPool(shuffleArray(seq));
+      if (shuffledSortingPool.length) {
+        setSortingPool(shuffledSortingPool);
         setSortedItems([]);
       }
     }
-  }, [activeQuestion.id, activeQuestion.options, type]);
+  }, [activeQuestion.id, shuffledSortingPool, type]);
 
   const handlePoolItemClick = (item) => {
     if (sortedItems.includes(item)) return;
@@ -217,7 +211,7 @@ export function PlayerQuestion({
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
       if (dropIdx !== null) {
-        const choices = getDropDownChoices(activeQuestion, dropIdx);
+        const choices = shuffledDropDownChoices[dropIdx] || getDropDownChoices(activeQuestion, dropIdx);
         return (
           <select
             key={idx}
@@ -237,7 +231,7 @@ export function PlayerQuestion({
         const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
         const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
         if (ddIdx === -1) sequentialDrop += 1;
-        const choices = getDropDownChoices(activeQuestion, idxToUse);
+        const choices = shuffledDropDownChoices[idxToUse] || getDropDownChoices(activeQuestion, idxToUse);
         return (
           <select
             key={idx}
@@ -376,7 +370,6 @@ export function PlayerQuestion({
             {/* 3. DRAG & DROP */}
             {type === 'DRAG_DROP' && activeQuestion.options && (() => {
               const isScramble = isScrambleSentence(activeQuestion);
-              const choices = getDragDropChoices(activeQuestion);
               return (
                 <div style={{ width: '100%' }}>
                   {/* Sentence Container */}
@@ -418,7 +411,7 @@ export function PlayerQuestion({
 
                   {/* Choices Pool */}
                   <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
-                    {choices.map((choice, idx) => {
+                    {shuffledDragDropChoices.map((choice, idx) => {
                       const isPlaced = placedWords.includes(choice);
                       return (
                         <button
@@ -489,11 +482,11 @@ export function PlayerQuestion({
                         animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                       }}
                     >
-                      {activeQuestion.options.items[categorizeIdx]?.name}
+                      {shuffledCategorizeItems[categorizeIdx]?.name}
                     </div>
 
-                    <div style={{ 
-                      display: 'grid', 
+                    <div style={{
+                      display: 'grid',
                       gridTemplateColumns: activeQuestion.options.categories?.length > 2 ? '1fr 1fr' : '1fr',
                       gap: 12,
                       width: '100%',
@@ -507,7 +500,7 @@ export function PlayerQuestion({
                             key={idx}
                             type="button"
                             className="btn"
-                            onClick={() => handleCategorizeChoice(activeQuestion.options.items[categorizeIdx].name, cat)}
+                            onClick={() => handleCategorizeChoice(shuffledCategorizeItems[categorizeIdx].name, cat)}
                             disabled={isTimeUp}
                             style={{
                               background: colorSet.background,

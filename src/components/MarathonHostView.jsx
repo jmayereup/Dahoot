@@ -25,7 +25,10 @@ export function MarathonHostView({
   hostCancelTimer,
   hostShowMarathonLeaderboard,
   hostStartWrapUp,
-  hostRemovePlayer
+  hostRemovePlayer,
+  hostPlayAgain,
+  hostChangeGame,
+  gamesList
 }) {
   const qIndex = hostRoom.current_question_index;
   const activeQuestion = questions[qIndex];
@@ -49,6 +52,37 @@ export function MarathonHostView({
         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(167, 139, 250, 0.02) 100%)',
         borderColor: 'rgba(139, 92, 246, 0.15)'
       }}>
+
+        {/* Persistent Join PIN & Link Bar for late joiners / reconnects */}
+        {hostRoom.status !== 'LOBBY' && hostRoom.status !== 'FINISHED' && (
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 mb-5 text-slate-600 w-full animate-fade-in">
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+              <span className="text-slate-400 uppercase tracking-wider">Join Link:</span>
+              <button
+                onClick={handleCopyLink}
+                className={`px-3 py-1.5 rounded-lg border font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  copied
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Click to copy join link"
+              >
+                <span>{copied ? '✓ Copied Link' : window.location.host}</span>
+                {!copied && (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+              <span className="text-slate-400 uppercase tracking-wider">Game PIN:</span>
+              <span className="font-mono text-lg md:text-xl font-black text-rose-500 tracking-wider bg-rose-50 border border-rose-100 px-3.5 py-0.5 rounded-lg shadow-xs">
+                {hostRoom.code}
+              </span>
+            </div>
+          </div>
+        )}
 
         {hostRoom.status === 'LOBBY' && (
           <HostLobby
@@ -393,14 +427,14 @@ export function MarathonHostView({
         {hostRoom.status === 'LEADERBOARD' && (
           <div>
             <div style={{
-              marginBottom: '32px',
-              padding: '20px',
+              marginBottom: '16px',
+              padding: '12px 16px',
               background: 'rgba(139, 92, 246, 0.08)',
               border: '1px solid rgba(139, 92, 246, 0.2)',
               borderRadius: '12px'
             }}>
-              <h3 style={{ color: '#8B5CF6', marginBottom: '16px', textAlign: 'center' }}>Marathon Leaderboard</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <h3 style={{ color: '#8B5CF6', marginBottom: '8px', textAlign: 'center' }}>Marathon Leaderboard</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
                 {hostPlayers.slice(0, 10).map((player, idx) => {
                   const stats = player.marathon_stats || {};
                   const pCorrect = stats.correct_count || 0;
@@ -416,13 +450,13 @@ export function MarathonHostView({
                         background: 'white',
                         border: `1px solid ${isStreakLeader || isCorrectLeader ? 'rgba(139, 92, 246, 0.4)' : 'rgba(139, 92, 246, 0.2)'}`,
                         borderRadius: '12px',
-                        padding: '16px',
+                        padding: '10px',
                         textAlign: 'center'
                       }}
                     >
                       <div style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '30px',
+                        height: '30px',
                         borderRadius: '50%',
                         background: idx < 3 ? '#8B5CF6' : '#A78BFA',
                         color: 'white',
@@ -430,12 +464,13 @@ export function MarathonHostView({
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
-                        margin: '0 auto 8px'
+                        fontSize: '0.9rem',
+                        margin: '0 auto 4px'
                       }}>
                         {idx + 1}
                       </div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{player.name}</div>
-                      <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '0.95rem' }}>{player.name}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                         <div>Score: <strong>{player.score}</strong></div>
                         <div>Best Streak: <strong>{pBestStreak}</strong>{isStreakLeader && ' *'}</div>
                         <div>Correct: <strong>{pCorrect}</strong>{isCorrectLeader && ' *'}</div>
@@ -494,6 +529,9 @@ export function MarathonHostView({
             hostPlayers={hostPlayers}
             hostEndGame={exitMarathon}
             questions={questions}
+            hostPlayAgain={hostPlayAgain}
+            hostChangeGame={hostChangeGame}
+            gamesList={gamesList}
           />
         )}
 

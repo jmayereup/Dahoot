@@ -1,11 +1,8 @@
 export function JoinGamePanel({ joinPin, setJoinPin, playerName, setPlayerName, loading, error, joinGame, pocketbaseStatus }) {
   return (
     <div className="panel" style={{ padding: '24px 32px', maxWidth: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
         <h2 style={{ margin: 0 }}>Join Game</h2>
-        <span className="inline-block bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200/50">
-          ⚡ No account required
-        </span>
       </div>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
         Enter a game PIN to join an active classroom quiz.

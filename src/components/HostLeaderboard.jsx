@@ -131,26 +131,26 @@ export function HostLeaderboard({
 
   return (
     <div>
-      <h2>Leaderboard</h2>
-      <p className="subtitle">Question {qIndex + 1} Complete</p>
+      <h2 className="!mb-2">Leaderboard</h2>
+      <p className="subtitle !-mt-1 !mb-4">Question {qIndex + 1} Complete</p>
 
       {/* Show Correct Answer breakdown */}
-      <div style={{ marginBottom: 32, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '24px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 16, letterSpacing: '0.05em' }}>
+      <div style={{ marginBottom: 16, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '14px 20px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
           Correct Answer Key:
         </div>
 
         {/* 1. MULTIPLE CHOICE */}
         {type === 'MULTIPLE_CHOICE' && correctShuffledIdx !== -1 && (
-          <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]}`} style={{ maxWidth: '500px', cursor: 'default' }}>
-            <div className="option-icon">{String.fromCharCode(65 + correctShuffledIdx)}</div>
+          <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]} !p-3 !rounded-xl !text-base`} style={{ maxWidth: '450px', cursor: 'default' }}>
+            <div className="option-icon !w-8 !h-8 !text-base">{String.fromCharCode(65 + correctShuffledIdx)}</div>
             <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
           </div>
         )}
 
         {/* 2. SORTING */}
         {type === 'SORTING' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '500px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: '450px' }}>
             {getSortingCorrect(activeQuestion).map((opt, idx) => (
               <div
                 key={idx}
@@ -158,12 +158,13 @@ export function HostLeaderboard({
                   background: 'rgba(16, 185, 129, 0.1)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
                   borderRadius: '6px',
-                  padding: '12px 16px',
+                  padding: '8px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
                   color: '#10b981',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: '0.95rem'
                 }}
               >
                 <span style={{ fontSize: '0.85rem', background: '#10b981', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -177,14 +178,14 @@ export function HostLeaderboard({
 
         {/* 3. DRAG AND DROP */}
         {type === 'DRAG_DROP' && activeQuestion.options && (
-          <div style={{ fontSize: '1.2rem', lineHeight: '1.8rem', color: 'var(--text-primary)' }}>
+          <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
             {fillSentenceBlanks(activeQuestion.options.sentence)}
           </div>
         )}
 
         {/* 4. DROP DOWN */}
         {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div style={{ fontSize: '1.2rem', lineHeight: '1.8rem', color: 'var(--text-primary)' }}>
+          <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
             {fillSentenceDropdowns(activeQuestion.options.sentence)}
           </div>
         )}
@@ -194,7 +195,7 @@ export function HostLeaderboard({
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: `repeat(${Math.min(activeQuestion.options.categories?.length || 2, 4)}, 1fr)`,
-            gap: 16 
+            gap: 10 
           }}>
             {Object.keys(categorizedMap).map((cat, idx) => {
               const catIdx = activeQuestion.options.categories?.indexOf(cat);
@@ -205,22 +206,22 @@ export function HostLeaderboard({
                   style={{
                     background: colorSet.background,
                     border: colorSet.border,
-                    borderRadius: '16px',
-                    padding: '20px 16px',
+                    borderRadius: '12px',
+                    padding: '12px 10px',
                     boxShadow: colorSet.shadow
                   }}
                 >
-                  <div style={{ fontWeight: 800, color: colorSet.color, marginBottom: 12, borderBottom: `1.5px solid ${colorSet.color}33`, paddingBottom: 6 }}>
+                  <div style={{ fontWeight: 800, color: colorSet.color, marginBottom: 6, borderBottom: `1.5px solid ${colorSet.color}33`, paddingBottom: 4 }}>
                     {cat}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {categorizedMap[cat].map((item, iIdx) => (
-                      <div key={iIdx} style={{ fontSize: '0.95rem', color: colorSet.color, fontWeight: 500 }}>
+                      <div key={iIdx} style={{ fontSize: '0.9rem', color: colorSet.color, fontWeight: 500 }}>
                         • {item.name}
                       </div>
                     ))}
                     {categorizedMap[cat].length === 0 && (
-                      <div style={{ fontSize: '0.85rem', color: colorSet.color, opacity: 0.6, fontStyle: 'italic' }}>
+                      <div style={{ fontSize: '0.8rem', color: colorSet.color, opacity: 0.6, fontStyle: 'italic' }}>
                         No items
                       </div>
                     )}
@@ -232,19 +233,19 @@ export function HostLeaderboard({
         )}
       </div>
 
-      <div className="leaderboard-list">
+      <div className="leaderboard-list !my-4 !gap-2">
         {hostPlayers.slice(0, 5).map((player, idx) => (
-          <div key={player.id} className="leaderboard-item">
-            <span className={`leaderboard-rank leaderboard-rank-${idx + 1}`}>
+          <div key={player.id} className="leaderboard-item !py-2.5 !px-4 !rounded-xl">
+            <span className={`leaderboard-rank leaderboard-rank-${idx + 1} !text-base`}>
               {idx + 1}
             </span>
-            <span className="leaderboard-name">{player.name}</span>
-            <span className="leaderboard-score">{player.score} pts</span>
+            <span className="leaderboard-name !text-base">{player.name}</span>
+            <span className="leaderboard-score !text-base">{player.score} pts</span>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 32, justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center' }}>
         <button className="btn btn-primary" onClick={hostNextQuestion} style={{ minWidth: 160 }}>
           {isLastQuestion ? 'Show Standings' : 'Next Question'}
         </button>

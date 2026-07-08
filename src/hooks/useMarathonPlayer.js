@@ -124,6 +124,7 @@ export function useMarathonPlayer(view, setView) {
 
   const submitAnswer = async (userAnswer) => {
     if (playerSelectedIdx !== null || !playerRoom || !playerRecord || !currentQuestion) return;
+    if (playerRoom.status === 'LOBBY' || playerRoom.status === 'FINISHED') return;
 
     setPlayerSelectedIdx(userAnswer);
 
@@ -187,6 +188,7 @@ export function useMarathonPlayer(view, setView) {
   };
 
   const advanceToNextQuestion = async () => {
+    if (!playerRoom || playerRoom.status === 'LOBBY' || playerRoom.status === 'FINISHED') return;
     if (isStudentPaced && playerQuestionIndex >= currentLapQuestions.length) {
       const newIds = shuffleArray(currentLapQuestions.map(q => q.id));
       const newLap = (playerRecord.marathon_stats?.lap || 0) + 1;
@@ -234,7 +236,7 @@ export function useMarathonPlayer(view, setView) {
   };
 
   useEffect(() => {
-    if (!playerRoom) return;
+    if (view !== 'marathonPlayer' || !playerRoom || !playerRecord) return;
 
     const roomId = playerRoom.id;
 
@@ -244,6 +246,18 @@ export function useMarathonPlayer(view, setView) {
     pb.collection('dahoot_rooms').subscribe(roomId, async (e) => {
       if (e.action === 'update') {
         const updatedRoom = e.record;
+
+        if (!updatedRoom.marathon_mode) {
+          // Transition back to standard player view
+          setPlayerRoom(null);
+          setPlayerRecord(null);
+          setAllQuestions([]);
+          setCurrentLapQuestions([]);
+          setPlayerSelectedIdx(null);
+          setPlayerFeedback(null);
+          setView('player');
+          return;
+        }
 
         if (updatedRoom.question_ids && JSON.stringify(updatedRoom.question_ids) !== JSON.stringify(playerRoom.question_ids)) {
           const lapIds = playerRecord.lap_question_ids || updatedRoom.question_ids;
@@ -268,7 +282,7 @@ export function useMarathonPlayer(view, setView) {
       if (typeof roomUnsub === 'function') roomUnsub();
       if (typeof playerUnsub === 'function') playerUnsub();
     };
-  }, [playerRoom?.id, playerRecord?.id]);
+  }, [view, playerRoom?.id, playerRecord?.id]);
 
   return {
     playerRoom,

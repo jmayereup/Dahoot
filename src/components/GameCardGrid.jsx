@@ -5,12 +5,11 @@ export function GameCardGrid({
   gamesList,
   sortedGames,
   paginatedGames,
-  selectedGameId,
-  setSelectedGameId,
   setCurrentPage,
   effectivePage, totalPages,
   getPageNumbers, itemsPerPage,
-  currentUser, userInfo
+  currentUser, userInfo,
+  onGameClick,
 }) {
   if (gamesList.length === 0) {
     return (
@@ -38,8 +37,7 @@ export function GameCardGrid({
           <GameCard
             key={g.id}
             game={g}
-            isSelected={g.id === selectedGameId}
-            onClick={() => setSelectedGameId(g.id)}
+            onClick={() => onGameClick(g.id)}
             currentUser={currentUser}
             userInfo={userInfo}
           />

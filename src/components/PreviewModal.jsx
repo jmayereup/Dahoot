@@ -131,7 +131,7 @@ export function PreviewModal({
       newForm.mcDistractors = dists;
     } else if (qType === 'SORTING') {
       const seq = [...(n.options?.correct_sequence || [])];
-      while (seq.length < 4) seq.push('');
+      while (seq.length < 2) seq.push('');
       newForm.sortingItems = seq;
     } else if (qType === 'DRAG_DROP') {
       const rawSentence = n.options?.sentence || '';
@@ -179,7 +179,8 @@ export function PreviewModal({
       if (form.mcDistractors.some(d => !d.trim())) { setEditError('All 3 distractors must be filled out.'); return; }
       optionsPayload = { correct_answer: form.mcCorrectAnswer.trim(), distractors: form.mcDistractors.map(d => d.trim()) };
     } else if (form.questionType === 'SORTING') {
-      if (form.sortingItems.some(s => !s.trim())) { setEditError('All 4 sorting items must be filled out.'); return; }
+      if (form.sortingItems.length < 2) { setEditError('A sorting question must have at least 2 items.'); return; }
+      if (form.sortingItems.some(s => !s.trim())) { setEditError('All sorting items must be filled out.'); return; }
       optionsPayload = { correct_sequence: form.sortingItems.map(s => s.trim()) };
     } else if (form.questionType === 'DRAG_DROP') {
       if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
@@ -301,28 +302,16 @@ export function PreviewModal({
             </div>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
-            </div>
-          ) : error ? (
+          {error ? (
             <div style={{ textAlign: 'center', padding: '20px', color: '#ff4b60' }}>
               <p>{error}</p>
               <button className="btn btn-secondary" onClick={onClose} style={{ marginTop: '16px' }}>Close</button>
             </div>
-          ) : questions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                {canEdit && (
-                  <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto' }}>➕ Add Question</button>
-                )}
-                <button className="btn btn-secondary" onClick={onClose} style={{ width: 'auto' }}>Close</button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          ) : questions.length > 0 ? (
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}
+            >
               {questions.map((question, qIdx) => (
                 <QuestionPreviewCard
                   key={question.id}
@@ -333,6 +322,21 @@ export function PreviewModal({
                   onDelete={requestDeleteQuestion}
                 />
               ))}
+            </div>
+          ) : loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                {canEdit && (
+                  <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto' }}>➕ Add Question</button>
+                )}
+                <button className="btn btn-secondary" onClick={onClose} style={{ width: 'auto' }}>Close</button>
+              </div>
             </div>
           )}
         </div>
@@ -375,23 +379,35 @@ export function PreviewModal({
               setMcCorrectAnswer={(v) => updateForm({ mcCorrectAnswer: v })}
               mcDistractors={form.mcDistractors}
               updateMcDistractor={(idx, val) => {
-                const next = [...form.mcDistractors];
-                next[idx] = val;
-                updateForm({ mcDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ mcDistractors: idx });
+                } else {
+                  const next = [...form.mcDistractors];
+                  next[idx] = val;
+                  updateForm({ mcDistractors: next });
+                }
               }}
               sortingItems={form.sortingItems}
               updateSortingItem={(idx, val) => {
-                const next = [...form.sortingItems];
-                next[idx] = val;
-                updateForm({ sortingItems: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ sortingItems: idx });
+                } else {
+                  const next = [...form.sortingItems];
+                  next[idx] = val;
+                  updateForm({ sortingItems: next });
+                }
               }}
               dragSentence={form.dragSentence}
               setDragSentence={(v) => updateForm({ dragSentence: v })}
               dragDistractors={form.dragDistractors}
               updateDragDistractor={(idx, val) => {
-                const next = [...form.dragDistractors];
-                next[idx] = val;
-                updateForm({ dragDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ dragDistractors: idx });
+                } else {
+                  const next = [...form.dragDistractors];
+                  next[idx] = val;
+                  updateForm({ dragDistractors: next });
+                }
               }}
               dropdownSentence={form.dropdownSentence}
               setDropdownSentence={(v) => updateForm({ dropdownSentence: v })}

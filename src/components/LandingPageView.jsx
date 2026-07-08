@@ -1,14 +1,12 @@
-import { useLandingPage } from '../hooks/useLandingPage';
+import { useGameFilters } from '../hooks/useGameFilters';
 import { LogoContainer } from './LogoContainer';
 import { SchoolFooter } from './SchoolFooter';
-import { PreviewModal } from './PreviewModal';
 import { TeacherPortalHeader } from './TeacherPortalHeader';
 import { JoinGamePanel } from './JoinGamePanel';
 import { JoinGameViaUrlPanel } from './JoinGameViaUrlPanel';
-import { GameFilters } from './GameFilters';
+import { EnhancedGameFilters } from './EnhancedGameFilters';
 import { GameCardGrid } from './GameCardGrid';
-import { GameSettings } from './GameSettings';
-import { GameModeButtons } from './GameModeButtons';
+import { useEffect } from 'react';
 
 export function LandingPageView({
   hasPinFromUrl,
@@ -16,7 +14,6 @@ export function LandingPageView({
   playerName, setPlayerName,
   loading, pocketbaseStatus, error,
   joinGame,
-  startHosting, startSoloPractice, startMarathonHosting,
   setHasPinFromUrl, setView,
   gamesList = [],
   availableSubjects = [],
@@ -24,18 +21,35 @@ export function LandingPageView({
   isAuthenticated, currentUser, userInfo = null,
   onLogout,
   selectedGameId, setSelectedGameId,
-  shouldScrollToSettings = false,
-  onSettingsScrolled = null,
+  onGameClick,
 }) {
-  const landingPage = useLandingPage({
-    selectedGameId,
-    setSelectedGameId,
-    shouldScrollToSettings,
-    onSettingsScrolled,
+  const gameFilters = useGameFilters({
     gamesList,
     currentUser,
     userInfo,
+    config: {
+      enableSearch: true,
+      enableLanguageFilter: true,
+      enableCreatorFilter: true,
+      enableTabFilter: false,
+      itemsPerPage: 10,
+      defaultSort: 'newest'
+    }
   });
+
+  useEffect(() => {
+    if (gamesList.length === 0) return;
+    if (gameFilters.sortedGames.length > 0) {
+      if (selectedGameId) {
+        const isStillAvailable = gameFilters.sortedGames.some(g => g.id === selectedGameId);
+        if (!isStillAvailable) {
+          setSelectedGameId(gameFilters.sortedGames[0].id);
+        }
+      }
+    } else {
+      setSelectedGameId('');
+    }
+  }, [gameFilters.sortedGames, selectedGameId, gamesList, setSelectedGameId]);
 
   return (
     <div className="app-container">
@@ -76,79 +90,54 @@ export function LandingPageView({
             />
 
             <div className="panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '8px' }}>
                 <h2 style={{ margin: 0 }}>Host a Game</h2>
               </div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-                Open a new game lobby on this screen and project it for the class.
+                Pick a quiz to open its host lobby. You can configure game settings before starting.
               </p>
 
               {gamesList.length > 0 && (
-                <GameFilters
-                  searchQuery={landingPage.searchQuery}
-                  setSearchQuery={landingPage.setSearchQuery}
-                  sortBy={landingPage.sortBy}
-                  setSortBy={landingPage.setSortBy}
-                  filterSubject={landingPage.filterSubject}
-                  toggleSubjectFilter={landingPage.toggleSubjectFilter}
-                  filterCefr={landingPage.filterCefr}
-                  toggleCefrFilter={landingPage.toggleCefrFilter}
-                  hasActiveFilters={landingPage.hasActiveFilters}
-                  clearFilters={landingPage.clearFilters}
+                <EnhancedGameFilters
+                  searchQuery={gameFilters.searchQuery}
+                  setSearchQuery={gameFilters.setSearchQuery}
+                  sortBy={gameFilters.sortBy}
+                  setSortBy={gameFilters.setSortBy}
+                  filterSubject={gameFilters.filterSubject}
+                  toggleSubjectFilter={gameFilters.toggleSubjectFilter}
+                  filterCefr={gameFilters.filterCefr}
+                  toggleCefrFilter={gameFilters.toggleCefrFilter}
+                  filterLanguage={gameFilters.filterLanguage}
+                  toggleLanguageFilter={gameFilters.toggleLanguageFilter}
+                  filterCreator={gameFilters.filterCreator}
+                  toggleCreatorFilter={gameFilters.toggleCreatorFilter}
+                  hasActiveFilters={gameFilters.hasActiveFilters}
+                  clearFilters={gameFilters.clearFilters}
                   availableSubjects={availableSubjects}
                   availableCefrLevels={availableCefrLevels}
+                  uniqueLanguages={gameFilters.uniqueLanguages}
+                  uniqueCreators={gameFilters.uniqueCreators}
                   loading={loading}
+                  enableSearch={true}
+                  enableLanguageFilter={true}
+                  enableCreatorFilter={true}
+                  enableTabFilter={false}
+                  sortedGamesCount={gameFilters.sortedGames.length}
                 />
               )}
 
               <GameCardGrid
                 gamesList={gamesList}
-                sortedGames={landingPage.sortedGames}
-                paginatedGames={landingPage.paginatedGames}
-                selectedGameId={selectedGameId}
-                setSelectedGameId={setSelectedGameId}
-                setCurrentPage={landingPage.setCurrentPage}
-                effectivePage={landingPage.effectivePage}
-                totalPages={landingPage.totalPages}
-                getPageNumbers={landingPage.getPageNumbers}
-                itemsPerPage={landingPage.ITEMS_PER_PAGE}
+                sortedGames={gameFilters.sortedGames}
+                paginatedGames={gameFilters.paginatedGames}
+                setCurrentPage={gameFilters.setCurrentPage}
+                effectivePage={gameFilters.effectivePage}
+                totalPages={gameFilters.totalPages}
+                getPageNumbers={gameFilters.getPageNumbers}
+                itemsPerPage={gameFilters.itemsPerPage}
                 currentUser={currentUser}
                 userInfo={userInfo}
-              />
-
-              <GameSettings
-                settingsRef={landingPage.settingsRef}
-                selectedGameId={selectedGameId}
-                randomize={landingPage.randomize}
-                setRandomize={landingPage.setRandomize}
-                gameQuestions={landingPage.gameQuestions}
-                totalQuestions={landingPage.totalQuestions}
-                availableQuestionTypes={landingPage.availableQuestionTypes}
-                selectedQuestionTypes={landingPage.selectedQuestionTypes}
-                toggleQuestionType={landingPage.toggleQuestionType}
-                getQuestionTypeLabel={landingPage.getQuestionTypeLabel}
-                getQuestionTypeCount={landingPage.getQuestionTypeCount}
-                maxQuestions={landingPage.maxQuestions}
-                setMaxQuestions={landingPage.setMaxQuestions}
-                timerDuration={landingPage.timerDuration}
-                setTimerDuration={landingPage.setTimerDuration}
-                copied={landingPage.copied}
-                handleCopyShareLink={landingPage.handleCopyShareLink}
-                handleOpenPreview={landingPage.handleOpenPreview}
-              />
-
-              <GameModeButtons
-                loading={loading}
-                pocketbaseStatus={pocketbaseStatus}
-                selectedGameId={selectedGameId}
-                totalQuestions={landingPage.totalQuestions}
-                startHosting={startHosting}
-                startMarathonHosting={startMarathonHosting}
-                startSoloPractice={startSoloPractice}
-                randomize={landingPage.randomize}
-                maxQuestions={landingPage.maxQuestions}
-                timerDuration={landingPage.timerDuration}
-                selectedQuestionTypes={landingPage.selectedQuestionTypes}
+                onGameClick={onGameClick}
               />
             </div>
           </div>
@@ -156,17 +145,6 @@ export function LandingPageView({
       )}
 
       <SchoolFooter status={pocketbaseStatus} />
-
-      <PreviewModal
-        isOpen={landingPage.isPreviewModalOpen}
-        onClose={() => landingPage.setIsPreviewModalOpen(false)}
-        game={gamesList.find(g => g.id === selectedGameId)}
-        gameId={selectedGameId}
-        canEdit={isAuthenticated && (userInfo?.role === 'TEACHER' || userInfo?.role === 'ADMIN')}
-        currentUser={currentUser}
-        userInfo={userInfo}
-        standalone
-      />
     </div>
   );
 }

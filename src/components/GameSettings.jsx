@@ -12,6 +12,7 @@ export function GameSettings({
   maxQuestions, setMaxQuestions,
   timerDuration, setTimerDuration,
   copied, handleCopyShareLink, handleOpenPreview,
+  pacingMode = 'teacher',
 }) {
   if (!selectedGameId || gameQuestions.length === 0) return null;
 
@@ -35,28 +36,34 @@ export function GameSettings({
       <span className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
         ⚙️ Game Settings
       </span>
-      <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCopyShareLink();
-          }}
-          className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-        >
-          {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenPreview();
-          }}
-          className="px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-        >
-          Preview / Edit
-        </button>
-      </div>
+      {(handleCopyShareLink || handleOpenPreview) && (
+        <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+          {handleCopyShareLink && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyShareLink();
+              }}
+              className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
+            </button>
+          )}
+          {handleOpenPreview && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenPreview();
+              }}
+              className="px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              Preview / Edit
+            </button>
+          )}
+        </div>
+      )}
 
       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
         <input
@@ -147,23 +154,34 @@ export function GameSettings({
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
-          Question Timer Limit:
-        </span>
-        <select
-          value={timerDuration}
-          onChange={(e) => setTimerDuration(parseInt(e.target.value))}
-          className="form-input"
-          style={{ width: '230px', maxWidth: '230px', cursor: 'pointer', height: 'auto', padding: '8px 12px', fontSize: '0.95rem' }}
-        >
-          <option value={10}>10 Seconds</option>
-          <option value={20}>20 Seconds (Default)</option>
-          <option value={30}>30 Seconds</option>
-          <option value={60}>60 Seconds</option>
-          <option value={0}>No Timer (Unlimited)</option>
-        </select>
-      </div>
+      {pacingMode === 'teacher' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+            Question Timer Limit:
+          </span>
+          <select
+            value={timerDuration}
+            onChange={(e) => setTimerDuration(parseInt(e.target.value))}
+            className="form-input"
+            style={{ width: '230px', maxWidth: '230px', cursor: 'pointer', height: 'auto', padding: '8px 12px', fontSize: '0.95rem' }}
+          >
+            <option value={10}>10 Seconds</option>
+            <option value={20}>20 Seconds (Default)</option>
+            <option value={30}>30 Seconds</option>
+            <option value={60}>60 Seconds</option>
+            <option value={0}>No Timer (Unlimited)</option>
+          </select>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px', opacity: 0.5 }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#55657e' }}>
+            Question Timer Limit:
+          </span>
+          <span style={{ fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic' }}>
+            N/A (Self-paced Marathon)
+          </span>
+        </div>
+      )}
     </div>
   );
 }

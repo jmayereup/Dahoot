@@ -1,143 +1,18 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { pb } from '../pb';
+import { useState, useEffect, useMemo } from 'react';
 
 export function useLandingPage({
   selectedGameId,
   setSelectedGameId,
-  shouldScrollToSettings,
-  onSettingsScrolled,
   gamesList = [],
   currentUser,
   userInfo = null,
 }) {
-  const [randomize, setRandomize] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [gameQuestions, setGameQuestions] = useState([]);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState([
-    'MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'
-  ]);
-  const [maxQuestions, setMaxQuestions] = useState('');
-  const [timerDuration, setTimerDuration] = useState(20);
-  const settingsRef = useRef(null);
   const [filterSubject, setFilterSubject] = useState([]);
   const [filterCefr, setFilterCefr] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
-
-  const refreshQuestions = async () => {
-    if (!selectedGameId) return;
-    try {
-      const res = await pb.collection('dahoot_questions').getFullList({
-        filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameId })
-      });
-      setGameQuestions(res);
-      setMaxQuestions(prev => {
-        const prevNum = parseInt(prev);
-        if (isNaN(prevNum) || prevNum > res.length || prev === '') {
-          return res.length.toString();
-        }
-        return prev;
-      });
-    } catch (err) {
-      console.error("Error refreshing questions:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (shouldScrollToSettings && gameQuestions.length > 0 && settingsRef.current) {
-      const timer = setTimeout(() => {
-        settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (onSettingsScrolled) {
-          onSettingsScrolled();
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldScrollToSettings, gameQuestions, onSettingsScrolled]);
-
-  useEffect(() => {
-    if (!selectedGameId) {
-      setGameQuestions([]);
-      setMaxQuestions('');
-      return;
-    }
-
-    let isMounted = true;
-    pb.collection('dahoot_questions').getFullList({
-      filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameId })
-    })
-    .then(res => {
-      if (isMounted) {
-        setGameQuestions(res);
-        setMaxQuestions(res.length.toString());
-        setSelectedQuestionTypes(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
-      }
-    })
-    .catch(err => {
-      console.error("Error fetching questions:", err);
-      if (isMounted) {
-        setGameQuestions([]);
-        setMaxQuestions('');
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedGameId]);
-
-  const totalQuestions = useMemo(() => {
-    return gameQuestions.filter(q => {
-      const type = q.type || 'MULTIPLE_CHOICE';
-      return selectedQuestionTypes.includes(type);
-    }).length;
-  }, [gameQuestions, selectedQuestionTypes]);
-
-  const availableQuestionTypes = useMemo(() => {
-    const types = new Set();
-    gameQuestions.forEach(q => {
-      types.add(q.type || 'MULTIPLE_CHOICE');
-    });
-    return Array.from(types);
-  }, [gameQuestions]);
-
-  const getQuestionTypeCount = (type) => {
-    return gameQuestions.filter(q => (q.type || 'MULTIPLE_CHOICE') === type).length;
-  };
-
-  const toggleQuestionType = (type) => {
-    setSelectedQuestionTypes(prev => {
-      if (prev.includes(type)) {
-        return prev.filter(t => t !== type);
-      } else {
-        return [...prev, type];
-      }
-    });
-  };
-
-  const getQuestionTypeLabel = (type) => {
-    const QUESTION_TYPE_LABELS = {
-      MULTIPLE_CHOICE: 'Multiple Choice',
-      SORTING: 'Sorting Order',
-      DRAG_DROP: 'Drag & Drop (Blanks)',
-      DROP_DOWN: 'Drop-Down (Select Blanks)',
-      CATEGORIZE: 'Categorization Groups'
-    };
-    return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');
-  };
-
-  useEffect(() => {
-    setMaxQuestions(prev => {
-      const prevNum = parseInt(prev);
-      if (isNaN(prevNum) || prevNum >= totalQuestions || prev === '') {
-        return totalQuestions.toString();
-      }
-      return prev;
-    });
-  }, [totalQuestions]);
 
   const toggleSubjectFilter = (sub) => {
     setFilterSubject(prev => prev.includes(sub) ? prev.filter(x => x !== sub) : [...prev, sub]);
@@ -244,44 +119,13 @@ export function useLandingPage({
     return pages;
   };
 
-  const handleCopyShareLink = () => {
-    const game = gamesList.find(g => g.id === selectedGameId);
-    if (game) {
-      const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
-      navigator.clipboard.writeText(shareUrl)
-        .then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        })
-        .catch(err => console.error("Failed to copy share link:", err));
-    }
-  };
-
-  const handleOpenPreview = () => {
-    setIsPreviewModalOpen(true);
-  };
-
   return {
-    randomize, setRandomize,
-    copied, setCopied,
-    gameQuestions,
-    isPreviewModalOpen, setIsPreviewModalOpen,
-    selectedQuestionTypes, setSelectedQuestionTypes,
-    maxQuestions, setMaxQuestions,
-    timerDuration, setTimerDuration,
-    settingsRef,
     filterSubject, setFilterSubject,
     filterCefr, setFilterCefr,
     searchQuery, setSearchQuery,
     sortBy, setSortBy,
     currentPage, setCurrentPage,
     ITEMS_PER_PAGE,
-    refreshQuestions,
-    totalQuestions,
-    availableQuestionTypes,
-    getQuestionTypeCount,
-    toggleQuestionType,
-    getQuestionTypeLabel,
     hasActiveFilters,
     clearFilters,
     toggleSubjectFilter,
@@ -293,7 +137,5 @@ export function useLandingPage({
     totalPages,
     effectivePage,
     getPageNumbers,
-    handleCopyShareLink,
-    handleOpenPreview,
   };
 }
