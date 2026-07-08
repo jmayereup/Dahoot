@@ -183,9 +183,7 @@ function DistractorList({ distractors, updateDistractor, disabled, label, help }
                 type="button"
                 onClick={() => {
                   const next = distractors.filter((_, i) => i !== idx);
-                  // Replace via prop: simulate by setting each one to previous value, then last empty
-                  for (let i = idx; i < next.length; i++) updateDistractor(i, next[i]);
-                  updateDistractor(next.length, '');
+                  updateDistractor(next);
                 }}
                 disabled={disabled}
                 style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#dc2626', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -199,7 +197,7 @@ function DistractorList({ distractors, updateDistractor, disabled, label, help }
       </div>
       <button
         type="button"
-        onClick={() => updateDistractor(distractors.length, '')}
+        onClick={() => updateDistractor([...distractors, ''])}
         disabled={disabled}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
       >
@@ -367,8 +365,32 @@ export function QuestionFormFields({
                   disabled={disabled}
                   onKeyDown={preventSubmitOnEnter}
                 />
+                {sortingItems.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = sortingItems.filter((_, i) => i !== idx);
+                      updateSortingItem(next);
+                    }}
+                    disabled={disabled}
+                    style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#dc2626', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    title="Remove sorting item"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={() => updateSortingItem([...sortingItems, ''])}
+                disabled={disabled}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+              >
+                ➕ Add Sorting Item
+              </button>
+            </div>
           </div>
         </div>
       )}

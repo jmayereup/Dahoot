@@ -131,7 +131,7 @@ export function PreviewModal({
       newForm.mcDistractors = dists;
     } else if (qType === 'SORTING') {
       const seq = [...(n.options?.correct_sequence || [])];
-      while (seq.length < 4) seq.push('');
+      while (seq.length < 2) seq.push('');
       newForm.sortingItems = seq;
     } else if (qType === 'DRAG_DROP') {
       const rawSentence = n.options?.sentence || '';
@@ -179,7 +179,8 @@ export function PreviewModal({
       if (form.mcDistractors.some(d => !d.trim())) { setEditError('All 3 distractors must be filled out.'); return; }
       optionsPayload = { correct_answer: form.mcCorrectAnswer.trim(), distractors: form.mcDistractors.map(d => d.trim()) };
     } else if (form.questionType === 'SORTING') {
-      if (form.sortingItems.some(s => !s.trim())) { setEditError('All 4 sorting items must be filled out.'); return; }
+      if (form.sortingItems.length < 2) { setEditError('A sorting question must have at least 2 items.'); return; }
+      if (form.sortingItems.some(s => !s.trim())) { setEditError('All sorting items must be filled out.'); return; }
       optionsPayload = { correct_sequence: form.sortingItems.map(s => s.trim()) };
     } else if (form.questionType === 'DRAG_DROP') {
       if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
@@ -375,23 +376,35 @@ export function PreviewModal({
               setMcCorrectAnswer={(v) => updateForm({ mcCorrectAnswer: v })}
               mcDistractors={form.mcDistractors}
               updateMcDistractor={(idx, val) => {
-                const next = [...form.mcDistractors];
-                next[idx] = val;
-                updateForm({ mcDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ mcDistractors: idx });
+                } else {
+                  const next = [...form.mcDistractors];
+                  next[idx] = val;
+                  updateForm({ mcDistractors: next });
+                }
               }}
               sortingItems={form.sortingItems}
               updateSortingItem={(idx, val) => {
-                const next = [...form.sortingItems];
-                next[idx] = val;
-                updateForm({ sortingItems: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ sortingItems: idx });
+                } else {
+                  const next = [...form.sortingItems];
+                  next[idx] = val;
+                  updateForm({ sortingItems: next });
+                }
               }}
               dragSentence={form.dragSentence}
               setDragSentence={(v) => updateForm({ dragSentence: v })}
               dragDistractors={form.dragDistractors}
               updateDragDistractor={(idx, val) => {
-                const next = [...form.dragDistractors];
-                next[idx] = val;
-                updateForm({ dragDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ dragDistractors: idx });
+                } else {
+                  const next = [...form.dragDistractors];
+                  next[idx] = val;
+                  updateForm({ dragDistractors: next });
+                }
               }}
               dropdownSentence={form.dropdownSentence}
               setDropdownSentence={(v) => updateForm({ dropdownSentence: v })}
