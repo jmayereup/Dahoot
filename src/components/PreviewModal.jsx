@@ -302,28 +302,16 @@ export function PreviewModal({
             </div>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
-            </div>
-          ) : error ? (
+          {error ? (
             <div style={{ textAlign: 'center', padding: '20px', color: '#ff4b60' }}>
               <p>{error}</p>
               <button className="btn btn-secondary" onClick={onClose} style={{ marginTop: '16px' }}>Close</button>
             </div>
-          ) : questions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                {canEdit && (
-                  <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto' }}>➕ Add Question</button>
-                )}
-                <button className="btn btn-secondary" onClick={onClose} style={{ width: 'auto' }}>Close</button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          ) : questions.length > 0 ? (
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}
+            >
               {questions.map((question, qIdx) => (
                 <QuestionPreviewCard
                   key={question.id}
@@ -334,6 +322,21 @@ export function PreviewModal({
                   onDelete={requestDeleteQuestion}
                 />
               ))}
+            </div>
+          ) : loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '20px' }}>This Dahoot has no questions yet.</p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                {canEdit && (
+                  <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto' }}>➕ Add Question</button>
+                )}
+                <button className="btn btn-secondary" onClick={onClose} style={{ width: 'auto' }}>Close</button>
+              </div>
             </div>
           )}
         </div>
