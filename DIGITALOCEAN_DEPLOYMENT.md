@@ -59,8 +59,8 @@ cd pocketbase
 # Download latest PocketBase (check for latest version at https://pocketbase.io/docs/)
 wget https://github.com/pocketbase/pocketbase/releases/download/v0.39.5/pocketbase_0.39.5_linux_amd64.zip
 
-unzip pocketbase_0.27.0_linux_amd64.zip
-rm pocketbase_0.27.0_linux_amd64.zip
+unzip pocketbase_0.39.5_linux_amd64.zip
+rm pocketbase_0.39.5_linux_amd64.zip
 chmod +x pocketbase
 ```
 
@@ -92,6 +92,7 @@ WorkingDirectory=/opt/pocketbase
 ExecStart=/opt/pocketbase/pocketbase serve --http=127.0.0.1:8090
 Restart=always
 RestartSec=5
+LimitNOFILE=65535
 StandardOutput=append:/var/log/pocketbase.log
 StandardError=append:/var/log/pocketbase.log
 
@@ -166,6 +167,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
+
+        # Disable buffering for SSE (real-time notifications)
+        proxy_buffering off;
+        proxy_read_timeout 24h;
+        proxy_send_timeout 24h;
     }
 
     # PocketBase admin (optional - restrict access in production)

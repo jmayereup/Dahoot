@@ -57,6 +57,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   useEffect(() => {
     if (view !== 'host' || !hostRoom) return;
 
+    let fetchTimeout = null;
+
     const fetchPlayers = async () => {
       try {
         const list = await pb.collection('dahoot_players').getFullList({
@@ -74,12 +76,17 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       }
     };
 
+    const debouncedFetchPlayers = () => {
+      if (fetchTimeout) clearTimeout(fetchTimeout);
+      fetchTimeout = setTimeout(fetchPlayers, 100);
+    };
+
     fetchPlayers();
 
     // Subscribe to players collection to update lobby/scores in real-time
     pb.collection('dahoot_players').subscribe('*', (e) => {
       if (e.record.room_id === hostRoom.id) {
-        fetchPlayers();
+        debouncedFetchPlayers();
       }
     });
 
@@ -91,6 +98,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     });
 
     return () => {
+      if (fetchTimeout) clearTimeout(fetchTimeout);
       pb.collection('dahoot_players').unsubscribe('*');
       pb.collection('dahoot_rooms').unsubscribe(hostRoom.id);
     };

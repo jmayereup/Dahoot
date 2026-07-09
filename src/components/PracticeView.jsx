@@ -167,6 +167,7 @@ export function PracticeView({
             roundNumber={roundNumber}
             mode="interactive"
             onSubmit={submitAnswer}
+            disabled={playerSelectedIdx !== null}
           />
         )}
 

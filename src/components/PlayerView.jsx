@@ -18,7 +18,7 @@ export function PlayerView({
 }) {
   const qIndex = playerRoom.current_question_index;
   const activeQuestion = playerQuestions[qIndex];
-  const hasAnswered = playerRecord.last_answered_index === qIndex;
+  const hasAnswered = playerRecord.last_answered_index === qIndex || playerSelectedIdx !== null;
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   return (

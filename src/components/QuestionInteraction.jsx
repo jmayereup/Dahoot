@@ -15,6 +15,7 @@ export function QuestionInteraction({
   _isCorrect,
   categorizeIdx: externalCategorizeIdx,
   onCategorizeIdxChange,
+  disabled
 }) {
   const type = question?.type || 'MULTIPLE_CHOICE';
 
@@ -120,8 +121,8 @@ export function QuestionInteraction({
         return (
           <span
             key={idx}
-            onClick={() => handleBlankTap(blankIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
+            onClick={() => !disabled && handleBlankTap(blankIdx)}
+            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive && !disabled ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
           >
             {word || '_____'}
           </span>
@@ -137,8 +138,8 @@ export function QuestionInteraction({
         return (
           <span
             key={idx}
-            onClick={() => handleBlankTap(blankIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
+            onClick={() => !disabled && handleBlankTap(blankIdx)}
+            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive && !disabled ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
           >
             {word || '_____'}
           </span>
@@ -163,6 +164,7 @@ export function QuestionInteraction({
             className="player-sentence-select"
             value={dropdownSelections[dropIdx] || ''}
             onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
+            disabled={disabled}
           >
             <option value="">-- Choose --</option>
             {choices.map((choice, cIdx) => (
@@ -182,6 +184,7 @@ export function QuestionInteraction({
             className="player-sentence-select"
             value={dropdownSelections[idxToUse] || ''}
             onChange={(e) => handleDropdownChange(idxToUse, e.target.value)}
+            disabled={disabled}
           >
             <option value="">-- Choose --</option>
             {choices.map((choice, cIdx) => (
@@ -498,8 +501,9 @@ export function QuestionInteraction({
               {shuffledMcOptions.map((option, idx) => (
                 <button
                   key={idx}
-                  className={`option-card interactive ${OPTION_CLASSES[idx % 4]}`}
-                  onClick={() => onSubmit(option.item)}
+                  className={`option-card interactive ${OPTION_CLASSES[idx % 4]} ${disabled ? 'disabled opacity-50 cursor-not-allowed scale-[0.98]' : ''}`}
+                  onClick={() => !disabled && onSubmit(option.item)}
+                  disabled={disabled}
                 >
                   <div className="option-icon">{['A', 'B', 'C', 'D'][idx % 4]}</div>
                   <span>{option.item}</span>
@@ -521,7 +525,8 @@ export function QuestionInteraction({
                       key={idx}
                       type="button"
                       onClick={() => handleSortedItemClick(item)}
-                      className="flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] cursor-pointer"
+                      className={`flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      disabled={disabled}
                     >
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
@@ -551,7 +556,7 @@ export function QuestionInteraction({
                           ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95'
                           : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50/50 hover:border-blue-300 hover:scale-105 active:scale-95 cursor-pointer'
                       }`}
-                      disabled={isPlaced}
+                      disabled={isPlaced || disabled}
                     >
                       {item}
                     </button>
@@ -562,7 +567,7 @@ export function QuestionInteraction({
               <button
                 onClick={() => onSubmit(sortedItems)}
                 className="btn btn-primary"
-                disabled={sortedItems.length < sortingPool.length}
+                disabled={sortedItems.length < sortingPool.length || disabled}
                 style={{ marginTop: 16 }}
               >
                 Submit Order
@@ -598,7 +603,8 @@ export function QuestionInteraction({
                             key={blankIdx}
                             type="button"
                             onClick={() => handleBlankTap(blankIdx)}
-                            className="inline-flex items-center justify-center bg-white border border-[#BFFCC6] text-[#2E6930] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-4 py-2 rounded-xl font-bold shadow-xs cursor-pointer transition-all"
+                            className={`inline-flex items-center justify-center bg-white border border-[#BFFCC6] text-[#2E6930] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-4 py-2 rounded-xl font-bold shadow-xs transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            disabled={disabled}
                           >
                             {word}
                           </button>
@@ -619,7 +625,7 @@ export function QuestionInteraction({
                         type="button"
                         onClick={() => handlePoolWordTap(choice)}
                         className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
-                        disabled={isPlaced}
+                        disabled={isPlaced || disabled}
                       >
                         {choice}
                       </button>
@@ -630,7 +636,7 @@ export function QuestionInteraction({
                 <button
                   onClick={() => onSubmit(placedWords)}
                   className="btn btn-primary"
-                  disabled={placedWords.includes(null)}
+                  disabled={placedWords.includes(null) || disabled}
                 >
                   {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
                 </button>
@@ -651,7 +657,7 @@ export function QuestionInteraction({
               <button
                 onClick={() => onSubmit(dropdownSelections)}
                 className="btn btn-primary"
-                disabled={dropdownSelections.includes('')}
+                disabled={dropdownSelections.includes('') || disabled}
               >
                 Submit Answers
               </button>
@@ -683,8 +689,9 @@ export function QuestionInteraction({
                         <button
                           key={idx}
                           type="button"
-                          className="btn"
-                          onClick={() => handleCategorizeChoice(shuffledCategorizeItems[effectiveCategorizeIdx].name, cat)}
+                          className={`btn ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => !disabled && handleCategorizeChoice(shuffledCategorizeItems[effectiveCategorizeIdx].name, cat)}
+                          disabled={disabled}
                           style={{
                             background: colorSet.background,
                             border: colorSet.border,
@@ -741,6 +748,7 @@ export function QuestionInteraction({
                       type="button"
                       className="btn btn-secondary"
                       onClick={handleCategorizeReset}
+                      disabled={disabled}
                       style={{ flex: 1 }}
                     >
                       Reset
@@ -749,6 +757,7 @@ export function QuestionInteraction({
                       type="button"
                       className="btn btn-primary"
                       onClick={() => onSubmit(categoryAssignments)}
+                      disabled={disabled}
                       style={{ flex: 2 }}
                     >
                       Submit

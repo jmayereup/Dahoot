@@ -124,8 +124,12 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
           return;
         }
 
-        // Reset player choice on new question or lobby transition
-        if (updatedRoom.status === 'LOBBY' || (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION')) {
+        // Reset player choice on new question, index change, or lobby transition
+        if (
+          updatedRoom.status === 'LOBBY' || 
+          (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION') ||
+          (updatedRoom.status === 'QUESTION' && updatedRoom.current_question_index !== playerRoom.current_question_index)
+        ) {
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
           localStorage.removeItem('dahoot_last_feedback');
@@ -351,6 +355,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       }));
     } catch (err) {
       console.error("Error submitting answer:", err);
+      setPlayerSelectedIdx(null);
       setError("Failed to submit answer. Try again.");
     }
   };

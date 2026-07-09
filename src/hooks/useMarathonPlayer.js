@@ -183,6 +183,7 @@ export function useMarathonPlayer(view, setView) {
       setPlayerFeedback({ correct: isCorrect, points });
     } catch (err) {
       console.error('Error submitting answer:', err.message);
+      setPlayerSelectedIdx(null);
       setError('Failed to submit answer: ' + err.message);
     }
   };

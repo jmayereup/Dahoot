@@ -174,6 +174,7 @@ export function MarathonView({
             totalQuestions={null}
             mode="interactive"
             onSubmit={submitAnswer}
+            disabled={playerSelectedIdx !== null}
           />
         )}
 

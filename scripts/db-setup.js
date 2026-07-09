@@ -172,6 +172,18 @@ async function getOrCreateCollection(name, config) {
       }
     }
 
+    // Sync collection indexes
+    if (config.indexes) {
+      const indexesEqual = Array.isArray(col.indexes) && Array.isArray(config.indexes) &&
+        col.indexes.length === config.indexes.length &&
+        col.indexes.every((v, i) => v === config.indexes[i]);
+      if (!indexesEqual) {
+        console.log(`[Dahoot DB] Collection '${name}': Syncing indexes...`);
+        col.indexes = config.indexes;
+        updated = true;
+      }
+    }
+
     if (config.fields) {
       for (const field of config.fields) {
         const existingFieldIdx = col.fields.findIndex(f => f.name === field.name);
@@ -410,6 +422,12 @@ async function runSetup() {
   const gamesCol = await getOrCreateCollection('dahoot_games', {
     name: 'dahoot_games',
     type: 'base',
+    indexes: [
+      'CREATE INDEX idx_games_subject ON dahoot_games (subject)',
+      'CREATE INDEX idx_games_cefr ON dahoot_games (cefr_level)',
+      'CREATE INDEX idx_games_language ON dahoot_games (language)',
+      'CREATE INDEX idx_games_creator ON dahoot_games (creator)'
+    ],
     fields: [
       { name: 'title', type: 'text', required: true, min: 1, max: 100 },
       { name: 'description', type: 'text', required: true, max: 500 },
@@ -431,6 +449,9 @@ async function runSetup() {
   const roomsCol = await getOrCreateCollection('dahoot_rooms', {
     name: 'dahoot_rooms',
     type: 'base',
+    indexes: [
+      'CREATE UNIQUE INDEX idx_rooms_code ON dahoot_rooms (code)'
+    ],
     fields: [
       { name: 'code', type: 'text', required: true, min: 4, max: 4 },
       { name: 'game_id', type: 'relation', required: false, maxSelect: 1, collectionId: gamesCol.id, cascadeDelete: true },

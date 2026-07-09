@@ -15,7 +15,8 @@ export function MarathonPlayerView({
   submitAnswer,
   advanceToNextQuestion,
   exitGame,
-  wrapUpTimeLeft
+  wrapUpTimeLeft,
+  playerSelectedIdx
 }) {
   const marathonStats = playerRecord?.marathon_stats || {};
   const currentStreak = marathonStats.current_streak || 0;
@@ -190,6 +191,7 @@ export function MarathonPlayerView({
               totalQuestions={totalQuestions}
               mode="interactive"
               onSubmit={submitAnswer}
+              disabled={playerSelectedIdx !== null}
             />
           </div>
         )}
