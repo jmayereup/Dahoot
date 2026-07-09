@@ -198,7 +198,25 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       
       setQuestions(activeQuestions);
 
-      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      // Generate a unique PIN (ensure no active room is using it)
+      let pin = '';
+      let isUnique = false;
+      let attempts = 0;
+      while (!isUnique && attempts < 15) {
+        pin = Math.floor(1000 + Math.random() * 9000).toString();
+        try {
+          await pb.collection('dahoot_rooms').getFirstListItem(
+            pb.filter("code = {:code} && status != 'FINISHED'", { code: pin })
+          );
+          attempts++;
+        } catch (err) {
+          isUnique = true;
+        }
+      }
+      if (!isUnique) {
+        pin = Math.floor(100000 + Math.random() * 900000).toString();
+      }
+
       const questionIds = activeQuestions.map(q => q.id);
 
       const room = await pb.collection('dahoot_rooms').create({

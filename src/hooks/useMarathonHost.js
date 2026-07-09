@@ -66,8 +66,25 @@ export function useMarathonHost(view, setView) {
     return { totalAnswered, accuracy, bestStreak: bestStreakVal, activeStudents, bestStreakPlayer, mostCorrectPlayer, mostCorrectCount: mostCorrectVal };
   }, [hostPlayers]);
 
-  const generatePin = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString();
+  const generateUniquePin = async () => {
+    let pin = '';
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 15) {
+      pin = Math.floor(1000 + Math.random() * 9000).toString();
+      try {
+        await pb.collection('dahoot_rooms').getFirstListItem(
+          pb.filter("code = {:code} && status != 'FINISHED'", { code: pin })
+        );
+        attempts++;
+      } catch (err) {
+        isUnique = true;
+      }
+    }
+    if (!isUnique) {
+      pin = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+    return pin;
   };
 
   const startMarathonHosting = async (gameId, options = {}) => {
@@ -99,7 +116,7 @@ export function useMarathonHost(view, setView) {
       }
 
       const pacingMode = options.pacingMode || 'student';
-      const pin = generatePin();
+      const pin = await generateUniquePin();
 
       const room = await pb.collection('dahoot_rooms').create({
         code: pin,
