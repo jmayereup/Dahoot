@@ -69,7 +69,15 @@ export function normalizeQuestion(q) {
   const type = q.type || 'MULTIPLE_CHOICE';
 
   if (type === 'MULTIPLE_CHOICE') {
-    if (isNewMultipleChoice(q)) return { ...q, options: { ...q.options, distractors: [...q.options.distractors] } };
+    if (isNewMultipleChoice(q)) {
+      return {
+        ...q,
+        options: {
+          ...q.options,
+          distractors: (q.options.distractors || []).slice(0, 3)
+        }
+      };
+    }
     if (isOldMultipleChoice(q)) {
       const opts = q.options;
       const idx = q.correct_option_index || 0;
@@ -77,7 +85,7 @@ export function normalizeQuestion(q) {
         ...q,
         options: {
           correct_answer: opts[idx] || '',
-          distractors: opts.filter((_, i) => i !== idx)
+          distractors: opts.filter((_, i) => i !== idx).slice(0, 3)
         }
       };
     }
@@ -97,7 +105,7 @@ export function normalizeQuestion(q) {
         options: {
           ...q.options,
           answers_in_order: [...q.options.answers_in_order],
-          distractors: [...q.options.distractors]
+          distractors: (q.options.distractors || []).slice(0, 3)
         }
       };
     }
@@ -105,7 +113,7 @@ export function normalizeQuestion(q) {
       const correctArr = q.options.correct || [];
       const choices = q.options.choices || [];
       const used = new Set(correctArr);
-      const distractors = choices.filter(c => !used.has(c));
+      const distractors = choices.filter(c => !used.has(c)).slice(0, 3);
       return {
         ...q,
         options: {
@@ -123,7 +131,10 @@ export function normalizeQuestion(q) {
         ...q,
         options: {
           ...q.options,
-          dropdowns: q.options.dropdowns.map(d => ({ ...d, distractors: [...(d.distractors || [])] }))
+          dropdowns: q.options.dropdowns.map(d => ({
+            ...d,
+            distractors: (d.distractors || []).slice(0, 3)
+          }))
         }
       };
     }
@@ -137,7 +148,7 @@ export function normalizeQuestion(q) {
             const correct = d.correct || '';
             return {
               correct_answer: correct,
-              distractors: choices.filter(c => c !== correct)
+              distractors: choices.filter(c => c !== correct).slice(0, 3)
             };
           })
         }

@@ -6,7 +6,7 @@ import {
   getBlankIndex,
   getBracketInner
 } from '../utils/blankParsing';
-import { getDragDropCorrect, getDropDownCorrect, normalizeQuestion, getMcOptions } from '../utils/questionSchema';
+import { getDragDropCorrect, getDropDownCorrect, normalizeQuestion, getMcOptions, unionDropDownDistractors } from '../utils/questionSchema';
 
 function renderPreviewSentenceWithBlanks(sentence, editingQuestion) {
   if (!sentence) return '';
@@ -173,6 +173,16 @@ export function PreviewOptions({ question, editingQuestion }) {
             </span>
           ))}
         </div>
+        {n.options?.distractors && n.options.distractors.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mr-1">Distractors:</span>
+            {n.options.distractors.map((word, wIdx) => (
+              <span key={wIdx} className="px-2 py-0.5 bg-rose-50 text-rose-600 border border-rose-100 font-bold rounded-md text-[10px]">
+                {word}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -192,6 +202,16 @@ export function PreviewOptions({ question, editingQuestion }) {
             </span>
           ))}
         </div>
+        {n.options?.dropdowns && unionDropDownDistractors(n.options.dropdowns).length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mr-1">Distractors:</span>
+            {unionDropDownDistractors(n.options.dropdowns).map((word, wIdx) => (
+              <span key={wIdx} className="px-2 py-0.5 bg-rose-50 text-rose-600 border border-rose-100 font-bold rounded-md text-[10px]">
+                {word}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

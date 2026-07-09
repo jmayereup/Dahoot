@@ -186,7 +186,7 @@ export function PreviewModal({
       if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
       const answers = extractBracketedAnswers(form.dragSentence);
       if (answers.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [hooks]).'); return; }
-      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean);
+      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
       optionsPayload = {
         sentence: form.dragSentence.trim(),
         answers_in_order: answers,
@@ -196,7 +196,7 @@ export function PreviewModal({
       if (!form.dropdownSentence.trim()) { setEditError('Sentence is required.'); return; }
       const dropdowns = extractBracketedAnswers(form.dropdownSentence);
       if (dropdowns.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [Go]).'); return; }
-      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean);
+      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
       optionsPayload = {
         sentence: form.dropdownSentence.trim(),
         dropdowns: dropdowns.map(correct => ({

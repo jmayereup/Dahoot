@@ -366,7 +366,7 @@ JSON Response Schema:
 
 Question Type Examples (use these exact shapes):
 
-1) MULTIPLE_CHOICE — single correct answer plus 2-3 distractors
+1) MULTIPLE_CHOICE — single correct answer plus 2-3 distractors (maximum 3 distractors total)
 {
   "text": "What is the past tense of 'go'?",
   "type": "MULTIPLE_CHOICE",
@@ -400,7 +400,7 @@ Question Type Examples (use these exact shapes):
   }
 }
 
-4) DRAG_DROP — fill missing words in a sentence; use [word] brackets in the sentence, list words in answers_in_order in left-to-right order, and add 1-3 unrelated distractors
+4) DRAG_DROP — fill missing words in a sentence; use [word] brackets in the sentence, list words in answers_in_order in left-to-right order, and add 1-3 unrelated distractors (maximum 3 distractors total)
 {
   "text": "Fill in the missing words.",
   "type": "DRAG_DROP",
@@ -411,7 +411,7 @@ Question Type Examples (use these exact shapes):
   }
 }
 
-5) DROP_DOWN — same idea, but each blank has its own small choice set
+5) DROP_DOWN — same idea, but each blank has its own small choice set (maximum 3 distractors total per dropdown)
 {
   "text": "Select the correct word for each blank.",
   "type": "DROP_DOWN",
@@ -426,6 +426,7 @@ Question Type Examples (use these exact shapes):
 
 Important rules:
 - The "type" field must be exactly one of: MULTIPLE_CHOICE, SORTING, CATEGORIZE, DRAG_DROP, DROP_DOWN.
+- For MULTIPLE_CHOICE, DRAG_DROP, and DROP_DOWN questions, you MUST limit the number of distractors to a maximum of 3 distractors total per question or dropdown blank.
 - For DRAG_DROP, every answer in answers_in_order must appear as a [word] bracket in the sentence, in the same order.
 - For DROP_DOWN, the number of dropdowns must match the number of blanks in the sentence.
 - Output ONLY a single valid JSON object. No prose, no markdown fences.`;
@@ -459,6 +460,22 @@ Important rules:
 
     const questions = parsedData.questions || [];
     if (!Array.isArray(questions) || questions.length === 0) throw new Error('No valid questions could be generated.');
+
+    // Drop extra distractors for future requests (if the AI doesn't follow the directions)
+    for (const q of questions) {
+      if (q.type === 'MULTIPLE_CHOICE' && q.options && Array.isArray(q.options.distractors)) {
+        q.options.distractors = q.options.distractors.slice(0, 3);
+      } else if (q.type === 'DRAG_DROP' && q.options && Array.isArray(q.options.distractors)) {
+        q.options.distractors = q.options.distractors.slice(0, 3);
+      } else if (q.type === 'DROP_DOWN' && q.options && Array.isArray(q.options.dropdowns)) {
+        q.options.dropdowns = q.options.dropdowns.map(d => {
+          if (d && Array.isArray(d.distractors)) {
+            return { ...d, distractors: d.distractors.slice(0, 3) };
+          }
+          return d;
+        });
+      }
+    }
 
     const aiDescription = parsedData.description || '';
     if (!gameDescription?.trim() && aiDescription) setGameDescription(aiDescription);

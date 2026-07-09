@@ -13,8 +13,8 @@ export function GenerateModal({
   const [genMcCount, setGenMcCount] = useState(10);
   const [genSortingCount, setGenSortingCount] = useState(3);
   const [genCategorizeCount, setGenCategorizeCount] = useState(2);
-  const [genDragDropCount, setGenDragDropCount] = useState(5);
-  const [genDropDownCount, setGenDropDownCount] = useState(5);
+  const [genDragDropCount, setGenDragDropCount] = useState(3);
+  const [genDropDownCount, setGenDropDownCount] = useState(3);
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState('');
 

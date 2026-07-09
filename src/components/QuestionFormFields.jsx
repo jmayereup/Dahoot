@@ -198,10 +198,14 @@ function DistractorList({ distractors, updateDistractor, disabled, label, help }
       <button
         type="button"
         onClick={() => updateDistractor([...distractors, ''])}
-        disabled={disabled}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+        disabled={disabled || distractors.length >= 3}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          distractors.length >= 3
+            ? 'text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-60'
+            : 'text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 cursor-pointer'
+        }`}
       >
-        ➕ Add Distractor
+        ➕ Add Distractor {distractors.length >= 3 ? '(Max 3)' : ''}
       </button>
     </div>
   );

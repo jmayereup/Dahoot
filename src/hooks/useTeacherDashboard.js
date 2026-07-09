@@ -439,7 +439,7 @@ export function useTeacherDashboard(view, currentUser) {
         setError('The sentence must contain at least one bracketed answer (e.g. [hooks]).');
         return;
       }
-      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
+      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
       optionsPayload = {
         sentence: dragSentence.trim(),
         answers_in_order: answers,
@@ -457,7 +457,7 @@ export function useTeacherDashboard(view, currentUser) {
         setError('The sentence must contain at least one bracketed answer (e.g. [Go]).');
         return;
       }
-      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
+      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
       optionsPayload = {
         sentence: dropdownSentence.trim(),
         dropdowns: dropdowns.map(correct => ({
@@ -551,6 +551,20 @@ export function useTeacherDashboard(view, currentUser) {
       const validTypes = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'];
       if (!validTypes.includes(q.type)) {
         throw new Error(`Question ${i + 1} has invalid type "${q.type}". Must be one of: ${validTypes.join(', ')}`);
+      }
+      
+      // Drop extra distractors for future requests (if it doesn't follow the directions)
+      if (q.type === 'MULTIPLE_CHOICE' && q.options && Array.isArray(q.options.distractors)) {
+        q.options.distractors = q.options.distractors.slice(0, 3);
+      } else if (q.type === 'DRAG_DROP' && q.options && Array.isArray(q.options.distractors)) {
+        q.options.distractors = q.options.distractors.slice(0, 3);
+      } else if (q.type === 'DROP_DOWN' && q.options && Array.isArray(q.options.dropdowns)) {
+        q.options.dropdowns = q.options.dropdowns.map(d => {
+          if (d && Array.isArray(d.distractors)) {
+            return { ...d, distractors: d.distractors.slice(0, 3) };
+          }
+          return d;
+        });
       }
     }
     return parsed;
