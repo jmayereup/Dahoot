@@ -575,7 +575,7 @@ p.subtitle {
 }
 
 @utility game-tag {
-  @apply bg-slate-100/60 border border-slate-200/50 text-slate-500 font-bold text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors hover:bg-slate-200/45;
+  @apply bg-slate-100/60 border border-slate-200/50 text-slate-500 font-bold text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors hover:bg-slate-200/45 whitespace-nowrap shrink-0;
 }
 
 @utility game-list {
