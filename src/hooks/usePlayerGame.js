@@ -318,15 +318,11 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     let points = 0;
     if (isCorrect) {
       const duration = playerRoom.timer_duration;
-      if (duration === 0) {
-        points = 1000;
-      } else {
-        const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
-        const limit = (duration || 20) * (isCategorize ? 2 : 1);
-        const startTime = new Date(playerRoom.current_question_start_time).getTime();
-        const elapsedSeconds = Math.max(0, (Date.now() - startTime) / 1000);
-        points = Math.max(500, Math.round(1000 - (elapsedSeconds / limit) * 500));
-      }
+      const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
+      const limit = (duration || 20) * (isCategorize ? 2 : 1);
+      const startTime = new Date(playerRoom.current_question_start_time).getTime();
+      const elapsedSeconds = Math.max(0, (Date.now() - startTime) / 1000);
+      points = Math.max(500, Math.round(1000 - (elapsedSeconds / limit) * 500));
     }
 
     try {

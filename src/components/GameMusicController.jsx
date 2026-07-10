@@ -33,11 +33,17 @@ export function GameMusicController({ gameStatus }) {
   // Keep refs in sync with state for access in intervals without stale closures
   const currentVolumeRef = useRef(volume);
   const isMutedRef = useRef(isMuted);
+  const isPlayingRef = useRef(isPlaying);
+  const isFadingOutRef = useRef(false);
   const prevStatusRef = useRef(gameStatus);
 
   useEffect(() => {
     currentVolumeRef.current = volume;
   }, [volume]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -107,6 +113,8 @@ export function GameMusicController({ gameStatus }) {
       clearInterval(fadeIntervalRef.current);
       fadeIntervalRef.current = null;
     }
+
+    isFadingOutRef.current = false;
 
     const fadeDuration = 1500; // ms
     const fadeSteps = 30;
@@ -248,6 +256,102 @@ export function GameMusicController({ gameStatus }) {
     };
   }, []);
 
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const duration = audio.duration;
+    if (!duration || isNaN(duration)) return;
+
+    const fadeOutDuration = 2.5; // seconds before end to start fading out
+    const remainingTime = duration - audio.currentTime;
+
+    // If user seeked backward during a fade out, restore volume
+    if (isFadingOutRef.current && remainingTime > fadeOutDuration) {
+      isFadingOutRef.current = false;
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+        fadeIntervalRef.current = null;
+      }
+      audio.volume = isMutedRef.current ? 0 : currentVolumeRef.current;
+      return;
+    }
+
+    // Start fade out if we are playing, not already fading, and within the window
+    if (isPlayingRef.current && !isFadingOutRef.current && remainingTime <= fadeOutDuration && remainingTime > 0) {
+      isFadingOutRef.current = true;
+
+      const startVol = audio.volume;
+      const fadeSteps = 25;
+      const stepTime = (remainingTime * 1000) / fadeSteps;
+      let currentStep = 0;
+
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+        fadeIntervalRef.current = null;
+      }
+
+      fadeIntervalRef.current = setInterval(() => {
+        currentStep++;
+        const ratio = 1 - (currentStep / fadeSteps);
+        if (audioRef.current && isFadingOutRef.current) {
+          audioRef.current.volume = Math.max(0, ratio * startVol);
+        }
+
+        if (currentStep >= fadeSteps) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+      }, stepTime);
+    }
+  };
+
+  const handleEnded = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    isFadingOutRef.current = false;
+
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+
+    // Reset track and play again with fade in
+    audio.currentTime = 0;
+    audio.volume = 0;
+
+    if (isPlayingRef.current) {
+      audio.play()
+        .then(() => {
+          setPlayError(false);
+          const fadeInDuration = 2000; // ms
+          const fadeSteps = 30;
+          const stepTime = fadeInDuration / fadeSteps;
+          let fadeInStep = 0;
+
+          fadeIntervalRef.current = setInterval(() => {
+            fadeInStep++;
+            const inRatio = fadeInStep / fadeSteps;
+            if (audioRef.current && !isMutedRef.current) {
+              audioRef.current.volume = inRatio * currentVolumeRef.current;
+            }
+            if (fadeInStep >= fadeSteps) {
+              clearInterval(fadeIntervalRef.current);
+              fadeIntervalRef.current = null;
+              if (audioRef.current) {
+                audioRef.current.volume = isMutedRef.current ? 0 : currentVolumeRef.current;
+              }
+            }
+          }, stepTime);
+        })
+        .catch(err => {
+          console.warn("Error replaying audio in loop:", err);
+          setIsPlaying(false);
+        });
+    }
+  };
+
   const handleTrackChange = (e) => {
     const selectedId = e.target.value;
     setCurrentTrackId(selectedId);
@@ -274,7 +378,11 @@ export function GameMusicController({ gameStatus }) {
 
   return (
     <div className="fixed top-6 right-6 z-50 select-none">
-      <audio ref={audioRef} loop />
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
+      />
 
       {isCollapsed ? (
         /* Collapsed Icon Mode */
