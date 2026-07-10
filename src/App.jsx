@@ -141,6 +141,76 @@ function App() {
     marathonHost.hostPlayers
   ]);
 
+  // Host Reconnection Effect
+  useEffect(() => {
+    if (view !== 'selection') return;
+
+    const cachedHostRoomId = localStorage.getItem('dahoot_host_room_id');
+    if (!cachedHostRoomId) return;
+
+    let isMounted = true;
+
+    const reconnectHost = async () => {
+      try {
+        const room = await pb.collection('dahoot_rooms').getOne(cachedHostRoomId);
+        
+        // Don't auto-reconnect if the room is finished or older than 4 hours
+        const createdTime = new Date(room.created).getTime();
+        const ageMs = Date.now() - createdTime;
+        if (room.status === 'FINISHED' || ageMs > 4 * 60 * 60 * 1000) {
+          localStorage.removeItem('dahoot_host_room_id');
+          return;
+        }
+
+        // Fetch players currently in the room
+        const players = await pb.collection('dahoot_players').getFullList({
+          filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
+          sort: '-score'
+        });
+        players.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return (a.name || '').localeCompare(b.name || '') || a.id.localeCompare(b.id);
+        });
+
+        // Fetch questions for the hosted game
+        const qList = await pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: room.game_id })
+        });
+        
+        // Order questions according to room.question_ids
+        let finalQuestions = qList;
+        if (room.question_ids && Array.isArray(room.question_ids) && room.question_ids.length > 0) {
+          const idMap = new Map(room.question_ids.map((id, index) => [id, index]));
+          finalQuestions = qList
+            .filter(q => idMap.has(q.id))
+            .sort((a, b) => idMap.get(a.id) - idMap.get(b.id));
+        } else {
+          finalQuestions.sort((a, b) => a.created.localeCompare(b.created));
+        }
+
+        if (!isMounted) return;
+
+        // Restore host state
+        if (room.marathon_mode) {
+          marathonHost.adoptRoom(room, finalQuestions, players);
+          setView('marathonHost');
+        } else {
+          hostGame.adoptRoom(room, finalQuestions, players);
+          setView('host');
+        }
+      } catch (err) {
+        console.warn("Could not auto-reconnect to host session:", err);
+        localStorage.removeItem('dahoot_host_room_id');
+      }
+    };
+
+    reconnectHost();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [view, hostGame.adoptRoom, marathonHost.adoptRoom]);
+
   // Handle player kicked/removed or room closed modals
   if (playerGame.removedReason) {
     const isClosed = playerGame.removedReason === 'closed';

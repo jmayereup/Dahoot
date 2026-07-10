@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { pb } from '../pb';
 import { shuffleArray } from '../utils/shuffle';
 
@@ -137,6 +137,7 @@ export function useMarathonHost(view, setView) {
 
       setHostRoom(room);
       setQuestions(activeQuestions);
+      localStorage.setItem('dahoot_host_room_id', room.id);
       setView('marathonHost');
     } catch (err) {
       console.error(err);
@@ -147,11 +148,19 @@ export function useMarathonHost(view, setView) {
     }
   };
 
-  const adoptRoom = (room, activeQuestions, players) => {
+  const adoptRoom = useCallback((room, activeQuestions, players) => {
     setHostRoom(room);
     setQuestions(activeQuestions);
     setHostPlayers(players);
-  };
+    setCurrentOptions({
+      timerDuration: room.timer_duration,
+      maxQuestions: room.max_questions,
+      randomize: room.randomize_questions,
+      marathonMode: room.marathon_mode,
+      pacingMode: room.pacing_mode
+    });
+    localStorage.setItem('dahoot_host_room_id', room.id);
+  }, []);
 
   const clearRoom = () => {
     setHostRoom(null);
@@ -443,6 +452,7 @@ export function useMarathonHost(view, setView) {
     setQuestions([]);
     setCurrentLap(1);
     setView('selection');
+    localStorage.removeItem('dahoot_host_room_id');
   };
 
   useEffect(() => {

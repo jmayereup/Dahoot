@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../pb';
 import { DEFAULT_QUESTIONS, SAMPLE_GAMES } from '../constants';
 
@@ -238,6 +238,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       });
 
       setHostRoom(room);
+      localStorage.setItem('dahoot_host_room_id', room.id);
       setView('host');
     } catch (err) {
       console.error(err);
@@ -247,11 +248,19 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   };
 
-  const adoptRoom = (room, activeQuestions, players) => {
+  const adoptRoom = useCallback((room, activeQuestions, players) => {
     setHostRoom(room);
     setQuestions(activeQuestions);
     setHostPlayers(players);
-  };
+    setCurrentOptions({
+      timerDuration: room.timer_duration,
+      maxQuestions: room.max_questions,
+      randomize: room.randomize_questions,
+      marathonMode: room.marathon_mode,
+      pacingMode: room.pacing_mode
+    });
+    localStorage.setItem('dahoot_host_room_id', room.id);
+  }, []);
 
   const clearRoom = () => {
     setHostRoom(null);
@@ -431,9 +440,11 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       setHostRoom(null);
       setHostPlayers([]);
       setView('selection');
+      localStorage.removeItem('dahoot_host_room_id');
     } catch (err) {
       console.error("Error closing room:", err);
       setView('selection');
+      localStorage.removeItem('dahoot_host_room_id');
     }
   };
 
