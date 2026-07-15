@@ -114,6 +114,9 @@ export function HostView({
             hostPlayAgain={hostPlayAgain}
             hostChangeGame={hostChangeGame}
             gamesList={gamesList}
+            roomCode={hostRoom.code}
+            gameTitle={gamesList?.find(g => g.id === hostRoom.game_id)?.title || 'Dahoot Game'}
+            isMarathon={false}
           />
         )}
 

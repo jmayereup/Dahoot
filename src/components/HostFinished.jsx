@@ -4,7 +4,9 @@ import { GameSettings } from './GameSettings';
 import { BUCKET_COLORS } from '../constants';
 import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBracketInner } from '../utils/blankParsing';
 import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
-import { RotateCcw, Shuffle, Home } from 'lucide-react';
+import { RotateCcw, Shuffle, Home, Download, List } from 'lucide-react';
+import { exportResultsCsv } from '../utils/exportCsv';
+import { ScoreboardModal } from './ScoreboardModal';
 
 export function HostFinished({ 
   hostPlayers = [], 
@@ -12,7 +14,10 @@ export function HostFinished({
   questions = [],
   hostPlayAgain,
   hostChangeGame,
-  gamesList = []
+  gamesList = [],
+  roomCode,
+  gameTitle,
+  isMarathon = false
 }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
   const [showChangeGameModal, setShowChangeGameModal] = useState(false);
@@ -25,6 +30,7 @@ export function HostFinished({
   const [isRestarting, setIsRestarting] = useState(false);
   const [modalQuestions, setModalQuestions] = useState([]);
   const [newSelectedQuestionTypes, setNewSelectedQuestionTypes] = useState(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
+  const [showScoreboardModal, setShowScoreboardModal] = useState(false);
 
   useEffect(() => {
     if (!selectedNewGameId) {
@@ -476,6 +482,24 @@ export function HostFinished({
             )}
 
             <button 
+              className="btn bg-emerald-600 border border-emerald-700 text-white hover:bg-emerald-700 hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers, questions })}
+              disabled={isRestarting}
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              Download Results (CSV)
+            </button>
+
+            <button 
+              className="btn bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => setShowScoreboardModal(true)}
+              disabled={isRestarting}
+            >
+              <List className="w-4 h-4 shrink-0" />
+              View Full Scoreboard
+            </button>
+
+            <button 
               className="btn bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 hover:shadow-md"
               onClick={hostEndGame}
               disabled={isRestarting}
@@ -742,6 +766,18 @@ export function HostFinished({
             </div>
           </div>
         </div>
+      )}
+
+      {showScoreboardModal && (
+        <ScoreboardModal
+          isOpen={showScoreboardModal}
+          onClose={() => setShowScoreboardModal(false)}
+          hostPlayers={hostPlayers}
+          questions={questions}
+          gameTitle={gameTitle}
+          roomCode={roomCode}
+          isMarathon={isMarathon}
+        />
       )}
     </div>
   );
