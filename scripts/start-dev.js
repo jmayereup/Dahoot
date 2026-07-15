@@ -59,7 +59,7 @@ async function start() {
     pbCwd = rootDir;
   }
   
-  const pbProcess = spawn(pbExecutable, ['serve'], {
+  const pbProcess = spawn(pbExecutable, ['serve', '--automigrate=false'], {
     cwd: pbCwd,
     stdio: 'inherit',
     env: process.env

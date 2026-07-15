@@ -149,6 +149,7 @@ export function useMarathonPlayer(view, setView) {
         : currentStats.fastest_correct;
 
       const updatedStats = {
+        ...currentStats,
         total_answered: (currentStats.total_answered || 0) + 1,
         correct_count: isCorrect ? (currentStats.correct_count || 0) + 1 : currentStats.correct_count || 0,
         current_streak: newStreak,

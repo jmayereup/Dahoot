@@ -350,23 +350,10 @@ async function deploy() {
     process.exit(1);
   }
 
-  // Step 4: Deploy PocketBase migrations (if exists)
-  const localMigrationsDir = path.join(pbDir, 'pb_migrations');
-  if (fs.existsSync(localMigrationsDir)) {
-    console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase migrations...\x1b[0m');
-    try {
-      execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localMigrationsDir}/`, `${connectionString}:${targetPath}/pocketbase/pb_migrations/`], { stdio: 'inherit' });
-      console.log('\x1b[32m[Dahoot Deploy] PocketBase migrations uploaded successfully.\x1b[0m');
-    } catch (err) {
-      console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync migrations.\x1b[0m', err.message);
-      process.exit(1);
-    }
-  }
-
-  // Step 4b: Deploy PocketBase JS VM hooks (if exists)
+  // Step 4: Deploy PocketBase JS VM hooks (if exists)
   const localHooksDir = path.join(pbDir, 'pb_hooks');
   if (fs.existsSync(localHooksDir)) {
-    console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4b: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
+    console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
     try {
       execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localHooksDir}/`, `${connectionString}:${hooksPath}/`], { stdio: 'inherit' });
       console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
