@@ -47,7 +47,7 @@ routerAdd("POST", "/api/generate-questions", (e) => {
         return e.json(500, { error: "OPENROUTER_API_KEY is not set on the server. Please check your server environment variables." });
     }
 
-    const apiModel = $os.getenv("OPENROUTER_MODEL") || "minimax/minimax-m3";
+    const apiModel = $os.getenv("OPENROUTER_MODEL") || "deepseek/deepseek-v4-pro";
 
     let res;
     try {
