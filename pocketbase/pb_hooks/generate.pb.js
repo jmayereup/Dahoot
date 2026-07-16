@@ -63,7 +63,10 @@ routerAdd("POST", "/api/generate-questions", (e) => {
                     { role: "user", content: userPromptContent }
                 ],
                 temperature: 0.7,
-                max_tokens: 8192
+                max_tokens: 8192,
+                provider: {
+                    sort: "price"
+                }
             }),
             headers: {
                 "Authorization": "Bearer " + apiKey,
