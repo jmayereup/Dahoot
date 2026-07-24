@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 import PocketBase from 'pocketbase';
 import readline from 'readline';
 import dotenv from 'dotenv';
@@ -24,101 +25,15 @@ const adminPassword = isDev
   ? (process.env.POCKETBASE_DEV_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD)
   : process.env.POCKETBASE_ADMIN_PASSWORD;
 
-const DEFAULT_QUESTIONS = [
-  {
-    text: "Which programming language is predominantly used to add interactivity to web pages?",
-    type: "MULTIPLE_CHOICE",
-    options: {
-      correct_answer: "JavaScript",
-      distractors: ["Python", "HTML", "SQL"]
-    }
-  },
-  {
-    text: "Sort these language layers of the web stack from front-end layout to back-end logic.",
-    type: "SORTING",
-    options: {
-      correct_sequence: ["HTML Structured Markup", "CSS Cascading Styles", "JavaScript Client Behavior", "Python Database Logic"]
-    }
-  },
-  {
-    text: "Complete the sentence regarding styling languages.",
-    type: "DRAG_DROP",
-    options: {
-      sentence: "In web development, we use [blank0] for layout structure, [blank1] for visual styles, and [blank2] for client scripting.",
-      answers_in_order: ["HTML", "CSS", "JavaScript"],
-      distractors: ["Python"]
-    }
-  },
-  {
-    text: "Select the correct protocols for web communication.",
-    type: "DROP_DOWN",
-    options: {
-      sentence: "For secure website browsing we use {{0}}, while real-time bidirectional message channels use {{1}} protocol.",
-      dropdowns: [
-        { correct_answer: "HTTPS", distractors: ["HTTP", "FTP"] },
-        { correct_answer: "WebSockets", distractors: ["SMTP", "DNS"] }
-      ]
-    }
-  },
-  {
-    text: "Categorize these technologies into their respective layers.",
-    type: "CATEGORIZE",
-    options: {
-      categories: ["Frontend", "Backend", "Database"],
-      items: [
-        { name: "React", category: "Frontend" },
-        { name: "Express", category: "Backend" },
-        { name: "PostgreSQL", category: "Database" },
-        { name: "CSS Grid", category: "Frontend" },
-        { name: "Django", category: "Backend" },
-        { name: "MongoDB", category: "Database" }
-      ]
-    }
+const seedGamesPath = path.resolve(rootDir, 'src', 'data', 'seed-games.json');
+let SEED_GAMES = [];
+if (fs.existsSync(seedGamesPath)) {
+  try {
+    SEED_GAMES = JSON.parse(fs.readFileSync(seedGamesPath, 'utf8'));
+  } catch (err) {
+    console.warn('[Dahoot DB] Warning: Could not parse seed-games.json:', err.message);
   }
-];
-
-const SAMPLE_GAMES = [
-  {
-    title: "General Tech Trivia",
-    description: "A fun quiz testing your knowledge of programming history, CSS, React, and general technology stack layers.",
-    subject: "Technology",
-    cefr_level: "B1",
-    language: "English",
-    creator: "System"
-  },
-  {
-    title: "World Capitals Challenge",
-    description: "Test your geography knowledge by identifying capital cities from around the world.",
-    subject: "Geography",
-    cefr_level: "A2",
-    language: "English",
-    creator: "System"
-  },
-  {
-    title: "Basic Spanish Vocabulary",
-    description: "Learn essential Spanish words and phrases for everyday conversations.",
-    subject: "Foreign Languages",
-    cefr_level: "A1",
-    language: "Spanish",
-    creator: "System"
-  },
-  {
-    title: "Ancient History Quiz",
-    description: "Explore the fascinating world of ancient civilizations from Egypt to Rome.",
-    subject: "History",
-    cefr_level: "B2",
-    language: "English",
-    creator: "System"
-  },
-  {
-    title: "Math Fundamentals",
-    description: "Practice basic arithmetic, algebra, and geometry concepts.",
-    subject: "Math",
-    cefr_level: "A2",
-    language: "English",
-    creator: "System"
-  }
-];
+}
 
 if (!adminEmail || !adminPassword) {
   console.error('\x1b[31m[Dahoot DB] Error: POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be defined in .env\x1b[0m');
@@ -260,18 +175,45 @@ async function runSetup() {
       await pb.admins.authWithPassword(adminEmail, adminPassword);
       console.log('\x1b[32m[Dahoot DB] Authenticated as Legacy Admin (v0.22 style).\x1b[0m');
     } catch (legacyErr) {
-      try {
-        await pb.collection('_superusers').create({ email: adminEmail, password: adminPassword, passwordConfirm: adminPassword });
-        console.log('\x1b[32m[Dahoot DB] Bootstrapped superuser: ' + adminEmail + '\x1b[0m');
-        await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
-        console.log('\x1b[32m[Dahoot DB] Authenticated as Superuser (v0.30+ style).\x1b[0m');
-      } catch (bootstrapErr) {
+      let bootstrapped = false;
+      if (isDev) {
+        let pbDir = path.resolve(rootDir, '..', 'pocketbase');
+        let pbExecutable = path.join(pbDir, process.platform === 'win32' ? 'pocketbase.exe' : 'pocketbase');
+        let pbDataDir = path.join(pbDir, 'pb_data');
+        if (!fs.existsSync(pbExecutable)) {
+          pbDir = path.join(rootDir, 'pocketbase');
+          pbExecutable = path.join(pbDir, process.platform === 'win32' ? 'pocketbase.exe' : 'pocketbase');
+          pbDataDir = path.join(pbDir, 'pb_data');
+        }
+        if (fs.existsSync(pbExecutable)) {
+          try {
+            console.log(`[Dahoot DB] Bootstrapping initial superuser (${adminEmail}) via PocketBase CLI...`);
+            execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+            bootstrapped = true;
+          } catch (cliErr) {
+            try {
+              execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+              bootstrapped = true;
+            } catch (cliErr2) {}
+          }
+        }
+      }
+
+      if (bootstrapped) {
+        try {
+          await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
+          console.log('\x1b[32m[Dahoot DB] Bootstrapped and authenticated superuser: ' + adminEmail + '\x1b[0m');
+        } catch (authErr) {
+          bootstrapped = false;
+        }
+      }
+
+      if (!bootstrapped) {
         console.error('\x1b[31m[Dahoot DB] Authentication failed. Ensure:\x1b[0m');
         console.error(' 1. PocketBase is running (run: npm run dev)');
         console.error(` 2. You created a superuser with email "${adminEmail}" and your configured password in the Admin UI.`);
         console.error('Legacy Admin Error:', legacyErr.message);
         console.error('Superuser Error:', err.message);
-        console.error('Bootstrap Error:', bootstrapErr.message);
         process.exit(1);
       }
     }
@@ -558,43 +500,55 @@ async function runSetup() {
     }
   }
 
-  // 7. Seed default game, questions, and options (only with --erase flag)
-  if (isErase) {
+  // 7. Seed default games, questions, and options (if --erase or if DB is empty)
+  const gamesCount = (await pb.collection('dahoot_games').getList(1, 1)).totalItems;
+  if (isErase || gamesCount === 0) {
     try {
-      console.log("[Dahoot DB] Seeding default options...");
-      const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other'];
-      const defaultCefr = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-      const defaultLanguages = ['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other'];
-
-      for (const sub of defaultSubjects) {
-        await pb.collection('dahoot_options').create({ type: 'subject', value: sub });
-      }
-      for (const lvl of defaultCefr) {
-        await pb.collection('dahoot_options').create({ type: 'cefr_level', value: lvl });
-      }
-      for (const lang of defaultLanguages) {
-        await pb.collection('dahoot_options').create({ type: 'language', value: lang });
+      if (isErase) {
+        console.log("[Dahoot DB] --erase flag detected. Seeding default options & games...");
+      } else {
+        console.log("[Dahoot DB] Empty database detected. Seeding default options & games...");
       }
 
-      console.log("[Dahoot DB] Seeding default games...");
-      for (const gameData of SAMPLE_GAMES) {
-        const newGame = await pb.collection('dahoot_games').create(gameData);
-        console.log(`[Dahoot DB] Created game: ${newGame.title}`);
-        
-        console.log(`[Dahoot DB] Seeding questions for ${newGame.title}...`);
-        for (const q of DEFAULT_QUESTIONS) {
-          await pb.collection('dahoot_questions').create({
-            ...q,
-            game_id: newGame.id
-          });
+      const existingOptions = (await pb.collection('dahoot_options').getList(1, 1)).totalItems;
+      if (existingOptions === 0) {
+        console.log("[Dahoot DB] Seeding default options...");
+        const defaultSubjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Foreign Languages', 'Other'];
+        const defaultCefr = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+        const defaultLanguages = ['English', 'Thai', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Russian', 'Other'];
+
+        for (const sub of defaultSubjects) {
+          await pb.collection('dahoot_options').create({ type: 'subject', value: sub });
+        }
+        for (const lvl of defaultCefr) {
+          await pb.collection('dahoot_options').create({ type: 'cefr_level', value: lvl });
+        }
+        for (const lang of defaultLanguages) {
+          await pb.collection('dahoot_options').create({ type: 'language', value: lang });
         }
       }
-      console.log("\x1b[32m[Dahoot DB] Default games, questions, and options seeded successfully!\x1b[0m");
+
+      console.log(`[Dahoot DB] Seeding ${SEED_GAMES.length} games and their questions...`);
+      for (const gameEntry of SEED_GAMES) {
+        const { questions, ...gameData } = gameEntry;
+        const newGame = await pb.collection('dahoot_games').create(gameData);
+        console.log(`[Dahoot DB] Created game: "${newGame.title}" (${questions?.length || 0} questions)`);
+        
+        if (Array.isArray(questions)) {
+          for (const q of questions) {
+            await pb.collection('dahoot_questions').create({
+              ...q,
+              game_id: newGame.id
+            });
+          }
+        }
+      }
+      console.log("\x1b[32m[Dahoot DB] Seed games, questions, and options loaded successfully!\x1b[0m");
     } catch (err) {
-      console.error("[Dahoot DB] Error seeding default game/questions:", err.message);
+      console.error("[Dahoot DB] Error seeding games/questions:", err.message);
     }
   } else {
-    console.log("[Dahoot DB] No --erase flag: Skipping database seeding.");
+    console.log("[Dahoot DB] Database already contains games: Skipping database seeding (use --erase to re-seed).");
   }
 
   console.log('\n\x1b[32m🎉 [Dahoot DB] Programmatic database setup complete!\x1b[0m');

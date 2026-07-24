@@ -453,13 +453,16 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       setLoading(true);
       const list = await pb.collection('dahoot_games').getList(1, 1);
       if (list.totalItems === 0) {
-        for (const gameData of SAMPLE_GAMES) {
+        for (const gameEntry of SAMPLE_GAMES) {
+          const { questions, ...gameData } = gameEntry;
           const newGame = await pb.collection('dahoot_games').create(gameData);
-          for (const q of DEFAULT_QUESTIONS) {
-            await pb.collection('dahoot_questions').create({
-              ...q,
-              game_id: newGame.id
-            });
+          if (Array.isArray(questions)) {
+            for (const q of questions) {
+              await pb.collection('dahoot_questions').create({
+                ...q,
+                game_id: newGame.id
+              });
+            }
           }
         }
         alert("Sample games and questions seeded successfully!");
