@@ -12,14 +12,29 @@ export function SchoolFooter({ status }) {
       <p className="text-sm font-medium text-slate-500 flex flex-wrap items-center justify-center gap-2">
         <span>Created for</span>
         <span className="inline-flex items-center gap-1.5 font-bold text-slate-700 bg-slate-100/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs border border-slate-200/50">
-          <img 
-            src="/logo.png" 
-            alt="DDN Logo" 
+          <img
+            src="/logo.png"
+            alt="DDN Logo"
             className="w-4 h-4 object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           Datdaruni School
         </span>
+        <span>by</span>
+        <a
+          href="https://www.teacherjake.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-bold text-slate-700 bg-rose-50/80 hover:bg-rose-100/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs border border-rose-200/50 transition-colors"
+        >
+          <img
+            src="/tj-logo.png"
+            alt="TJ Logo"
+            className="w-4 h-4 object-contain"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          Teacher Jake
+        </a>
       </p>
       <p className="text-xs text-slate-400 mt-3 flex flex-wrap items-center justify-center gap-3">
         <a 
