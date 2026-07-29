@@ -295,7 +295,7 @@ export function useMarathonHost(view, setView) {
 
   useEffect(() => {
     if (hostRoom?.code) {
-      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}`;
+      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1`;
       import('qrcode')
         .then(({ default: QRCode }) => {
           QRCode.toDataURL(joinUrlStr, {
@@ -315,7 +315,7 @@ export function useMarathonHost(view, setView) {
     }
   }, [hostRoom?.code]);
 
-  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}` : '';
+  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1` : '';
 
   const handleCopyLink = () => {
     if (!joinUrl) return;

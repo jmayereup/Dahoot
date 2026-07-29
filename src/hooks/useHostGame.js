@@ -33,7 +33,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   // Generate QR code whenever the host room code is generated
   useEffect(() => {
     if (hostRoom?.code) {
-      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}`;
+      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1`;
       import('qrcode')
         .then(({ default: QRCode }) => {
           QRCode.toDataURL(joinUrlStr, {
@@ -149,7 +149,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   }, [view, hostRoom?.status, hostPlayers, hostRoom?.current_question_index]);
 
-  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}` : '';
+  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1` : '';
 
   const handleCopyLink = () => {
     if (!joinUrl) return;

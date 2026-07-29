@@ -153,7 +153,7 @@ export function TeacherDashboard({
 
   const handleShareQuiz = (game, e) => {
     if (e) e.stopPropagation();
-    const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${game.id}&openExternalBrowser=1`;
     navigator.clipboard.writeText(shareUrl)
       .then(() => { setCopiedGameId(game.id); setTimeout(() => setCopiedGameId(''), 2000); })
       .catch(err => console.error("Failed to copy share link:", err));
