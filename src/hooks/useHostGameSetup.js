@@ -104,7 +104,7 @@ export function useHostGameSetup() {
 
   const handleCopyShareLink = (gameId) => {
     if (!gameId) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${gameId}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${gameId}&openExternalBrowser=1`;
     navigator.clipboard.writeText(shareUrl)
       .then(() => {
         setCopied(true);

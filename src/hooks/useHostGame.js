@@ -33,7 +33,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   // Generate QR code whenever the host room code is generated
   useEffect(() => {
     if (hostRoom?.code) {
-      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}`;
+      const joinUrlStr = `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1`;
       import('qrcode')
         .then(({ default: QRCode }) => {
           QRCode.toDataURL(joinUrlStr, {
@@ -149,7 +149,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   }, [view, hostRoom?.status, hostPlayers, hostRoom?.current_question_index]);
 
-  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}` : '';
+  const joinUrl = hostRoom ? `${window.location.origin}${window.location.pathname}?pin=${hostRoom.code}&openExternalBrowser=1` : '';
 
   const handleCopyLink = () => {
     if (!joinUrl) return;
@@ -453,13 +453,16 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       setLoading(true);
       const list = await pb.collection('dahoot_games').getList(1, 1);
       if (list.totalItems === 0) {
-        for (const gameData of SAMPLE_GAMES) {
+        for (const gameEntry of SAMPLE_GAMES) {
+          const { questions, ...gameData } = gameEntry;
           const newGame = await pb.collection('dahoot_games').create(gameData);
-          for (const q of DEFAULT_QUESTIONS) {
-            await pb.collection('dahoot_questions').create({
-              ...q,
-              game_id: newGame.id
-            });
+          if (Array.isArray(questions)) {
+            for (const q of questions) {
+              await pb.collection('dahoot_questions').create({
+                ...q,
+                game_id: newGame.id
+              });
+            }
           }
         }
         alert("Sample games and questions seeded successfully!");

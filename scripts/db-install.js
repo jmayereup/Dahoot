@@ -3,10 +3,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import https from 'https';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+
+dotenv.config({ path: path.resolve(rootDir, '.env') });
 
 const POCKETBASE_VERSION = '0.39.5'; // Modern superuser version matching db-setup.js
 
@@ -126,6 +129,25 @@ async function install() {
     // Clean up zip
     if (fs.existsSync(zipPath)) {
       fs.unlinkSync(zipPath);
+    }
+
+    // Bootstrap initial superuser from .env if credentials exist
+    const adminEmail = process.env.POCKETBASE_DEV_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL;
+    const adminPassword = process.env.POCKETBASE_DEV_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD;
+    const pbExecutable = path.join(targetDir, isWindows ? 'pocketbase.exe' : 'pocketbase');
+    const pbDataDir = path.join(targetDir, 'pb_data');
+
+    if (adminEmail && adminPassword && fs.existsSync(pbExecutable)) {
+      try {
+        console.log(`\x1b[35m[Dahoot DB Install]\x1b[0m Bootstrapping initial superuser (${adminEmail}) via CLI...`);
+        execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+        console.log(`\x1b[32m[Dahoot DB Install] Created initial superuser: ${adminEmail}\x1b[0m`);
+      } catch (e) {
+        try {
+          execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+          console.log(`\x1b[32m[Dahoot DB Install] Created initial superuser: ${adminEmail}\x1b[0m`);
+        } catch (e2) {}
+      }
     }
 
     console.log(`\x1b[32m🎉 [Dahoot DB Install] PocketBase successfully installed in ${targetDir}!\x1b[0m`);
