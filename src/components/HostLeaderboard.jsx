@@ -11,6 +11,10 @@ export function HostLeaderboard({
   hostPlayers,
   hostNextQuestion,
   hostEndGame,
+  hostToggleTimer,
+  hostRestoreTimer,
+  timerDuration,
+  configuredTimerDuration,
   questions,
   roomCode
 }) {
@@ -245,7 +249,25 @@ export function HostLeaderboard({
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center' }}>
+      {!isLastQuestion && (
+        <div className="flex items-center justify-center gap-2 mt-4 mb-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Next Question Timer:</span>
+          <button
+            onClick={() => hostToggleTimer ? hostToggleTimer() : (hostRestoreTimer && hostRestoreTimer())}
+            className={`px-3 py-1 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 cursor-pointer border ${
+              (configuredTimerDuration > 0 || timerDuration > 0)
+                ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+            }`}
+            title="Click to toggle timer on/off for future questions"
+          >
+            <span>⏱ {(configuredTimerDuration || timerDuration || 20)}s {(configuredTimerDuration > 0 || timerDuration > 0) ? 'ON' : 'OFF'}</span>
+            <span className="text-[10px] underline">(Toggle)</span>
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 12, justifyContent: 'center' }}>
         <button className="btn btn-primary" onClick={hostNextQuestion} style={{ minWidth: 160 }}>
           {isLastQuestion ? 'Show Standings' : 'Next Question'}
         </button>

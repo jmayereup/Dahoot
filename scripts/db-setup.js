@@ -402,6 +402,7 @@ async function runSetup() {
       { name: 'current_question_start_time', type: 'text', required: false },
       { name: 'question_ids', type: 'json', required: false },
       { name: 'timer_duration', type: 'number', required: false, noDecimal: true },
+      { name: 'configured_timer_duration', type: 'number', required: false, noDecimal: true },
       { name: 'pacing_mode', type: 'select', required: false, values: ['teacher', 'student'], maxSelect: 1 },
       { name: 'marathon_mode', type: 'bool', required: false },
       { name: 'wrap_up_timer', type: 'number', required: false, noDecimal: true },

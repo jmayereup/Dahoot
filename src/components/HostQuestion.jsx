@@ -13,7 +13,9 @@ export function HostQuestion({
   hostPlayers,
   hostShowLeaderboard,
   hostCancelTimer,
+  hostRestoreTimer,
   timerDuration,
+  configuredTimerDuration,
   roomCode,
   hostEndGame
 }) {
@@ -250,9 +252,16 @@ export function HostQuestion({
             </button>
           </>
         ) : (
-          <button className="btn btn-primary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
-            Reveal Answers
-          </button>
+          <>
+            {timerDuration === 0 && (configuredTimerDuration > 0 || hostRestoreTimer) && (
+              <button className="btn btn-warning btn-sm" onClick={() => hostRestoreTimer && hostRestoreTimer()} style={{ width: 'auto' }}>
+                ⏱ Turn Timer Back On ({configuredTimerDuration || 20}s)
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
+              Reveal Answers
+            </button>
+          </>
         )}
         <button 
           className="btn btn-danger btn-sm" 

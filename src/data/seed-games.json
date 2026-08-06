@@ -1,5 +1,679 @@
 [
   {
+    "cefr_level": "A2",
+    "description": "Join Dug and the mischievous puppies in this fun language activity! Practice vocabulary, sentence order, and story comprehension. https://youtu.be/OZrQmOY_Pvk",
+    "language": "English",
+    "subject": "Foreign Languages",
+    "title": "Dug Days - Ep 2",
+    "creator": "System",
+    "questions": [
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Puppies",
+          "distractors": [
+            "Kittens",
+            "Rabbits",
+            "Birds"
+          ]
+        },
+        "text": "What comes inside the box at the start of the video?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Sleeping",
+          "distractors": [
+            "Running",
+            "Eating food",
+            "Barking"
+          ]
+        },
+        "text": "What are the puppies doing when Dug first looks inside the box?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Ouch! Their teeth hurt",
+          "distractors": [
+            "He is angry",
+            "He feels hungry",
+            "He falls asleep"
+          ]
+        },
+        "text": "How does Dug feel when the puppies bite him?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Dog kibble",
+          "distractors": [
+            "Milk",
+            "Apples",
+            "Bread"
+          ]
+        },
+        "text": "What does Carl give to the puppies at lunchtime?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "The puppies jump and take it",
+          "distractors": [
+            "Dug catches it easily",
+            "The squirrel takes it",
+            "The treat falls into the grass"
+          ]
+        },
+        "text": "What happens when Carl throws a treat to Dug?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "On the bird feeder",
+          "distractors": [
+            "On the roof",
+            "Under the table",
+            "In the tree"
+          ]
+        },
+        "text": "Where does the squirrel sit in the garden?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "They bark at the squirrel together",
+          "distractors": [
+            "They run inside the house",
+            "They give their toys to the squirrel",
+            "They go to sleep"
+          ]
+        },
+        "text": "What do Dug and the puppies do together when they see the squirrel?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "He liked today",
+          "distractors": [
+            "He was bored",
+            "He never wants the puppies to come back.",
+            "He is angry at Carl"
+          ]
+        },
+        "text": "How does Dug feel at the end of the day?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "His squeaky toys",
+          "distractors": [
+            "His food",
+            "His bone",
+            "His bed"
+          ]
+        },
+        "text": "What did Dug try to save from the puppies?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Back home in the box",
+          "distractors": [
+            "To the park",
+            "To sleep in the yard",
+            "To the kitchen"
+          ]
+        },
+        "text": "Where did the puppies go at the end of the day?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "Squeak",
+          "distractors": [
+            "Bark",
+            "Crunch",
+            "Whimper"
+          ]
+        },
+        "text": "What sound does a squeaky toy make?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "I liked today",
+          "distractors": [
+            "I am tired",
+            "Where are the puppies?",
+            "Give me a treat"
+          ]
+        },
+        "text": "What did Dug say at the end of the day?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "Puppies",
+            "are",
+            "very",
+            "cute"
+          ]
+        },
+        "text": "Put the words in the correct order to form a sentence.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "Take",
+            "care",
+            "of",
+            "the",
+            "puppies"
+          ]
+        },
+        "text": "Put the words in the correct order to form a sentence.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "It",
+            "is",
+            "lunch",
+            "time"
+          ]
+        },
+        "text": "Put the words in the correct order to form a sentence.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "categories": [
+            "Dug",
+            "The Puppies"
+          ],
+          "items": [
+            {
+              "category": "The Puppies",
+              "name": "Biting ears and fur with sharp teeth"
+            },
+            {
+              "category": "Dug",
+              "name": "Saying 'I liked today'"
+            },
+            {
+              "category": "The Puppies",
+              "name": "Stealing the treat in mid-air"
+            },
+            {
+              "category": "Dug",
+              "name": "Trying to save the squeaky toys"
+            }
+          ]
+        },
+        "text": "Who does each action? Sort the items into the correct category.",
+        "type": "CATEGORIZE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "categories": [
+            "Happy / Excited",
+            "In Pain / Ouch!"
+          ],
+          "items": [
+            {
+              "category": "Happy / Excited",
+              "name": "Playing chase in the green yard"
+            },
+            {
+              "category": "Happy / Excited",
+              "name": "Sitting with Carl at the end of the day"
+            },
+            {
+              "category": "In Pain / Ouch!",
+              "name": "When puppies chew on his collar and ears"
+            },
+            {
+              "category": "In Pain / Ouch!",
+              "name": "Getting rolled over by all the puppies at once"
+            }
+          ]
+        },
+        "text": "How does Dug feel in these moments? Sort each moment into the correct feeling category.",
+        "type": "CATEGORIZE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "categories": [
+            "Animals",
+            "Food / Meals"
+          ],
+          "items": [
+            {
+              "category": "Animals",
+              "name": "Puppy"
+            },
+            {
+              "category": "Food / Meals",
+              "name": "Kibble"
+            },
+            {
+              "category": "Animals",
+              "name": "Squirrel"
+            },
+            {
+              "category": "Food / Meals",
+              "name": "Treat"
+            },
+            {
+              "category": "Animals",
+              "name": "Dog"
+            },
+            {
+              "category": "Food / Meals",
+              "name": "Lunch"
+            }
+          ]
+        },
+        "text": "Sort each word into the correct category: Animals or Food / Meals.",
+        "type": "CATEGORIZE"
+      }
+    ]
+  },
+  {
+    "cefr_level": "B1",
+    "description": "Practice reporting statements in English: master tense backshifting, choose between 'said' and 'told', convert modals and time expressions, and shift pronouns correctly.",
+    "language": "English",
+    "subject": "Foreign Languages",
+    "title": "Reported Speech 2",
+    "creator": "System",
+    "questions": [
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "She said she was tired.",
+          "distractors": [
+            "She said she is tired.",
+            "She told she was tired.",
+            "She said she tired."
+          ]
+        },
+        "text": "Which sentence correctly reports: 'I am tired'?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "He said he could swim.",
+          "distractors": [
+            "He said he can swim.",
+            "He said he could swam.",
+            "He told he could swim."
+          ]
+        },
+        "text": "What is the correct reported form of 'I can swim'?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "told",
+          "distractors": [
+            "said",
+            "says",
+            "tell"
+          ]
+        },
+        "text": "Choose the correct word: 'She ___ me that she was leaving.'",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "They said they would arrive at 6 pm.",
+          "distractors": [
+            "They said they will arrive at 6 pm.",
+            "They told they would arrive at 6 pm.",
+            "They said they would arrived at 6 pm."
+          ]
+        },
+        "text": "How do you report 'We will arrive at 6 pm'?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "then",
+          "distractors": [
+            "now",
+            "today",
+            "that day"
+          ]
+        },
+        "text": "Which time expression changes correctly? 'now' becomes ___ in reported speech.",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "She said she had finished her homework.",
+          "distractors": [
+            "She said she has finished her homework.",
+            "She said she finished her homework.",
+            "She told she had finished her homework."
+          ]
+        },
+        "text": "Select the correct reported sentence: 'I have finished my homework,' she said.",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "He said he had seen the movie the day before.",
+          "distractors": [
+            "He said he saw the movie yesterday.",
+            "He said he had seen the movie yesterday.",
+            "He told he had seen the movie the day before."
+          ]
+        },
+        "text": "What is the correct reported form of 'I saw the movie yesterday'?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "he / his",
+          "distractors": [
+            "I / my",
+            "he / my",
+            "his / his"
+          ]
+        },
+        "text": "Tom said, 'I love my dog.' Tom said that ___ loved ___ dog.",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "She told me she was happy.",
+          "distractors": [
+            "She said me she was happy.",
+            "She told she was happy.",
+            "She said me that she was happy."
+          ]
+        },
+        "text": "Which sentence is correct?",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_answer": "He said he had to finish it that day.",
+          "distractors": [
+            "He said he must finish it today.",
+            "He said he had to finish it today.",
+            "He told he had to finish it that day."
+          ]
+        },
+        "text": "Report this: 'I must finish this today,' he said.",
+        "type": "MULTIPLE_CHOICE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "She",
+            "said",
+            "that",
+            "she",
+            "was",
+            "tired."
+          ]
+        },
+        "text": "Put the words in order to make a correct reported sentence: 'was / she / that / tired / she / said'.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "They",
+            "told",
+            "us",
+            "they",
+            "would",
+            "be",
+            "late."
+          ]
+        },
+        "text": "Put the words in order: 'would / they / us / they / late / told / be'.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "correct_sequence": [
+            "He",
+            "said",
+            "that",
+            "he",
+            "had",
+            "seen",
+            "the",
+            "film",
+            "the",
+            "day",
+            "before."
+          ]
+        },
+        "text": "Put the words in order: 'had / he / the / day / before / seen / that / film / said / he'.",
+        "type": "SORTING"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "categories": [
+            "the day before",
+            "then",
+            "that day",
+            "the next day",
+            "the previous week"
+          ],
+          "items": [
+            {
+              "category": "the day before",
+              "name": "yesterday"
+            },
+            {
+              "category": "then",
+              "name": "now"
+            },
+            {
+              "category": "that day",
+              "name": "today"
+            },
+            {
+              "category": "the next day",
+              "name": "tomorrow"
+            },
+            {
+              "category": "the previous week",
+              "name": "last week"
+            }
+          ]
+        },
+        "text": "Match each direct speech time expression to its reported speech equivalent.",
+        "type": "CATEGORIZE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "categories": [
+            "Correct",
+            "Incorrect"
+          ],
+          "items": [
+            {
+              "category": "Correct",
+              "name": "She said she was tired."
+            },
+            {
+              "category": "Incorrect",
+              "name": "He told me he is busy."
+            },
+            {
+              "category": "Correct",
+              "name": "They said they would come."
+            },
+            {
+              "category": "Incorrect",
+              "name": "She told us she has finished."
+            },
+            {
+              "category": "Correct",
+              "name": "He said he had seen it the day before."
+            }
+          ]
+        },
+        "text": "Sort the reported sentences into 'Correct' or 'Incorrect'.",
+        "type": "CATEGORIZE"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "answers_in_order": [
+            "had",
+            "seen"
+          ],
+          "distractors": [
+            "has",
+            "see",
+            "saw"
+          ],
+          "sentence": "He said that he [had] [seen] the movie the day before."
+        },
+        "text": "Fill in the missing words.",
+        "type": "DRAG_DROP"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "answers_in_order": [
+            "would",
+            "call"
+          ],
+          "distractors": [
+            "will",
+            "calls",
+            "called"
+          ],
+          "sentence": "She told me she [would] [call] me the next day."
+        },
+        "text": "Fill in the missing words.",
+        "type": "DRAG_DROP"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "answers_in_order": [
+            "were",
+            "going"
+          ],
+          "distractors": [
+            "are",
+            "went",
+            "go"
+          ],
+          "sentence": "They said they [were] [going] to the party then."
+        },
+        "text": "Fill in the missing words.",
+        "type": "DRAG_DROP"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "dropdowns": [
+            {
+              "correct_answer": "had",
+              "distractors": [
+                "has",
+                "have",
+                "having"
+              ]
+            }
+          ],
+          "sentence": "He said that he [had] finished his homework."
+        },
+        "text": "Select the correct word for each blank.",
+        "type": "DROP_DOWN"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "dropdowns": [
+            {
+              "correct_answer": "would",
+              "distractors": [
+                "will",
+                "can",
+                "must"
+              ]
+            }
+          ],
+          "sentence": "She told me she [would] be late."
+        },
+        "text": "Select the correct word for each blank.",
+        "type": "DROP_DOWN"
+      },
+      {
+        "correct_option_index": 0,
+        "options": {
+          "dropdowns": [
+            {
+              "correct_answer": "had",
+              "distractors": [
+                "has",
+                "have",
+                "having"
+              ]
+            },
+            {
+              "correct_answer": "seen",
+              "distractors": [
+                "see",
+                "saw",
+                "sees"
+              ]
+            }
+          ],
+          "sentence": "They said they [had] [seen] the accident."
+        },
+        "text": "Select the correct word for each blank.",
+        "type": "DROP_DOWN"
+      }
+    ]
+  },
+  {
     "cefr_level": "B1",
     "description": "Test your A2-B1 English skills with questions on grammar, vocabulary, and communication.",
     "language": "English",

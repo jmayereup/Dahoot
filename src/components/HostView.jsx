@@ -20,6 +20,8 @@ export function HostView({
   hostEndGame,
   hostCloseRoom,
   hostCancelTimer,
+  hostRestoreTimer,
+  hostToggleTimer,
   hostRemovePlayer,
   hostPlayAgain,
   hostChangeGame,
@@ -89,7 +91,9 @@ export function HostView({
             hostPlayers={hostPlayers}
             hostShowLeaderboard={hostShowLeaderboard}
             hostCancelTimer={hostCancelTimer}
+            hostRestoreTimer={hostRestoreTimer}
             timerDuration={hostRoom.timer_duration}
+            configuredTimerDuration={hostRoom.configured_timer_duration}
             roomCode={hostRoom.code}
             hostEndGame={hostEndGame}
           />
@@ -102,6 +106,10 @@ export function HostView({
             hostPlayers={hostPlayers}
             hostNextQuestion={hostNextQuestion}
             hostEndGame={hostEndGame}
+            hostToggleTimer={hostToggleTimer}
+            hostRestoreTimer={hostRestoreTimer}
+            timerDuration={hostRoom.timer_duration}
+            configuredTimerDuration={hostRoom.configured_timer_duration}
             questions={questions}
             roomCode={hostRoom.code}
           />

@@ -227,6 +227,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
 
       const questionIds = activeQuestions.map(q => q.id);
 
+      const timerDuration = options.timerDuration !== undefined ? options.timerDuration : 20;
+
       const room = await pb.collection('dahoot_rooms').create({
         code: pin,
         game_id: gameId,
@@ -234,7 +236,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
         status: 'LOBBY',
         current_question_start_time: '',
         question_ids: questionIds,
-        timer_duration: options.timerDuration !== undefined ? options.timerDuration : 20
+        timer_duration: timerDuration,
+        configured_timer_duration: timerDuration
       });
 
       setHostRoom(room);
@@ -355,6 +358,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
         current_question_start_time: '',
         question_ids: questionIds,
         timer_duration: options.marathonMode ? 0 : (options.timerDuration !== undefined ? options.timerDuration : 20),
+        configured_timer_duration: options.marathonMode ? 0 : (options.timerDuration !== undefined ? options.timerDuration : 20),
         pacing_mode: options.marathonMode ? 'student' : '',
         marathon_mode: !!options.marathonMode,
         wrap_up_timer: options.marathonMode ? 60 : 0,
@@ -425,10 +429,14 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
         status: 'FINISHED'
       });
     } else {
+      const nextDuration = (hostRoom.configured_timer_duration !== undefined && hostRoom.configured_timer_duration !== null)
+        ? hostRoom.configured_timer_duration
+        : (hostRoom.timer_duration || 20);
       await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: nextIdx,
-        current_question_start_time: new Date().toISOString()
+        current_question_start_time: new Date().toISOString(),
+        timer_duration: nextDuration
       });
     }
   };
@@ -499,6 +507,34 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   };
 
+  const hostRestoreTimer = async (overrideDuration) => {
+    if (!hostRoom) return;
+    const targetDuration = overrideDuration !== undefined 
+      ? overrideDuration 
+      : (hostRoom.configured_timer_duration || 20);
+    try {
+      const updatePayload = {
+        timer_duration: targetDuration,
+        configured_timer_duration: targetDuration
+      };
+      if (hostRoom.status === 'QUESTION') {
+        updatePayload.current_question_start_time = new Date().toISOString();
+      }
+      await pb.collection('dahoot_rooms').update(hostRoom.id, updatePayload);
+    } catch (err) {
+      console.error("Error restoring timer:", err);
+    }
+  };
+
+  const hostToggleTimer = async () => {
+    if (!hostRoom) return;
+    if (hostRoom.timer_duration > 0) {
+      await hostCancelTimer();
+    } else {
+      await hostRestoreTimer();
+    }
+  };
+
   const hostRemovePlayer = async (playerId) => {
     try {
       await pb.collection('dahoot_players').delete(playerId);
@@ -526,6 +562,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     hostEndGame,
     hostCloseRoom,
     hostCancelTimer,
+    hostRestoreTimer,
+    hostToggleTimer,
     seedQuestions,
     refreshGames: fetchGames,
     hostRemovePlayer,
