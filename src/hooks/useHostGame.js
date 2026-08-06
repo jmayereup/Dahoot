@@ -383,9 +383,9 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     }
   };
 
-  const hostPlayAgain = async () => {
+  const hostPlayAgain = async (options) => {
     if (!hostRoom) return;
-    await restartRoomWithGame(hostRoom.game_id, currentOptions);
+    await restartRoomWithGame(hostRoom.game_id, options || currentOptions);
   };
 
   const hostChangeGame = async (gameId, options = {}) => {

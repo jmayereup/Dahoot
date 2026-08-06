@@ -118,6 +118,7 @@ export function HostView({
             roomCode={hostRoom.code}
             gameTitle={gamesList?.find(g => g.id === hostRoom.game_id)?.title || 'Dahoot Game'}
             isMarathon={false}
+            currentGameId={hostRoom?.game_id}
           />
         )}
 
