@@ -268,7 +268,7 @@ export function HostQuestion({
         onClose={() => setShowStopConfirm(false)}
         onConfirm={hostEndGame}
         title="Stop the game?"
-        message="This will end the session for all players. Are you sure you want to stop and return to the home screen?"
+        message="This will end the game for all players and display the final scored board. Are you sure you want to stop?"
         confirmText="Stop Game"
         cancelText="Keep Playing"
         variant="danger"

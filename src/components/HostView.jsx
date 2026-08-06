@@ -18,6 +18,7 @@ export function HostView({
   hostShowLeaderboard,
   hostNextQuestion,
   hostEndGame,
+  hostCloseRoom,
   hostCancelTimer,
   hostRemovePlayer,
   hostPlayAgain,
@@ -73,7 +74,7 @@ export function HostView({
             copied={copied}
             handleCopyLink={handleCopyLink}
             hostStartGame={hostStartGame}
-            hostEndGame={hostEndGame}
+            hostEndGame={hostCloseRoom || hostEndGame}
             hostRemovePlayer={hostRemovePlayer}
           />
         )}
@@ -109,7 +110,7 @@ export function HostView({
         {hostRoom.status === 'FINISHED' && (
           <HostFinished
             hostPlayers={hostPlayers}
-            hostEndGame={hostEndGame}
+            hostEndGame={hostCloseRoom || hostEndGame}
             questions={questions}
             hostPlayAgain={hostPlayAgain}
             hostChangeGame={hostChangeGame}

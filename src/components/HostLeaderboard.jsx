@@ -263,7 +263,7 @@ export function HostLeaderboard({
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={hostEndGame}
         title="Cancel the game?"
-        message="This will end the session for all players. Are you sure you want to cancel and return to the home screen?"
+        message="This will end the game for all players and display the final scored board. Are you sure you want to cancel?"
         confirmText="Cancel Game"
         cancelText="Keep Going"
         variant="danger"

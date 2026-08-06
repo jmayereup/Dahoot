@@ -47,7 +47,7 @@ export function MarathonHostView({
 
   return (
     <div className="app-container">
-      <GameMusicController gameStatus={hostRoom.status} />
+      <GameMusicController gameStatus={hostRoom.status} isMarathon={true} />
       <div className="panel panel-large" style={{
         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(167, 139, 250, 0.02) 100%)',
         borderColor: 'rgba(139, 92, 246, 0.15)'

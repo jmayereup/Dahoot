@@ -436,6 +436,17 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   const hostEndGame = async () => {
     if (!hostRoom) return;
     try {
+      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+        status: 'FINISHED'
+      });
+    } catch (err) {
+      console.error("Error ending game:", err);
+    }
+  };
+
+  const hostCloseRoom = async () => {
+    if (!hostRoom) return;
+    try {
       await pb.collection('dahoot_rooms').delete(hostRoom.id);
       setHostRoom(null);
       setHostPlayers([]);
@@ -513,6 +524,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
     hostShowLeaderboard,
     hostNextQuestion,
     hostEndGame,
+    hostCloseRoom,
     hostCancelTimer,
     seedQuestions,
     refreshGames: fetchGames,
