@@ -400,22 +400,25 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   const hostStartGame = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: 0,
         current_question_start_time: new Date().toISOString()
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error("Error starting game:", err);
+      setError("Failed to start game: " + err.message);
     }
   };
 
   const hostShowLeaderboard = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'LEADERBOARD'
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error("Error transitioning to leaderboard:", err);
     }
@@ -424,29 +427,32 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   const hostNextQuestion = async () => {
     if (!hostRoom) return;
     const nextIdx = hostRoom.current_question_index + 1;
+    let updated;
     if (nextIdx >= questions.length) {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'FINISHED'
       });
     } else {
       const nextDuration = (hostRoom.configured_timer_duration !== undefined && hostRoom.configured_timer_duration !== null)
         ? hostRoom.configured_timer_duration
         : (hostRoom.timer_duration || 20);
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: nextIdx,
         current_question_start_time: new Date().toISOString(),
         timer_duration: nextDuration
       });
     }
+    if (updated) setHostRoom(updated);
   };
 
   const hostEndGame = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'FINISHED'
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error("Error ending game:", err);
     }
@@ -499,9 +505,10 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   const hostCancelTimer = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         timer_duration: 0
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error("Error cancelling timer:", err);
     }
@@ -520,7 +527,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       if (hostRoom.status === 'QUESTION') {
         updatePayload.current_question_start_time = new Date().toISOString();
       }
-      await pb.collection('dahoot_rooms').update(hostRoom.id, updatePayload);
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, updatePayload);
+      setHostRoom(updated);
     } catch (err) {
       console.error("Error restoring timer:", err);
     }
