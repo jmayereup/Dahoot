@@ -138,6 +138,18 @@ export function HostLeaderboard({
       <h2 className="!mb-2">Leaderboard</h2>
       <p className="subtitle !-mt-1 !mb-4">Question {qIndex + 1} Complete</p>
 
+      {/* Question Card */}
+      {activeQuestion && activeQuestion.text && (
+        <div className="question-card w-full text-center mb-4 bg-slate-50/50 border border-slate-100 rounded-2xl p-4 shadow-xs">
+          <div className="question-number inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100/85 text-rose-500 font-extrabold text-[10px] tracking-widest uppercase rounded-full mb-2 shadow-xs">
+            Question {qIndex + 1} of {questions.length} • {type.replace('_', ' ')}
+          </div>
+          <div className="question-title text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-snug max-w-3xl mx-auto px-2">
+            {activeQuestion.text}
+          </div>
+        </div>
+      )}
+
       {/* Show Correct Answer breakdown */}
       <div style={{ marginBottom: 16, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '14px 20px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
