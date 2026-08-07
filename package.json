@@ -11,7 +11,11 @@
     "db:install": "node scripts/db-install.js",
     "db:setup": "node scripts/db-setup.js",
     "db:pull-seed": "node scripts/pull-live-seed.js",
-    "deploy": "node scripts/deploy.js"
+    "deploy": "node scripts/deploy.js",
+    "deploy-backend": "node scripts/deploy.js --backend-only",
+    "deploy-frontend": "node scripts/deploy.js --frontend-only",
+    "deploy:backend": "node scripts/deploy.js --backend-only",
+    "deploy:frontend": "node scripts/deploy.js --frontend-only"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",

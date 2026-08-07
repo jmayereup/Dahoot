@@ -73,14 +73,32 @@ npm run dev
 
 ---
 
-## 🌊 DigitalOcean Deployment
+---
 
-For complete instructions on self-hosting Dahoot on a DigitalOcean Ubuntu droplet, see [DIGITALOCEAN_DEPLOYMENT.md](./DIGITALOCEAN_DEPLOYMENT.md).
+## 🚀 Deployment Commands
 
-The deployment guide covers:
-- Creating and configuring a DigitalOcean droplet
-- Installing and configuring PocketBase as a system service
-- Setting up Nginx with SSL/HTTPS
-- SSL certificate management with Let's Encrypt
-- Automated deployment from your local machine
-- Ongoing maintenance, backups, and security best practices
+Dahoot supports flexible deployment workflows depending on your hosting setup:
+
+- **Full Deployment (Backend + Frontend to VPS)**:
+  ```bash
+  npm run deploy
+  ```
+- **Backend Only Deployment (PocketBase hooks & schema checks)**:
+  ```bash
+  npm run deploy-backend
+  ```
+  *Use this when your frontend is hosted separately (e.g. Cloudflare Pages or Vercel) and you only need to sync PocketBase hooks and verify DB schemas.*
+
+- **Frontend Only Deployment (Vite build & static asset rsync)**:
+  ```bash
+  npm run deploy-frontend
+  ```
+
+### ☁️ Cloudflare Pages (Frontend Hosting)
+If you host your frontend on Cloudflare Pages via GitHub:
+1. Connect your GitHub repository to Cloudflare Pages (Framework: `Vite`, Build command: `npm run build`, Output directory: `dist`).
+2. Add `VITE_POCKETBASE_URL` to Cloudflare Pages environment variables.
+3. Use `npm run deploy-backend` to manage and deploy your PocketBase server hooks & schema checks.
+
+For complete step-by-step instructions on self-hosting Dahoot on a DigitalOcean Ubuntu droplet, see [DIGITALOCEAN_DEPLOYMENT.md](./DIGITALOCEAN_DEPLOYMENT.md).
+

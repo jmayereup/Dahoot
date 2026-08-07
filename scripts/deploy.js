@@ -288,7 +288,15 @@ async function compareVersions(connectionString, targetPath, env) {
 }
 
 async function deploy() {
-  console.log('\x1b[35m[Dahoot Deploy]\x1b[0m Loading configuration...');
+  const args = process.argv.slice(2);
+  const isBackendOnly = args.includes('--backend-only') || args.includes('backend');
+  const isFrontendOnly = args.includes('--frontend-only') || args.includes('frontend');
+
+  const runBackend = isBackendOnly || (!isBackendOnly && !isFrontendOnly);
+  const runFrontend = isFrontendOnly || (!isBackendOnly && !isFrontendOnly);
+
+  const modeText = isBackendOnly ? 'Backend Only' : (isFrontendOnly ? 'Frontend Only' : 'Full (Backend & Frontend)');
+  console.log(`\x1b[35m[Dahoot Deploy]\x1b[0m Loading configuration... [Mode: ${modeText}]`);
   const env = loadEnv();
 
   const ip = env.DEPLOY_SERVER_IP;
@@ -311,22 +319,26 @@ async function deploy() {
 
   console.log(`\x1b[35m[Dahoot Deploy]\x1b[0m Deploying to \x1b[36m${connectionString}:${targetPath}\x1b[0m`);
 
-  // Step 0: Verify version and schema consistency before deploying
-  await compareVersions(connectionString, targetPath, env);
-  await compareSchemas(env);
+  // Step 0: Verify version and schema consistency before deploying (Backend task)
+  if (runBackend) {
+    await compareVersions(connectionString, targetPath, env);
+    await compareSchemas(env);
+  }
 
-  // Step 1: Build the Vite production assets
-  console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 1: Building frontend assets...\x1b[0m');
-  try {
-    execSync('npm run build', { 
-      cwd: rootDir, 
-      env: { ...process.env, VITE_POCKETBASE_URL: liveUrl }, 
-      stdio: 'inherit' 
-    });
-    console.log('\x1b[32m[Dahoot Deploy] Frontend built successfully using production/live url.\x1b[0m');
-  } catch (err) {
-    console.error('\x1b[31m[Dahoot Deploy] Error: Local build failed.\x1b[0m', err.message);
-    process.exit(1);
+  // Step 1: Build the Vite production assets (Frontend task)
+  if (runFrontend) {
+    console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 1: Building frontend assets...\x1b[0m');
+    try {
+      execSync('npm run build', { 
+        cwd: rootDir, 
+        env: { ...process.env, VITE_POCKETBASE_URL: liveUrl }, 
+        stdio: 'inherit' 
+      });
+      console.log('\x1b[32m[Dahoot Deploy] Frontend built successfully using production/live url.\x1b[0m');
+    } catch (err) {
+      console.error('\x1b[31m[Dahoot Deploy] Error: Local build failed.\x1b[0m', err.message);
+      process.exit(1);
+    }
   }
 
   // Step 2: Ensure target directory exists on VPS
@@ -340,31 +352,41 @@ async function deploy() {
     process.exit(1);
   }
 
-  // Step 3: Deploy frontend files
-  console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 3: Uploading frontend static assets (dist/)...\x1b[0m');
-  try {
-    execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${path.join(rootDir, 'dist')}/`, `${connectionString}:${targetPath}/dist/`], { stdio: 'inherit' });
-    console.log('\x1b[32m[Dahoot Deploy] Frontend assets uploaded successfully.\x1b[0m');
-  } catch (err) {
-    console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync frontend assets.\x1b[0m', err.message);
-    process.exit(1);
-  }
-
-  // Step 4: Deploy PocketBase JS VM hooks (if exists)
-  const localHooksDir = path.join(pbDir, 'pb_hooks');
-  if (fs.existsSync(localHooksDir)) {
-    console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
+  // Step 3: Deploy frontend files (Frontend task)
+  if (runFrontend) {
+    console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 3: Uploading frontend static assets (dist/)...\x1b[0m');
     try {
-      execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localHooksDir}/`, `${connectionString}:${hooksPath}/`], { stdio: 'inherit' });
-      console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
+      execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${path.join(rootDir, 'dist')}/`, `${connectionString}:${targetPath}/dist/`], { stdio: 'inherit' });
+      console.log('\x1b[32m[Dahoot Deploy] Frontend assets uploaded successfully.\x1b[0m');
     } catch (err) {
-      console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
+      console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync frontend assets.\x1b[0m', err.message);
       process.exit(1);
     }
   }
 
-  console.log('\n\x1b[32;1m🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!\x1b[0m\n');
-  console.log('To complete the configuration, ensure your Nginx site configuration is set up properly.');
+  // Step 4: Deploy PocketBase JS VM hooks (Backend task)
+  if (runBackend) {
+    const localHooksDir = path.join(pbDir, 'pb_hooks');
+    if (fs.existsSync(localHooksDir)) {
+      console.log(`\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 4: Uploading PocketBase hooks to ${hooksPath}...\x1b[0m`);
+      try {
+        execFileSync('rsync', ['-avz', '--delete', '-e', 'ssh', `${localHooksDir}/`, `${connectionString}:${hooksPath}/`], { stdio: 'inherit' });
+        console.log('\x1b[32m[Dahoot Deploy] PocketBase hooks uploaded successfully.\x1b[0m');
+      } catch (err) {
+        console.error('\x1b[31m[Dahoot Deploy] Error: Failed to sync hooks.\x1b[0m', err.message);
+        process.exit(1);
+      }
+    }
+  }
+
+  const successLabel = isBackendOnly 
+    ? '🎉 BACKEND DEPLOYMENT COMPLETED SUCCESSFULLY!' 
+    : (isFrontendOnly ? '🎉 FRONTEND DEPLOYMENT COMPLETED SUCCESSFULLY!' : '🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!');
+
+  console.log(`\n\x1b[32;1m${successLabel}\x1b[0m\n`);
+  if (runFrontend) {
+    console.log('To complete the configuration, ensure your Nginx site configuration is set up properly.');
+  }
 }
 
 deploy().catch((err) => {
