@@ -18,7 +18,10 @@ export function HostView({
   hostShowLeaderboard,
   hostNextQuestion,
   hostEndGame,
+  hostCloseRoom,
   hostCancelTimer,
+  hostRestoreTimer,
+  hostToggleTimer,
   hostRemovePlayer,
   hostPlayAgain,
   hostChangeGame,
@@ -73,7 +76,7 @@ export function HostView({
             copied={copied}
             handleCopyLink={handleCopyLink}
             hostStartGame={hostStartGame}
-            hostEndGame={hostEndGame}
+            hostEndGame={hostCloseRoom || hostEndGame}
             hostRemovePlayer={hostRemovePlayer}
           />
         )}
@@ -88,7 +91,9 @@ export function HostView({
             hostPlayers={hostPlayers}
             hostShowLeaderboard={hostShowLeaderboard}
             hostCancelTimer={hostCancelTimer}
+            hostRestoreTimer={hostRestoreTimer}
             timerDuration={hostRoom.timer_duration}
+            configuredTimerDuration={hostRoom.configured_timer_duration}
             roomCode={hostRoom.code}
             hostEndGame={hostEndGame}
           />
@@ -101,6 +106,10 @@ export function HostView({
             hostPlayers={hostPlayers}
             hostNextQuestion={hostNextQuestion}
             hostEndGame={hostEndGame}
+            hostToggleTimer={hostToggleTimer}
+            hostRestoreTimer={hostRestoreTimer}
+            timerDuration={hostRoom.timer_duration}
+            configuredTimerDuration={hostRoom.configured_timer_duration}
             questions={questions}
             roomCode={hostRoom.code}
           />
@@ -109,7 +118,7 @@ export function HostView({
         {hostRoom.status === 'FINISHED' && (
           <HostFinished
             hostPlayers={hostPlayers}
-            hostEndGame={hostEndGame}
+            hostEndGame={hostCloseRoom || hostEndGame}
             questions={questions}
             hostPlayAgain={hostPlayAgain}
             hostChangeGame={hostChangeGame}
@@ -117,6 +126,7 @@ export function HostView({
             roomCode={hostRoom.code}
             gameTitle={gamesList?.find(g => g.id === hostRoom.game_id)?.title || 'Dahoot Game'}
             isMarathon={false}
+            currentGameId={hostRoom?.game_id}
           />
         )}
 

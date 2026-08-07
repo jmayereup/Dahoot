@@ -47,7 +47,7 @@ export function MarathonHostView({
 
   return (
     <div className="app-container">
-      <GameMusicController gameStatus={hostRoom.status} />
+      <GameMusicController gameStatus={hostRoom.status} isMarathon={true} />
       <div className="panel panel-large" style={{
         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(167, 139, 250, 0.02) 100%)',
         borderColor: 'rgba(139, 92, 246, 0.15)'
@@ -426,6 +426,16 @@ export function MarathonHostView({
 
         {hostRoom.status === 'LEADERBOARD' && (
           <div>
+            {!isStudentPaced && activeQuestion && activeQuestion.text && (
+              <div className="question-card w-full text-center mb-4 bg-purple-50/50 border border-purple-100 rounded-2xl p-4 shadow-xs">
+                <div className="question-number inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-[10px] tracking-widest uppercase rounded-full mb-2 shadow-xs">
+                  Question {qIndex + 1} of {questions.length} • {(activeQuestion.type || '').replace('_', ' ')}
+                </div>
+                <div className="question-title text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-snug max-w-3xl mx-auto px-2">
+                  {activeQuestion.text}
+                </div>
+              </div>
+            )}
             <div style={{
               marginBottom: '16px',
               padding: '12px 16px',
@@ -535,6 +545,7 @@ export function MarathonHostView({
             roomCode={hostRoom.code}
             gameTitle={gamesList?.find(g => g.id === hostRoom.game_id)?.title || 'Dahoot Game'}
             isMarathon={true}
+            currentGameId={hostRoom?.game_id}
           />
         )}
 

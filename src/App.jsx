@@ -359,7 +359,10 @@ function App() {
           hostShowLeaderboard={hostGame.hostShowLeaderboard}
           hostNextQuestion={hostGame.hostNextQuestion}
           hostEndGame={hostGame.hostEndGame}
+          hostCloseRoom={hostGame.hostCloseRoom}
           hostCancelTimer={hostGame.hostCancelTimer}
+          hostRestoreTimer={hostGame.hostRestoreTimer}
+          hostToggleTimer={hostGame.hostToggleTimer}
           hostRemovePlayer={hostGame.hostRemovePlayer}
           hostPlayAgain={hostGame.hostPlayAgain}
           hostChangeGame={hostGame.hostChangeGame}

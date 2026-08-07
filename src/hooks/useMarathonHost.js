@@ -283,9 +283,9 @@ export function useMarathonHost(view, setView) {
     }
   };
 
-  const hostPlayAgain = async () => {
+  const hostPlayAgain = async (options) => {
     if (!hostRoom) return;
-    await restartRoomWithGame(hostRoom.game_id, currentOptions);
+    await restartRoomWithGame(hostRoom.game_id, options || currentOptions);
   };
 
   const hostChangeGame = async (gameId, options = {}) => {
@@ -349,14 +349,15 @@ export function useMarathonHost(view, setView) {
     if (!hostRoom) return;
 
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: 0,
         current_question_start_time: new Date().toISOString()
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error('Error starting marathon: ' + err.message);
-      alert('Failed to start marathon: ' + err.message);
+      setError('Failed to start marathon: ' + err.message);
     }
   };
 
@@ -364,13 +365,14 @@ export function useMarathonHost(view, setView) {
     if (!hostRoom) return;
 
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'WRAP_UP',
         wrap_up_start_time: new Date().toISOString()
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error('Error starting wrap-up timer: ' + err.message);
-      alert('Failed to start wrap-up timer: ' + err.message);
+      setError('Failed to start wrap-up timer: ' + err.message);
     }
   };
 
@@ -378,9 +380,10 @@ export function useMarathonHost(view, setView) {
     if (!hostRoom) return;
 
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'LEADERBOARD'
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error('Error showing leaderboard: ' + err.message);
     }
@@ -398,30 +401,33 @@ export function useMarathonHost(view, setView) {
   const hostNextQuestion = async () => {
     if (!hostRoom) return;
     const nextIdx = hostRoom.current_question_index + 1;
+    let updated;
     if (nextIdx >= questions.length) {
       const newLap = currentLap + 1;
       const newIds = reshuffleQuestionIds();
       setCurrentLap(newLap);
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         question_ids: newIds,
         current_question_index: 0,
         current_question_start_time: new Date().toISOString()
       });
     } else {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'QUESTION',
         current_question_index: nextIdx,
         current_question_start_time: new Date().toISOString()
       });
     }
+    if (updated) setHostRoom(updated);
   };
 
   const hostCancelTimer = async () => {
     if (!hostRoom) return;
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         timer_duration: 0
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error('Error cancelling timer:', err);
     }
@@ -431,9 +437,10 @@ export function useMarathonHost(view, setView) {
     if (!hostRoom) return;
 
     try {
-      await pb.collection('dahoot_rooms').update(hostRoom.id, {
+      const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'FINISHED'
       });
+      setHostRoom(updated);
     } catch (err) {
       console.error('Error ending marathon: ' + err.message);
     }

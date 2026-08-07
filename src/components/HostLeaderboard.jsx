@@ -11,6 +11,10 @@ export function HostLeaderboard({
   hostPlayers,
   hostNextQuestion,
   hostEndGame,
+  hostToggleTimer,
+  hostRestoreTimer,
+  timerDuration,
+  configuredTimerDuration,
   questions,
   roomCode
 }) {
@@ -134,6 +138,18 @@ export function HostLeaderboard({
       <h2 className="!mb-2">Leaderboard</h2>
       <p className="subtitle !-mt-1 !mb-4">Question {qIndex + 1} Complete</p>
 
+      {/* Question Card */}
+      {activeQuestion && activeQuestion.text && (
+        <div className="question-card w-full text-center mb-4 bg-slate-50/50 border border-slate-100 rounded-2xl p-4 shadow-xs">
+          <div className="question-number inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100/85 text-rose-500 font-extrabold text-[10px] tracking-widest uppercase rounded-full mb-2 shadow-xs">
+            Question {qIndex + 1} of {questions.length} • {type.replace('_', ' ')}
+          </div>
+          <div className="question-title text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-snug max-w-3xl mx-auto px-2">
+            {activeQuestion.text}
+          </div>
+        </div>
+      )}
+
       {/* Show Correct Answer breakdown */}
       <div style={{ marginBottom: 16, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '14px 20px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
@@ -245,7 +261,25 @@ export function HostLeaderboard({
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center' }}>
+      {!isLastQuestion && (
+        <div className="flex items-center justify-center gap-2 mt-4 mb-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Next Question Timer:</span>
+          <button
+            onClick={() => hostToggleTimer ? hostToggleTimer() : (hostRestoreTimer && hostRestoreTimer())}
+            className={`px-3 py-1 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 cursor-pointer border ${
+              (configuredTimerDuration > 0 || timerDuration > 0)
+                ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+            }`}
+            title="Click to toggle timer on/off for future questions"
+          >
+            <span>⏱ {(configuredTimerDuration || timerDuration || 20)}s {(configuredTimerDuration > 0 || timerDuration > 0) ? 'ON' : 'OFF'}</span>
+            <span className="text-[10px] underline">(Toggle)</span>
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 12, justifyContent: 'center' }}>
         <button className="btn btn-primary" onClick={hostNextQuestion} style={{ minWidth: 160 }}>
           {isLastQuestion ? 'Show Standings' : 'Next Question'}
         </button>
@@ -263,7 +297,7 @@ export function HostLeaderboard({
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={hostEndGame}
         title="Cancel the game?"
-        message="This will end the session for all players. Are you sure you want to cancel and return to the home screen?"
+        message="This will end the game for all players and display the final scored board. Are you sure you want to cancel?"
         confirmText="Cancel Game"
         cancelText="Keep Going"
         variant="danger"

@@ -9,7 +9,7 @@ const TRACKS = [
   { id: 'sunday', name: 'Sunday High (Celebration)', path: '/gameMusic/Sunday_High.mp3' }
 ];
 
-export function GameMusicController({ gameStatus }) {
+export function GameMusicController({ gameStatus, isMarathon = false }) {
   const [currentTrackId, setCurrentTrackId] = useState('offbeat');
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.4);
@@ -31,11 +31,16 @@ export function GameMusicController({ gameStatus }) {
   }, []);
   
   // Keep refs in sync with state for access in intervals without stale closures
+  const currentTrackIdRef = useRef(currentTrackId);
   const currentVolumeRef = useRef(volume);
   const isMutedRef = useRef(isMuted);
   const isPlayingRef = useRef(isPlaying);
   const isFadingOutRef = useRef(false);
   const prevStatusRef = useRef(gameStatus);
+
+  useEffect(() => {
+    currentTrackIdRef.current = currentTrackId;
+  }, [currentTrackId]);
 
   useEffect(() => {
     currentVolumeRef.current = volume;
@@ -317,38 +322,56 @@ export function GameMusicController({ gameStatus }) {
       fadeIntervalRef.current = null;
     }
 
-    // Reset track and play again with fade in
-    audio.currentTime = 0;
-    audio.volume = 0;
+    if (isMarathon || autoSync) {
+      // Auto-cycle through music options during marathon mode or autoSync
+      const gameplayTracks = ['recess', 'golden_hour', 'lotus_bloom', 'paddy_field'];
+      let nextTrackId;
 
-    if (isPlayingRef.current) {
-      audio.play()
-        .then(() => {
-          setPlayError(false);
-          const fadeInDuration = 2000; // ms
-          const fadeSteps = 30;
-          const stepTime = fadeInDuration / fadeSteps;
-          let fadeInStep = 0;
+      if (gameplayTracks.includes(currentTrackIdRef.current)) {
+        const currentIndex = gameplayTracks.indexOf(currentTrackIdRef.current);
+        nextTrackId = gameplayTracks[(currentIndex + 1) % gameplayTracks.length];
+      } else {
+        const currentIndex = TRACKS.findIndex(t => t.id === currentTrackIdRef.current);
+        const nextIndex = (currentIndex + 1) % TRACKS.length;
+        nextTrackId = TRACKS[nextIndex].id;
+      }
 
-          fadeIntervalRef.current = setInterval(() => {
-            fadeInStep++;
-            const inRatio = fadeInStep / fadeSteps;
-            if (audioRef.current && !isMutedRef.current) {
-              audioRef.current.volume = inRatio * currentVolumeRef.current;
-            }
-            if (fadeInStep >= fadeSteps) {
-              clearInterval(fadeIntervalRef.current);
-              fadeIntervalRef.current = null;
-              if (audioRef.current) {
-                audioRef.current.volume = isMutedRef.current ? 0 : currentVolumeRef.current;
+      setCurrentTrackId(nextTrackId);
+      setIsPlaying(true);
+    } else {
+      // Reset track and play again with fade in
+      audio.currentTime = 0;
+      audio.volume = 0;
+
+      if (isPlayingRef.current) {
+        audio.play()
+          .then(() => {
+            setPlayError(false);
+            const fadeInDuration = 2000; // ms
+            const fadeSteps = 30;
+            const stepTime = fadeInDuration / fadeSteps;
+            let fadeInStep = 0;
+
+            fadeIntervalRef.current = setInterval(() => {
+              fadeInStep++;
+              const inRatio = fadeInStep / fadeSteps;
+              if (audioRef.current && !isMutedRef.current) {
+                audioRef.current.volume = inRatio * currentVolumeRef.current;
               }
-            }
-          }, stepTime);
-        })
-        .catch(err => {
-          console.warn("Error replaying audio in loop:", err);
-          setIsPlaying(false);
-        });
+              if (fadeInStep >= fadeSteps) {
+                clearInterval(fadeIntervalRef.current);
+                fadeIntervalRef.current = null;
+                if (audioRef.current) {
+                  audioRef.current.volume = isMutedRef.current ? 0 : currentVolumeRef.current;
+                }
+              }
+            }, stepTime);
+          })
+          .catch(err => {
+            console.warn("Error replaying audio in loop:", err);
+            setIsPlaying(false);
+          });
+      }
     }
   };
 
@@ -432,6 +455,16 @@ export function GameMusicController({ gameStatus }) {
               </svg>
             </button>
           </div>
+
+          {/* Marathon Mode Auto-cycling badge */}
+          {isMarathon && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 border border-purple-200/60 rounded-lg text-[11px] font-semibold text-purple-700">
+              <svg className={`w-3.5 h-3.5 text-purple-500 flex-shrink-0 ${prefersReducedMotion ? '' : 'animate-spin'}`} style={{ animationDuration: '8s' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Marathon Mode: Auto-cycling tracks</span>
+            </div>
+          )}
 
           {/* Autoplay blocked message */}
           {playError && (

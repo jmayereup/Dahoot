@@ -17,10 +17,12 @@ export function HostFinished({
   gamesList = [],
   roomCode,
   gameTitle,
-  isMarathon = false
+  isMarathon = false,
+  currentGameId
 }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
   const [showChangeGameModal, setShowChangeGameModal] = useState(false);
+  const [showPlayAgainModal, setShowPlayAgainModal] = useState(false);
   const [selectedNewGameId, setSelectedNewGameId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [newRandomize, setNewRandomize] = useState(true);
@@ -31,6 +33,16 @@ export function HostFinished({
   const [modalQuestions, setModalQuestions] = useState([]);
   const [newSelectedQuestionTypes, setNewSelectedQuestionTypes] = useState(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
   const [showScoreboardModal, setShowScoreboardModal] = useState(false);
+
+  // Options for Play Again Modal
+  const [playAgainQuestions, setPlayAgainQuestions] = useState([]);
+  const [playAgainRandomize, setPlayAgainRandomize] = useState(true);
+  const [playAgainTimerDuration, setPlayAgainTimerDuration] = useState(20);
+  const [playAgainMaxQuestions, setPlayAgainMaxQuestions] = useState('');
+  const [playAgainPacingMode, setPlayAgainPacingMode] = useState(isMarathon ? 'student' : 'teacher');
+  const [playAgainSelectedQuestionTypes, setPlayAgainSelectedQuestionTypes] = useState([
+    'MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'
+  ]);
 
   useEffect(() => {
     if (!selectedNewGameId) {
@@ -88,7 +100,7 @@ export function HostFinished({
     setNewSelectedQuestionTypes(prev => 
       prev.includes(type)
         ? prev.filter(t => t !== type)
-        : [...prev, type]
+        : [...prev, t]
     );
   };
 
@@ -127,11 +139,69 @@ export function HostFinished({
     }
   };
 
-  const handlePlayAgain = async () => {
+  const handleOpenPlayAgainModal = async () => {
+    setShowPlayAgainModal(true);
+    setPlayAgainPacingMode(isMarathon ? 'student' : 'teacher');
+    
+    const effectiveGameId = currentGameId || questions[0]?.game_id || gamesList?.find(g => g.title === gameTitle)?.id;
+    if (effectiveGameId) {
+      try {
+        const res = await pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: effectiveGameId })
+        });
+        setPlayAgainQuestions(res);
+        const types = new Set();
+        res.forEach(q => types.add(q.type || 'MULTIPLE_CHOICE'));
+        setPlayAgainSelectedQuestionTypes(Array.from(types));
+      } catch (err) {
+        console.error("Error fetching questions for play again modal:", err);
+        setPlayAgainQuestions(questions);
+      }
+    } else {
+      setPlayAgainQuestions(questions);
+    }
+  };
+
+  const availableQuestionTypesPlayAgain = useMemo(() => {
+    const types = new Set();
+    playAgainQuestions.forEach(q => {
+      types.add(q.type || 'MULTIPLE_CHOICE');
+    });
+    return Array.from(types);
+  }, [playAgainQuestions]);
+
+  const getQuestionTypeCountPlayAgain = (type) => {
+    return playAgainQuestions.filter(q => (q.type || 'MULTIPLE_CHOICE') === type).length;
+  };
+
+  const toggleQuestionTypePlayAgain = (type) => {
+    setPlayAgainSelectedQuestionTypes(prev => 
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const totalQuestionsPlayAgain = useMemo(() => {
+    return playAgainQuestions.filter(q => {
+      const type = q.type || 'MULTIPLE_CHOICE';
+      return playAgainSelectedQuestionTypes.includes(type);
+    }).length;
+  }, [playAgainQuestions, playAgainSelectedQuestionTypes]);
+
+  const handleStartPlayAgain = async () => {
     if (!hostPlayAgain) return;
     setIsRestarting(true);
     try {
-      await hostPlayAgain();
+      const options = {
+        randomize: playAgainRandomize,
+        timerDuration: playAgainTimerDuration,
+        maxQuestions: playAgainMaxQuestions ? parseInt(playAgainMaxQuestions) : null,
+        questionTypes: playAgainSelectedQuestionTypes,
+        marathonMode: playAgainPacingMode === 'student'
+      };
+      await hostPlayAgain(options);
+      setShowPlayAgainModal(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -453,7 +523,7 @@ export function HostFinished({
             {hostPlayAgain && (
               <button 
                 className="btn btn-primary"
-                onClick={handlePlayAgain}
+                onClick={handleOpenPlayAgainModal}
                 disabled={isRestarting}
               >
                 {isRestarting ? (
@@ -761,6 +831,111 @@ export function HostFinished({
                   </>
                 ) : (
                   'Start Hosting Quiz'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPlayAgainModal && (
+        <div 
+          className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-[1300] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowPlayAgainModal(false)}
+        >
+          <div 
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-xl animate-pop-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="text-left">
+                <h2 className="text-xl font-bold text-slate-800">Play Again — {gameTitle}</h2>
+                <p className="text-xs text-slate-500 mt-1">Customize game options before restarting this quiz with connected players.</p>
+              </div>
+              <button 
+                onClick={() => setShowPlayAgainModal(false)}
+                className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer border-none bg-transparent"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 text-left">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Pacing Mode
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="playagain-pacing" 
+                      value="teacher"
+                      checked={playAgainPacingMode === 'teacher'}
+                      onChange={() => setPlayAgainPacingMode('teacher')}
+                      className="h-4 w-4 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                    />
+                    🏫 Teacher-Paced (Class Game)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="playagain-pacing" 
+                      value="student"
+                      checked={playAgainPacingMode === 'student'}
+                      onChange={() => setPlayAgainPacingMode('student')}
+                      className="h-4 w-4 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                    />
+                    🏃 Student-Paced (Marathon)
+                  </label>
+                </div>
+              </div>
+
+              <GameSettings
+                selectedGameId={currentGameId || questions[0]?.game_id}
+                randomize={playAgainRandomize}
+                setRandomize={setPlayAgainRandomize}
+                gameQuestions={playAgainQuestions}
+                totalQuestions={totalQuestionsPlayAgain}
+                availableQuestionTypes={availableQuestionTypesPlayAgain}
+                selectedQuestionTypes={playAgainSelectedQuestionTypes}
+                toggleQuestionType={toggleQuestionTypePlayAgain}
+                getQuestionTypeLabel={getQuestionTypeLabel}
+                getQuestionTypeCount={getQuestionTypeCountPlayAgain}
+                maxQuestions={playAgainMaxQuestions}
+                setMaxQuestions={setPlayAgainMaxQuestions}
+                timerDuration={playAgainTimerDuration}
+                setTimerDuration={setPlayAgainTimerDuration}
+                pacingMode={playAgainPacingMode}
+              />
+            </div>
+
+            {/* Footer Actions */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowPlayAgainModal(false)}
+                className="btn btn-secondary cursor-pointer"
+                disabled={isRestarting}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleStartPlayAgain}
+                disabled={isRestarting || totalQuestionsPlayAgain === 0}
+                className="btn btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isRestarting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                    Resetting Session...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 shrink-0" />
+                    Play Again Now
+                  </>
                 )}
               </button>
             </div>

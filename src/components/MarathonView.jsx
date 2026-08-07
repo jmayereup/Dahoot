@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { QuestionInteraction } from './QuestionInteraction';
 import { ConfirmModal } from './ConfirmModal';
+import { GameMusicController } from './GameMusicController';
 
 export function MarathonView({
   marathonState,
@@ -29,9 +30,12 @@ export function MarathonView({
   const [localNickname, setLocalNickname] = useState(nickname || 'Player');
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
+  const gameStatus = marathonState === 'FINISHED' ? 'FINISHED' : marathonState === 'INTRO' ? 'LOBBY' : 'QUESTION';
+
   if (marathonState === 'INTRO') {
     return (
       <div className="app-container">
+        <GameMusicController gameStatus={gameStatus} isMarathon={true} />
         <div className="panel" style={{ maxWidth: '520px' }}>
           <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '8px' }}>🏃</span>
           <h2 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Marathon Mode</h2>
@@ -107,6 +111,7 @@ export function MarathonView({
 
   return (
     <div className="app-container">
+      <GameMusicController gameStatus={gameStatus} isMarathon={true} />
       <div style={{ 
         width: '100%', 
         maxWidth: '720px', 

@@ -13,7 +13,9 @@ export function HostQuestion({
   hostPlayers,
   hostShowLeaderboard,
   hostCancelTimer,
+  hostRestoreTimer,
   timerDuration,
+  configuredTimerDuration,
   roomCode,
   hostEndGame
 }) {
@@ -250,9 +252,16 @@ export function HostQuestion({
             </button>
           </>
         ) : (
-          <button className="btn btn-primary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
-            Reveal Answers
-          </button>
+          <>
+            {timerDuration === 0 && (configuredTimerDuration > 0 || hostRestoreTimer) && (
+              <button className="btn btn-warning btn-sm" onClick={() => hostRestoreTimer && hostRestoreTimer()} style={{ width: 'auto' }}>
+                ⏱ Turn Timer Back On ({configuredTimerDuration || 20}s)
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={hostShowLeaderboard} style={{ width: 'auto' }}>
+              Reveal Answers
+            </button>
+          </>
         )}
         <button 
           className="btn btn-danger btn-sm" 
@@ -268,7 +277,7 @@ export function HostQuestion({
         onClose={() => setShowStopConfirm(false)}
         onConfirm={hostEndGame}
         title="Stop the game?"
-        message="This will end the session for all players. Are you sure you want to stop and return to the home screen?"
+        message="This will end the game for all players and display the final scored board. Are you sure you want to stop?"
         confirmText="Stop Game"
         cancelText="Keep Playing"
         variant="danger"
