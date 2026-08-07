@@ -1,3 +1,59 @@
+## v0.39.10
+
+- Reverted the auto panic recover handling for the cli commands to preserve the old behavior and allow panic to force exit with non-zero code ([#7781](https://github.com/pocketbase/pocketbase/issues/7781)).
+    _Proper command non-zero exit support will be available with the next v0.40/v0.41 release._
+
+- Minor UI improvements (added placeholder loader for the logs chart, npm dev deps update, etc.).
+
+- Updated `modernc.org/sqlite` to v1.55.0 (doc changes).
+
+
+## v0.39.9
+
+- Fixed `Shift + Click` range bulk selection not working in Firefox ([#7771](https://github.com/pocketbase/pocketbase/issues/7771))
+
+- Updated goja and its related dependencies _(fixes for TypedArray and regexp2 dep regression for the reported empty string match with lookahead patterns)_.
+
+- Minor filter (fexpr) improvements _(optimization for large string literals and fix for control characters handling)_.
+
+
+## v0.39.8
+
+- Properly reset JSVM global `$app` overwrite so that pooled executors always get a clean state.
+
+- Minor UI improvements:
+    - prevent resetting number inputs with leading 0 while still typing (normalized in `onchange`)
+    - added support for `Shift + Click` range bulk selection ([#7759](https://github.com/pocketbase/pocketbase/issues/7759))
+
+- Bumped `golang.org/x/*` indirect dependencies as there are some minor security fixes.
+
+- Updated `modernc.org/sqlite` to v1.54.0 ([SQLite 3.53.3](https://sqlite.org/src/timeline?from=version-3.53.2&to=version-3.53.3&to2=branch-3.53)).
+
+
+## v0.39.7
+
+- Replaced `github.com/go-ozzo/ozzo-validation` with the fork `github.com/pocketbase/ozzo-validation` since the original library has recently changed ownership and the new maintainer cannot be trusted.
+  _There are plans to create eventually a new validation library from scratch more suited for our needs in PocketBase because ozzo-validation is known to have some minor performance and obscure regex issues, but until then we'll stick with the fork (and if you use `ozzo-validation` in your own Go code, I'd suggest to swap the imports with the fork)_.
+
+- Fixed missing import collection `fields` property access ([#7760](https://github.com/pocketbase/pocketbase/issues/7760)).
+
+- Fixed View collection `*` validator and added more friendly error messages ([#7761](https://github.com/pocketbase/pocketbase/issues/7761)).
+
+- ⚠️ Security fix for unhandled panic in internal worker goroutines ([#7762](https://github.com/pocketbase/pocketbase/discussions/7762)).
+    _To prevent this from showing again, all existing internal worker functions were wrapped with [`routine.SafeWrap(f)`](https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/routine#SafeWrap) (auto recovers and returns any eventual panic as regular error)._
+
+
+## v0.39.6
+
+- Added `Cc` and `Bcc` recipients to the dev `sendmail` command for consistency with the SMTP mailer.
+
+- Added extra hardening options to the Microsoft OAuth2 provider allowing developers to specify the preferred safe email extraction method.
+
+- Updated goja and the related `golang.org/x/*` dependencies _(`WeakMap` regression fixes)_.
+
+- Bumped the min Go GitHub action version to 1.26.5 as it includes some [minor security fixes](https://github.com/golang/go/issues?q=milestone%3AGo1.26.5).
+
+
 ## v0.39.5
 
 - Limit with ellipsis long `url` field values.
