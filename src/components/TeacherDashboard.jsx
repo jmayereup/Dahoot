@@ -435,9 +435,15 @@ Important rules:
       ? `Source text/Instructions:\n"""\n${prompt}\n"""\n\nGenerate the questions based on the source text/instructions above.`
       : `Generate high-quality educational questions for CEFR level ${cefrLevel}, Language ${language}, and Subject ${subject}.`;
 
-    const data = await pb.send("/api/generate-questions", {
+    const authRecord = pb.authStore.record;
+    const data = await pb.send("/api/dahoot/generate-questions", {
       method: "POST",
-      body: { systemPrompt, userPromptContent }
+      body: {
+        systemPrompt,
+        userPromptContent,
+        userId: authRecord?.id,
+        userEmail: authRecord?.email
+      }
     });
 
     const choice = data.choices?.[0]?.message?.content;

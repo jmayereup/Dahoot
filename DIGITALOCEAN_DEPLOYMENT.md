@@ -237,18 +237,14 @@ This will create the necessary collections and seed default data on your product
 Deploy the application to your server:
 
 ```bash
-# Full deployment (Both backend & frontend to VPS)
-npm run deploy
-
-# Or deploy backend only (PocketBase hooks & schema check)
+# Deploy backend (PocketBase hooks & schema check)
 npm run deploy-backend
 
-# Or deploy frontend only (Vite build & dist/ rsync)
+# Deploy frontend to VPS (Vite build & dist/ rsync)
 npm run deploy-frontend
 ```
 
 The deployment script supports modular workflows:
-- **`npm run deploy`**: Performs version checks, schema checks, builds static frontend assets, uploads `dist/`, and syncs PocketBase `pb_hooks/`.
 - **`npm run deploy-backend`**: Performs version checks, schema checks, and syncs `pb_hooks/` to your server (ideal when using Cloudflare Pages / Vercel for frontend hosting).
 - **`npm run deploy-frontend`**: Builds production assets locally and uploads `dist/` to your server.
 
@@ -265,9 +261,6 @@ The deployment script supports modular workflows:
 Make changes locally, then deploy according to your architecture:
 
 ```bash
-# Deploy both backend and frontend changes
-npm run deploy
-
 # Deploy backend PocketBase hooks only
 npm run deploy-backend
 

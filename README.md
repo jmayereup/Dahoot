@@ -79,17 +79,13 @@ npm run dev
 
 Dahoot supports flexible deployment workflows depending on your hosting setup:
 
-- **Full Deployment (Backend + Frontend to VPS)**:
-  ```bash
-  npm run deploy
-  ```
-- **Backend Only Deployment (PocketBase hooks & schema checks)**:
+- **Backend Deployment (PocketBase hooks & schema checks)**:
   ```bash
   npm run deploy-backend
   ```
-  *Use this when your frontend is hosted separately (e.g. Cloudflare Pages or Vercel) and you only need to sync PocketBase hooks and verify DB schemas.*
+  *Use this to sync PocketBase hooks and verify DB schemas on your PocketBase server.*
 
-- **Frontend Only Deployment (Vite build & static asset rsync)**:
+- **Frontend Deployment (Vite build & static asset rsync)**:
   ```bash
   npm run deploy-frontend
   ```

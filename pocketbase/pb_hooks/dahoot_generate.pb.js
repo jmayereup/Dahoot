@@ -1,6 +1,6 @@
-// pb_hooks/generate.pb.js
+// pocketbase/pb_hooks/dahoot_generate.pb.js
 
-routerAdd("POST", "/api/generate-questions", (e) => {
+routerAdd("POST", "/api/dahoot/generate-questions", (e) => {
     // 1. Check if auth record is present
     const authRecord = e.auth;
     if (!authRecord) {
@@ -41,50 +41,45 @@ routerAdd("POST", "/api/generate-questions", (e) => {
         return e.json(400, { error: "Request payload too large. Keep prompts under length limits." });
     }
 
-    // Access the environment variable securely on the server
-    const apiKey = $os.getenv("OPENROUTER_API_KEY");
-    if (!apiKey) {
-        return e.json(500, { error: "OPENROUTER_API_KEY is not set on the server. Please check your server environment variables." });
+    const tjGenUrl = $os.getenv("TJ_GEN_URL") || "https://gen.teacherjake.com";
+
+    // Extract optional custom OpenRouter key header if provided
+    const headers = {
+        "Content-Type": "application/json"
+    };
+    const reqHeaders = e.requestInfo().headers || {};
+    const customKey = reqHeaders["x-openrouter-api-key"] || reqHeaders["X-OpenRouter-API-Key"];
+    if (customKey) {
+        headers["X-OpenRouter-API-Key"] = Array.isArray(customKey) ? customKey[0] : customKey;
     }
 
-    const apiModel = $os.getenv("OPENROUTER_MODEL") || "deepseek/deepseek-v4-pro";
+    const userEmail = authRecord.email ? authRecord.email() : (authRecord.get("email") || "");
 
     let res;
     try {
-        // Send the HTTP request to OpenRouter securely
+        // Delegate AI generation to the tj-gen Express microservice
         res = $http.send({
-            url: "https://openrouter.ai/api/v1/chat/completions",
+            url: tjGenUrl + "/api/dahoot/generate-questions",
             method: "POST",
             body: JSON.stringify({
-                model: apiModel,
-                response_format: { type: "json_object" },
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPromptContent }
-                ],
-                temperature: 0.7,
-                max_tokens: 8192,
-                provider: {
-                    sort: "price"
-                }
+                systemPrompt,
+                userPromptContent,
+                userId: authRecord.id,
+                userEmail,
+                model: data.model
             }),
-            headers: {
-                "Authorization": "Bearer " + apiKey,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://dahoot.app",
-                "X-Title": "Dahoot AI Question Generator"
-            },
+            headers: headers,
             timeout: 120
         });
     } catch (httpErr) {
-        return e.json(500, { error: "HTTP request to OpenRouter failed: " + String(httpErr) });
+        return e.json(500, { error: "Failed to connect to tj-gen service (" + tjGenUrl + "): " + String(httpErr) });
     }
 
     if (res.statusCode !== 200) {
-        const errMsg = (res.json && res.json.error && res.json.error.message)
-            ? res.json.error.message
-            : (res.raw || "Unknown error");
-        return e.json(res.statusCode, { error: "OpenRouter API returned error: " + errMsg });
+        const errMsg = (res.json && res.json.error)
+            ? res.json.error
+            : (res.raw || "Unknown error from generation service");
+        return e.json(res.statusCode, { error: "tj-gen returned error: " + errMsg });
     }
 
     return e.json(200, res.json);
