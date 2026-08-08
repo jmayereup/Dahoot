@@ -442,12 +442,12 @@ Important rules:
         systemPrompt,
         userPromptContent,
         userId: authRecord?.id,
-        userEmail: authRecord?.email
+        userEmail: authRecord?.email,
+        model: params.model || import.meta.env.VITE_DAHOOT_QUESTION_MODEL
       }
     });
 
-    const choice = data.choices?.[0]?.message?.content;
-    if (!choice) throw new Error('No content returned from OpenRouter API.');
+    if (!choice) throw new Error('No content returned from AI generation service.');
 
     let choiceText = choice.trim();
     if (choiceText.startsWith("```json")) choiceText = choiceText.substring(7);
