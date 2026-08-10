@@ -341,14 +341,19 @@ async function deploy() {
     }
   }
 
-  // Step 2: Ensure target directory exists on VPS
+  // Step 2: Ensure target directories exist on VPS
   console.log('\n\x1b[35m[Dahoot Deploy]\x1b[0m \x1b[1mStep 2: Preparing remote directories...\x1b[0m');
   try {
-    execFileSync('ssh', ['-o', 'ConnectTimeout=10', connectionString, `mkdir -p ${targetPath}/pocketbase`], { stdio: 'inherit' });
+    const dirsToCreate = [];
+    if (runFrontend) dirsToCreate.push(`${targetPath}/dist`);
+    if (runBackend) dirsToCreate.push(hooksPath);
+    
+    if (dirsToCreate.length > 0) {
+      execFileSync('ssh', ['-o', 'ConnectTimeout=10', connectionString, `mkdir -p ${dirsToCreate.join(' ')}`], { stdio: 'inherit' });
+    }
     console.log('\x1b[32m[Dahoot Deploy] Remote directories are ready.\x1b[0m');
   } catch (err) {
-    console.error('\x1b[31m[Dahoot Deploy] Error: Failed to connect to server via SSH.\x1b[0m');
-    console.error('Please verify that your server is running, the IP/username are correct, and your SSH key is authorized.');
+    console.error('\x1b[31m[Dahoot Deploy] Error: Failed to prepare remote directories via SSH.\x1b[0m', err.message);
     process.exit(1);
   }
 

@@ -430,6 +430,7 @@ async function runSetup() {
       { name: 'score', type: 'number', required: false, noDecimal: true },
       { name: 'last_answered_index', type: 'number', required: false, noDecimal: true },
       { name: 'answers', type: 'json', required: false },
+      { name: 'lap_question_ids', type: 'json', required: false },
       { name: 'marathon_stats', type: 'json', required: false },
       { name: 'session_start_time', type: 'text', required: false },
       { name: 'last_answer_time', type: 'text', required: false },

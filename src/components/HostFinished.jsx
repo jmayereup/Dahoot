@@ -133,7 +133,8 @@ export function HostFinished({
       await hostChangeGame(selectedNewGameId, options);
       setShowChangeGameModal(false);
     } catch (e) {
-      console.error(e);
+      console.error("Error hosting new game:", e);
+      alert("Failed to host new game: " + (e.message || "Unknown error"));
     } finally {
       setIsRestarting(false);
     }
@@ -203,7 +204,8 @@ export function HostFinished({
       await hostPlayAgain(options);
       setShowPlayAgainModal(false);
     } catch (e) {
-      console.error(e);
+      console.error("Error restarting game:", e);
+      alert("Failed to restart session: " + (e.message || "Unknown error"));
     } finally {
       setIsRestarting(false);
     }

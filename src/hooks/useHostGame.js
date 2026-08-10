@@ -315,25 +315,21 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       const questionIds = activeQuestions.map(q => q.id);
 
       // Reset all players currently in this room: score=0, answers={}, last_answered_index=-1
+      const shuffle = (arr) => {
+        const res = [...arr];
+        for (let i = res.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [res[i], res[j]] = [res[j], res[i]];
+        }
+        return res;
+      };
+
       const playerUpdates = hostPlayers.map(p => {
         const updateData = {
           score: 0,
           answers: {},
-          last_answered_index: -1
-        };
-        if (options.marathonMode) {
-          const shuffle = (arr) => {
-            const res = [...arr];
-            for (let i = res.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [res[i], res[j]] = [res[j], res[i]];
-            }
-            return res;
-          };
-          updateData.lap_question_ids = shouldRandomize
-            ? shuffle(questionIds)
-            : [...questionIds];
-          updateData.marathon_stats = {
+          last_answered_index: -1,
+          marathon_stats: {
             total_answered: 0,
             correct_count: 0,
             current_streak: 0,
@@ -342,11 +338,15 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
             fastest_correct: null,
             lap: 0,
             question_history: []
-          };
-          updateData.session_start_time = new Date().toISOString();
-          updateData.last_answer_time = null;
-        }
-        return pb.collection('dahoot_players').update(p.id, updateData);
+          },
+          session_start_time: new Date().toISOString(),
+          last_answer_time: null,
+          lap_question_ids: shouldRandomize ? shuffle(questionIds) : [...questionIds]
+        };
+        return pb.collection('dahoot_players').update(p.id, updateData).catch(err => {
+          console.warn(`Failed to update player ${p.id} during session restart:`, err);
+          return null;
+        });
       });
       await Promise.all(playerUpdates);
 
