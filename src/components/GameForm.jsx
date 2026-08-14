@@ -225,10 +225,14 @@ export function GameForm({
               </div>
             </div>
 
-            {previewQuestions.length > 0 ? (
+            {previewLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+                <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+              </div>
+            ) : previewQuestions.length > 0 ? (
               <div
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4"
-                style={{ opacity: previewLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}
               >
                 {previewQuestions.map((question, qIdx) => (
                   <QuestionPreviewCard
@@ -240,11 +244,6 @@ export function GameForm({
                     onDelete={onDeleteQuestion}
                   />
                 ))}
-              </div>
-            ) : previewLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
-                <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
               </div>
             ) : (
               <div style={{
@@ -264,8 +263,20 @@ export function GameForm({
             <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={loading} style={{ width: 'auto', minWidth: 120 }}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: 'auto', minWidth: 150 }}>
-              {loading ? 'Saving...' : 'Save Game'}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+              style={{ width: 'auto', minWidth: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-slate-200 border-l-rose-300 rounded-full animate-spin inline-block mr-1"></span>
+                  Saving...
+                </>
+              ) : (
+                'Save Game'
+              )}
             </button>
           </div>
         </form>

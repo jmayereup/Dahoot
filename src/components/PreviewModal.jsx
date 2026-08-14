@@ -42,7 +42,7 @@ export function PreviewModal({
 }) {
   const effectiveGameId = gameId || game?.id;
   const [questions, setQuestions] = useState(externalQuestions || []);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(isOpen && standalone && effectiveGameId && !externalQuestions));
   const [error, setError] = useState('');
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -57,22 +57,6 @@ export function PreviewModal({
   const resetForm = useCallback(() => {
     setForm(defaultFormState);
   }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (externalQuestions) {
-        setQuestions(externalQuestions);
-      } else if (standalone && effectiveGameId) {
-        loadQuestions();
-      }
-    }
-  }, [isOpen, effectiveGameId]);
-
-  useEffect(() => {
-    if (externalQuestions) {
-      setQuestions(externalQuestions);
-    }
-  }, [externalQuestions]);
 
   const loadQuestions = async () => {
     if (!effectiveGameId) return;
@@ -90,6 +74,23 @@ export function PreviewModal({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      if (externalQuestions) {
+        setQuestions(externalQuestions);
+        setLoading(false);
+      } else if (standalone && effectiveGameId) {
+        setLoading(true);
+        loadQuestions();
+      }
+    } else {
+      if (standalone) {
+        setQuestions([]);
+        setLoading(false);
+      }
+    }
+  }, [isOpen, effectiveGameId, externalQuestions, standalone]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -326,10 +327,14 @@ export function PreviewModal({
               <p>{error}</p>
               <button className="btn btn-secondary" onClick={onClose} style={{ marginTop: '16px' }}>Close</button>
             </div>
+          ) : loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
+            </div>
           ) : questions.length > 0 ? (
             <div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}
             >
               {questions.map((question, qIdx) => (
                 <QuestionPreviewCard
@@ -341,11 +346,6 @@ export function PreviewModal({
                   onDelete={requestDeleteQuestion}
                 />
               ))}
-            </div>
-          ) : loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div className="spinner" style={{ margin: '0 auto 16px auto' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
@@ -398,45 +398,37 @@ export function PreviewModal({
               setMcCorrectAnswer={(v) => updateForm({ mcCorrectAnswer: v })}
               mcDistractors={form.mcDistractors}
               updateMcDistractor={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ mcDistractors: idx });
-                } else {
-                  const next = [...form.mcDistractors];
-                  next[idx] = val;
-                  updateForm({ mcDistractors: next });
-                }
+                const next = [...form.mcDistractors];
+                next[idx] = val;
+                updateForm({ mcDistractors: next });
               }}
               sortingItems={form.sortingItems}
               updateSortingItem={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ sortingItems: idx });
-                } else {
-                  const next = [...form.sortingItems];
-                  next[idx] = val;
-                  updateForm({ sortingItems: next });
-                }
+                const next = [...form.sortingItems];
+                next[idx] = val;
+                updateForm({ sortingItems: next });
+              }}
+              addSortingItem={() => updateForm({ sortingItems: [...form.sortingItems, ''] })}
+              removeSortingItem={(idx) => {
+                if (form.sortingItems.length <= 2) return;
+                updateForm({ sortingItems: form.sortingItems.filter((_, i) => i !== idx) });
               }}
               dragSentence={form.dragSentence}
               setDragSentence={(v) => updateForm({ dragSentence: v })}
               dragDistractors={form.dragDistractors}
               updateDragDistractor={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ dragDistractors: idx });
-                } else {
-                  const next = [...form.dragDistractors];
-                  next[idx] = val;
-                  updateForm({ dragDistractors: next });
-                }
+                const next = [...form.dragDistractors];
+                next[idx] = val;
+                updateForm({ dragDistractors: next });
               }}
+              addDragDistractor={() => updateForm({ dragDistractors: [...form.dragDistractors, ''] })}
+              removeDragDistractor={(idx) => updateForm({ dragDistractors: form.dragDistractors.filter((_, i) => i !== idx) })}
               dropdownSentence={form.dropdownSentence}
               setDropdownSentence={(v) => updateForm({ dropdownSentence: v })}
               categorizeGrid={form.categorizeGrid}
               setCategorizeGrid={(arg) => {
-                if (typeof arg === 'function') {
-                  setForm(prev => ({ ...prev, categorizeGrid: arg(prev.categorizeGrid) }));
-                } else {
-                  updateForm({ categorizeGrid: arg });
-                }
+                const next = typeof arg === 'function' ? arg(form.categorizeGrid) : arg;
+                updateForm({ categorizeGrid: next });
               }}
               discussionPlaceholder={form.discussionPlaceholder}
               setDiscussionPlaceholder={(v) => updateForm({ discussionPlaceholder: v })}
@@ -449,8 +441,21 @@ export function PreviewModal({
 
             <div style={{ display: 'flex', gap: 12, marginTop: '24px', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
               <button type="button" className="btn btn-secondary" onClick={closeEdit} style={{ width: 'auto', minWidth: '100px' }} disabled={editLoading}>Cancel</button>
-              <button type="button" className="btn btn-primary" onClick={saveQuestion} style={{ width: 'auto', minWidth: '150px' }} disabled={editLoading}>
-                {editLoading ? 'Saving...' : (editingQuestion === 'new' ? '✓ Add Question' : '✓ Save Changes')}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={saveQuestion}
+                style={{ width: 'auto', minWidth: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                disabled={editLoading}
+              >
+                {editLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-200 border-l-rose-300 rounded-full animate-spin inline-block mr-1"></span>
+                    Saving...
+                  </>
+                ) : (
+                  editingQuestion === 'new' ? '✓ Add Question' : '✓ Save Changes'
+                )}
               </button>
             </div>
           </div>
