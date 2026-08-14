@@ -188,7 +188,7 @@
 
       <h2>JSON Format</h2>
       <p style="color: var(--text-secondary); margin-bottom: 20px;">
-        Import questions as a JSON array. Each object must have <code>type</code>, <code>text</code>, and <code>options</code> fields. The supported types are <code>MULTIPLE_CHOICE</code>, <code>SORTING</code>, <code>DRAG_DROP</code>, <code>DROP_DOWN</code>, and <code>CATEGORIZE</code>.
+        Import questions as a JSON array. Each object must have <code>type</code>, <code>text</code>, and <code>options</code> fields. The supported types are <code>MULTIPLE_CHOICE</code>, <code>SORTING</code>, <code>DRAG_DROP</code>, <code>DROP_DOWN</code>, <code>CATEGORIZE</code>, and <code>DISCUSSION</code>.
       </p>
 
       <!-- 1. MC -->
@@ -298,6 +298,26 @@
 }</code></pre>
       </div>
 
+      <!-- 6. DISCUSSION -->
+      <div class="format-card">
+        <h3>6. Discussion Prompts (<code>DISCUSSION</code>)</h3>
+        <ul>
+          <li><code>text</code>: The discussion question or debate prompt.</li>
+          <li><code>options.placeholder</code>: Placeholder text shown inside student input box.</li>
+          <li><code>options.sample_answers</code>: Array of reference or guide discussion points.</li>
+          <li><code>options.max_length</code>: Maximum answer character length (default 250).</li>
+        </ul>
+        <pre><button class="copy-btn" onclick="copyText(this)">Copy</button><code>{
+  "type": "DISCUSSION",
+  "text": "Why do you think learning a second language is beneficial in today's world?",
+  "options": {
+    "placeholder": "Share your thoughts...",
+    "sample_answers": ["Global career opportunities", "Cultural appreciation", "Cognitive benefits"],
+    "max_length": 250
+  }
+}</code></pre>
+      </div>
+
       <h2>Complete Import Example</h2>
       <p style="color: var(--text-secondary); margin-bottom: 16px;">
         Paste a JSON array like this into the import textarea:
@@ -386,6 +406,17 @@ Question type schemas:
       { "name": "Item 1", "category": "Category A" },
       { "name": "Item 2", "category": "Category B" }
     ]
+  }
+}
+
+6. DISCUSSION:
+{
+  "type": "DISCUSSION",
+  "text": "Discussion prompt or open-ended question",
+  "options": {
+    "placeholder": "Type your answer...",
+    "sample_answers": ["Sample point 1", "Sample point 2"],
+    "max_length": 250
   }
 }
 

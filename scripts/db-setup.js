@@ -453,7 +453,7 @@ async function runSetup() {
       { name: 'text', type: 'text', required: true },
       { name: 'options', type: 'json', required: true },
       { name: 'correct_option_index', type: 'number', required: false, noDecimal: true },
-      { name: 'type', type: 'select', required: true, maxSelect: 1, values: ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'] },
+      { name: 'type', type: 'select', required: true, maxSelect: 1, values: ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE', 'DISCUSSION'] },
       { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
       { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
