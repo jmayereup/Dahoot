@@ -185,12 +185,13 @@ export function PreviewModal({
     let optionsPayload = null;
     if (form.questionType === 'MULTIPLE_CHOICE') {
       if (!form.mcCorrectAnswer.trim()) { setEditError('Correct answer is required.'); return; }
-      if (form.mcDistractors.some(d => !d.trim())) { setEditError('All 3 distractors must be filled out.'); return; }
-      optionsPayload = { correct_answer: form.mcCorrectAnswer.trim(), distractors: form.mcDistractors.map(d => d.trim()) };
+      const filledDistractors = form.mcDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
+      if (filledDistractors.length === 0) { setEditError('Please enter at least 1 distractor (incorrect option).'); return; }
+      optionsPayload = { correct_answer: form.mcCorrectAnswer.trim(), distractors: filledDistractors };
     } else if (form.questionType === 'SORTING') {
-      if (form.sortingItems.length < 2) { setEditError('A sorting question must have at least 2 items.'); return; }
-      if (form.sortingItems.some(s => !s.trim())) { setEditError('All sorting items must be filled out.'); return; }
-      optionsPayload = { correct_sequence: form.sortingItems.map(s => s.trim()) };
+      const filledItems = form.sortingItems.map(s => s.trim()).filter(Boolean);
+      if (filledItems.length < 2) { setEditError('A sorting question must have at least 2 items.'); return; }
+      optionsPayload = { correct_sequence: filledItems };
     } else if (form.questionType === 'DRAG_DROP') {
       if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
       const answers = extractBracketedAnswers(form.dragSentence);

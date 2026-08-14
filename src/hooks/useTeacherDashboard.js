@@ -552,13 +552,33 @@ export function useTeacherDashboard(view, currentUser) {
 
   const parseAndValidateQuestions = (text) => {
     let parsed;
+    let cleanText = (text || '').trim();
+    if (cleanText.startsWith('```json')) cleanText = cleanText.substring(7);
+    else if (cleanText.startsWith('```')) cleanText = cleanText.substring(3);
+    if (cleanText.endsWith('```')) cleanText = cleanText.substring(0, cleanText.length - 3);
+    cleanText = cleanText.trim();
+
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(cleanText);
     } catch (err) {
-      throw new Error('Invalid JSON: ' + err.message);
+      const jsonMatch = cleanText.match(/[\{\[][\s\S]*[\}\]]/);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch (innerErr) {
+          throw new Error('Invalid JSON: ' + err.message);
+        }
+      } else {
+        throw new Error('Invalid JSON: ' + err.message);
+      }
     }
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.questions)) {
+      parsed = parsed.questions;
+    }
+
     if (!Array.isArray(parsed)) {
-      throw new Error('JSON must be an array of question objects.');
+      throw new Error('JSON must be an array of question objects or an object containing a "questions" array.');
     }
     for (let i = 0; i < parsed.length; i++) {
       const q = parsed[i];

@@ -260,11 +260,13 @@ export function TeacherDashboard({
     let optionsPayload = null;
     if (questionType === 'MULTIPLE_CHOICE') {
       if (!mcCorrectAnswer.trim()) { setPreviewEditError('Correct answer is required.'); return; }
-      if (mcDistractors.some(d => !d.trim())) { setPreviewEditError('All 3 distractors must be filled out.'); return; }
-      optionsPayload = { correct_answer: mcCorrectAnswer.trim(), distractors: mcDistractors.map(d => d.trim()) };
+      const filledDistractors = mcDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
+      if (filledDistractors.length === 0) { setPreviewEditError('Please enter at least 1 distractor (incorrect option).'); return; }
+      optionsPayload = { correct_answer: mcCorrectAnswer.trim(), distractors: filledDistractors };
     } else if (questionType === 'SORTING') {
-      if (sortingItems.some(s => !s.trim())) { setPreviewEditError('All 4 sorting items must be filled out.'); return; }
-      optionsPayload = { correct_sequence: sortingItems.map(s => s.trim()) };
+      const filledItems = sortingItems.map(s => s.trim()).filter(Boolean);
+      if (filledItems.length < 2) { setPreviewEditError('Sorting question requires at least 2 items.'); return; }
+      optionsPayload = { correct_sequence: filledItems };
     } else if (questionType === 'DRAG_DROP') {
       if (!dragSentence.trim()) { setPreviewEditError('Sentence is required.'); return; }
       const answers = extractBracketedAnswers(dragSentence);
@@ -471,6 +473,7 @@ Important rules:
       }
     });
 
+    const choice = data?.choices?.[0]?.message?.content || (typeof data === 'string' ? data : data?.content || '');
     if (!choice) throw new Error('No content returned from AI generation service.');
 
     let choiceText = choice.trim();
@@ -533,7 +536,22 @@ Important rules:
     const gameToPreview = selectedGame;
     if (gameToPreview && gameToPreview.id === 'temp') {
       let parsed;
-      try { parsed = parseAndValidateQuestions(importText); } catch (err) { setError(err.message); return; }
+      try {
+        parsed = parseAndValidateQuestions(importText);
+        try {
+          let clean = importText.trim();
+          if (clean.startsWith('```json')) clean = clean.substring(7);
+          else if (clean.startsWith('```')) clean = clean.substring(3);
+          if (clean.endsWith('```')) clean = clean.substring(0, clean.length - 3);
+          const rawObj = JSON.parse(clean.trim());
+          if (rawObj?.description && !gameDescription?.trim()) {
+            setGameDescription(rawObj.description.trim());
+          }
+        } catch (_) {}
+      } catch (err) {
+        setError(err.message);
+        return;
+      }
       const newQs = parsed.map((q, idx) => ({ id: 'local_' + (Date.now() + idx), text: q.text, options: q.options, type: q.type }));
       setPreviewQuestions(prev => [...prev, ...newQs]);
       cancelImporting();
