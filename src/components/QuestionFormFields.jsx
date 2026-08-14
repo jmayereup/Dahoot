@@ -230,6 +230,12 @@ export function QuestionFormFields({
   setDropdownSentence,
   categorizeGrid,
   setCategorizeGrid,
+  discussionPlaceholder = '',
+  setDiscussionPlaceholder = () => {},
+  discussionSampleAnswers = '',
+  setDiscussionSampleAnswers = () => {},
+  discussionMaxLength = 250,
+  setDiscussionMaxLength = () => {},
   disabled = false,
   optionClasses = OPTION_CLASSES_DEFAULT
 }) {
@@ -243,7 +249,7 @@ export function QuestionFormFields({
 
   return (
     <>
-      <div className="form-group" style={{ maxWidth: '300px' }}>
+      <div className="form-group" style={{ maxWidth: '340px' }}>
         <label className="form-label">Question Type</label>
         <select
           className="form-input"
@@ -265,6 +271,7 @@ export function QuestionFormFields({
           <option value="DRAG_DROP">Drag & Drop (Blanks)</option>
           <option value="DROP_DOWN">Drop-Down (Select Blanks)</option>
           <option value="CATEGORIZE">Categorization Groups</option>
+          <option value="DISCUSSION">Classroom Discussion (Open-Ended / No Points)</option>
         </select>
       </div>
 
@@ -489,6 +496,61 @@ export function QuestionFormFields({
             setGrid={setCategorizeGrid}
             disabled={disabled}
           />
+        </div>
+      )}
+
+      {questionType === 'DISCUSSION' && (
+        <div className="flex flex-col gap-4">
+          <div className="p-3.5 bg-sky-50/70 border border-sky-200/80 rounded-xl text-sky-900 text-xs leading-relaxed flex items-start gap-2.5">
+            <span className="text-base">💬</span>
+            <div>
+              <p className="font-bold mb-0.5">Classroom Discussion Question</p>
+              <p className="text-sky-700">
+                This question awards <strong>0 points</strong> and gathers live text responses from students for on-screen classroom debate and discussion.
+              </p>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Input Placeholder for Students (Optional)</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. Type your opinion or reasons here..."
+              value={discussionPlaceholder}
+              onChange={(e) => setDiscussionPlaceholder(e.target.value)}
+              disabled={disabled}
+              onKeyDown={preventSubmitOnEnter}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Teacher Talking Points / Sample Answers (Optional)</label>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: -4, marginBottom: 8 }}>
+              Add sample ideas or talking points for classroom discussion (one per line).
+            </p>
+            <textarea
+              className="form-input !min-h-[80px]"
+              rows={3}
+              placeholder="e.g.&#10;Point 1: Impact on renewable energy&#10;Point 2: Economic factors"
+              value={discussionSampleAnswers}
+              onChange={(e) => setDiscussionSampleAnswers(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+
+          <div className="form-group" style={{ maxWidth: '200px' }}>
+            <label className="form-label">Max Characters Allowed</label>
+            <input
+              type="number"
+              className="form-input"
+              min={50}
+              max={500}
+              value={discussionMaxLength}
+              onChange={(e) => setDiscussionMaxLength(parseInt(e.target.value, 10) || 250)}
+              disabled={disabled}
+            />
+          </div>
         </div>
       )}
     </>

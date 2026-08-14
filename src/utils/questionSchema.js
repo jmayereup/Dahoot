@@ -11,6 +11,7 @@
  *   DRAG_DROP:       { options: { sentence, answers_in_order: string[], distractors: string[] } }
  *   DROP_DOWN:       { options: { sentence, dropdowns: [{ correct_answer, distractors: string[] }] } }
  *   CATEGORIZE:      { options: { categories: string[], items: [{name, category}] } }
+ *   DISCUSSION:      { options: { placeholder?: string, sample_answers?: string[], max_length?: number } }
  *
  * The helpers transparently migrate any legacy shape on read, so existing
  * PocketBase rows continue to work until the migration script runs.
@@ -160,6 +161,17 @@ export function normalizeQuestion(q) {
     return q;
   }
 
+  if (type === 'DISCUSSION') {
+    return {
+      ...q,
+      options: {
+        placeholder: q.options?.placeholder || '',
+        sample_answers: Array.isArray(q.options?.sample_answers) ? q.options.sample_answers : [],
+        max_length: q.options?.max_length || 250
+      }
+    };
+  }
+
   return q;
 }
 
@@ -246,11 +258,20 @@ export function isScrambleSentence(q) {
  *   DRAG_DROP: string[] (per blank, in order)
  *   DROP_DOWN: string[] (per dropdown, in order)
  *   CATEGORIZE: { [itemName]: category }
+ *   DISCUSSION: string | { text: string }
  */
 export function isAnswerCorrect(question, userAnswer) {
   if (!question) return false;
   const type = question.type || 'MULTIPLE_CHOICE';
   const n = normalizeQuestion(question);
+
+  if (type === 'DISCUSSION') {
+    if (typeof userAnswer === 'string') return userAnswer.trim().length > 0;
+    if (userAnswer && typeof userAnswer === 'object' && typeof userAnswer.text === 'string') {
+      return userAnswer.text.trim().length > 0;
+    }
+    return Boolean(userAnswer);
+  }
 
   if (type === 'MULTIPLE_CHOICE') {
     const correct = n.options?.correct_answer;
@@ -314,7 +335,8 @@ export const QUESTION_TYPE_PROMPTS = {
   SORTING: 'Arrange these items in the correct order.',
   DRAG_DROP: 'Fill in the missing words.',
   DROP_DOWN: 'Select the correct word for each blank.',
-  CATEGORIZE: 'Place each item in the correct category.'
+  CATEGORIZE: 'Place each item in the correct category.',
+  DISCUSSION: 'Share your thoughts or answer for discussion.'
 };
 
 export function extractBracketedAnswers(sentence) {

@@ -109,10 +109,11 @@ export function PreviewModal({
   };
 
   const startEditing = (question) => {
-    const qType = question.type || 'MULTIPLE_CHOICE';
     setEditError('');
+    const qType = question.type || 'MULTIPLE_CHOICE';
     const n = normalizeQuestion(question);
     const newForm = {
+      ...EMPTY_FORM,
       questionType: qType,
       questionText: question.text || '',
       mcCorrectAnswer: '',
@@ -121,7 +122,10 @@ export function PreviewModal({
       dragSentence: '',
       dragDistractors: [''],
       dropdownSentence: '',
-      categorizeGrid: [['', ''], ['', '']]
+      categorizeGrid: [['', ''], ['', '']],
+      discussionPlaceholder: '',
+      discussionSampleAnswers: '',
+      discussionMaxLength: 250
     };
 
     if (qType === 'MULTIPLE_CHOICE') {
@@ -147,6 +151,11 @@ export function PreviewModal({
       newForm.dragDistractors = union.length ? union : [''];
     } else if (qType === 'CATEGORIZE') {
       newForm.categorizeGrid = categorizeOptionsToGrid(n.options);
+    } else if (qType === 'DISCUSSION') {
+      newForm.discussionPlaceholder = n.options?.placeholder || '';
+      const samples = Array.isArray(n.options?.sample_answers) ? n.options.sample_answers.join('\n') : (n.options?.sample_answers || '');
+      newForm.discussionSampleAnswers = samples;
+      newForm.discussionMaxLength = n.options?.max_length || 250;
     }
 
     setForm(newForm);
@@ -209,6 +218,15 @@ export function PreviewModal({
       if (categories.length < 2) { setEditError('Please enter at least 2 categories in the first row.'); return; }
       if (items.length === 0) { setEditError('Please add at least one item in any cell.'); return; }
       optionsPayload = { categories, items };
+    } else if (form.questionType === 'DISCUSSION') {
+      const sampleAnswersArr = typeof form.discussionSampleAnswers === 'string'
+        ? form.discussionSampleAnswers.split('\n').map(s => s.trim()).filter(Boolean)
+        : (Array.isArray(form.discussionSampleAnswers) ? form.discussionSampleAnswers : []);
+      optionsPayload = {
+        placeholder: form.discussionPlaceholder ? form.discussionPlaceholder.trim() : '',
+        sample_answers: sampleAnswersArr,
+        max_length: parseInt(form.discussionMaxLength, 10) || 250
+      };
     }
 
     setEditLoading(true);
@@ -419,6 +437,12 @@ export function PreviewModal({
                   updateForm({ categorizeGrid: arg });
                 }
               }}
+              discussionPlaceholder={form.discussionPlaceholder}
+              setDiscussionPlaceholder={(v) => updateForm({ discussionPlaceholder: v })}
+              discussionSampleAnswers={form.discussionSampleAnswers}
+              setDiscussionSampleAnswers={(v) => updateForm({ discussionSampleAnswers: v })}
+              discussionMaxLength={form.discussionMaxLength}
+              setDiscussionMaxLength={(v) => updateForm({ discussionMaxLength: v })}
               disabled={editLoading}
             />
 

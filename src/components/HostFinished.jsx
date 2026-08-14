@@ -31,7 +31,7 @@ export function HostFinished({
   const [newPacingMode, setNewPacingMode] = useState('teacher');
   const [isRestarting, setIsRestarting] = useState(false);
   const [modalQuestions, setModalQuestions] = useState([]);
-  const [newSelectedQuestionTypes, setNewSelectedQuestionTypes] = useState(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE']);
+  const [newSelectedQuestionTypes, setNewSelectedQuestionTypes] = useState(['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE', 'DISCUSSION']);
   const [showScoreboardModal, setShowScoreboardModal] = useState(false);
 
   // Options for Play Again Modal
@@ -41,7 +41,7 @@ export function HostFinished({
   const [playAgainMaxQuestions, setPlayAgainMaxQuestions] = useState('');
   const [playAgainPacingMode, setPlayAgainPacingMode] = useState(isMarathon ? 'student' : 'teacher');
   const [playAgainSelectedQuestionTypes, setPlayAgainSelectedQuestionTypes] = useState([
-    'MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'
+    'MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE', 'DISCUSSION'
   ]);
 
   useEffect(() => {
@@ -91,7 +91,8 @@ export function HostFinished({
       SORTING: 'Sorting Order',
       DRAG_DROP: 'Drag & Drop (Blanks)',
       DROP_DOWN: 'Drop-Down (Select Blanks)',
-      CATEGORIZE: 'Categorization Groups'
+      CATEGORIZE: 'Categorization Groups',
+      DISCUSSION: 'Classroom Discussion (0 pts)'
     };
     return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');
   };
@@ -421,6 +422,31 @@ export function HostFinished({
               );
             })}
           </div>
+        </div>
+      );
+    }
+
+    if (type === 'DISCUSSION') {
+      const sampleAnswers = q.options?.sample_answers || [];
+      return (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-md text-[10px] font-bold uppercase">
+              💬 Classroom Discussion (Ungraded • 0 pts)
+            </span>
+          </div>
+          {sampleAnswers.length > 0 && (
+            <div className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200/70 text-xs">
+              <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">
+                Discussion Guide / Sample Points:
+              </span>
+              <ul className="list-disc list-inside text-amber-900/80 space-y-0.5 text-[11px]">
+                {sampleAnswers.map((sample, sIdx) => (
+                  <li key={sIdx}>{sample}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       );
     }

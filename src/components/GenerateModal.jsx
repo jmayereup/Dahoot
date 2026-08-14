@@ -15,6 +15,7 @@ export function GenerateModal({
   const [genCategorizeCount, setGenCategorizeCount] = useState(2);
   const [genDragDropCount, setGenDragDropCount] = useState(3);
   const [genDropDownCount, setGenDropDownCount] = useState(3);
+  const [genDiscussionCount, setGenDiscussionCount] = useState(2);
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState('');
 
@@ -37,7 +38,8 @@ export function GenerateModal({
           SORTING: genSortingCount,
           CATEGORIZE: genCategorizeCount,
           DRAG_DROP: genDragDropCount,
-          DROP_DOWN: genDropDownCount
+          DROP_DOWN: genDropDownCount,
+          DISCUSSION: genDiscussionCount
         },
         language,
         cefrLevel,
@@ -213,6 +215,7 @@ export function GenerateModal({
                 { label: 'Categorization', value: genCategorizeCount, setter: setGenCategorizeCount },
                 { label: 'Drag & Drop', value: genDragDropCount, setter: setGenDragDropCount },
                 { label: 'Drop Down', value: genDropDownCount, setter: setGenDropDownCount },
+                { label: 'Discussion (0 pts)', value: genDiscussionCount, setter: setGenDiscussionCount },
               ].map((item) => (
                 <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{item.label}</span>

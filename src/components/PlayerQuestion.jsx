@@ -161,6 +161,22 @@ export function PlayerQuestion({
     submitAnswer(categoryAssignments);
   };
 
+  // ----------------------------------------------------
+  // DISCUSSION STATE & HANDLERS
+  // ----------------------------------------------------
+  const [discussionInput, setDiscussionInput] = useState('');
+
+  useEffect(() => {
+    if (type === 'DISCUSSION') {
+      setDiscussionInput('');
+    }
+  }, [activeQuestion.id, type]);
+
+  const handleDiscussionSubmit = () => {
+    if (!discussionInput.trim()) return;
+    submitAnswer(discussionInput.trim());
+  };
+
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
     const parts = splitBracketTokens(sentence);
@@ -576,6 +592,59 @@ export function PlayerQuestion({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 6. DISCUSSION */}
+            {type === 'DISCUSSION' && (
+              <div className="w-full max-w-lg mx-auto flex flex-col gap-4">
+                <div className="p-3 bg-sky-50/80 border border-sky-200/80 rounded-2xl text-center">
+                  <span className="text-xs font-black text-sky-800 uppercase tracking-wider inline-flex items-center gap-1.5">
+                    <span>💬</span> Classroom Discussion • No Points
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="relative">
+                    <textarea
+                      rows={4}
+                      className="form-input !p-4 !text-base !rounded-2xl !bg-white/95 !border-slate-300 focus:!border-rose-400 focus:!ring-2 focus:!ring-rose-200 shadow-xs resize-none"
+                      placeholder={activeQuestion.options?.placeholder || "Type your thoughts, answer, or opinion here..."}
+                      value={discussionInput}
+                      onChange={(e) => {
+                        const maxLen = activeQuestion.options?.max_length || 250;
+                        if (e.target.value.length <= maxLen) {
+                          setDiscussionInput(e.target.value);
+                        }
+                      }}
+                      maxLength={activeQuestion.options?.max_length || 250}
+                      disabled={isTimeUp}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs px-1">
+                    <span className="text-slate-400">
+                      Press Submit to share with the class
+                    </span>
+                    <span className={`font-mono font-bold ${
+                      discussionInput.length >= (activeQuestion.options?.max_length || 250)
+                        ? 'text-rose-500'
+                        : 'text-slate-400'
+                    }`}>
+                      {discussionInput.length} / {activeQuestion.options?.max_length || 250}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDiscussionSubmit}
+                  className="btn btn-primary !py-3.5 !text-lg !rounded-2xl shadow-md transition-all transform active:scale-98"
+                  disabled={!discussionInput.trim() || isTimeUp}
+                >
+                  🚀 Submit Response
+                </button>
               </div>
             )}
 

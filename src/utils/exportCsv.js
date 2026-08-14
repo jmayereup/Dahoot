@@ -30,16 +30,19 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
   const avgScore = hostPlayers.length > 0 ? Math.round(totalScore / hostPlayers.length) : 0;
   rows.push(['Average Score', avgScore]);
 
+  const gradedQuestions = questions.filter(q => q.type !== 'DISCUSSION');
+  const totalGraded = gradedQuestions.length;
+
   let totalCorrect = 0;
   hostPlayers.forEach(p => {
-    questions.forEach(q => {
+    gradedQuestions.forEach(q => {
       if (p.answers && p.answers[q.id] === true) {
         totalCorrect++;
       }
     });
   });
-  const totalPossible = hostPlayers.length * questions.length;
-  const avgAccuracy = totalPossible > 0 ? Math.round((totalCorrect / totalPossible) * 100) : 0;
+  const totalPossible = hostPlayers.length * totalGraded;
+  const avgAccuracy = totalPossible > 0 ? Math.round((totalCorrect / totalPossible) * 100) : 100;
   rows.push(['Class Average Accuracy', `${avgAccuracy}%`]);
   
   rows.push([]); // Blank row separator
@@ -47,7 +50,7 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
   // Headers
   const headers = ['Rank', 'Player Name', 'Final Score', 'Correct Answers', 'Accuracy (%)'];
   questions.forEach((q, idx) => {
-    headers.push(`Q${idx + 1}: ${q.text} (${q.type})`);
+    headers.push(`Q${idx + 1}: ${q.text} (${q.type === 'DISCUSSION' ? 'DISCUSSION - 0 PTS' : q.type})`);
   });
   rows.push(headers);
   
@@ -55,27 +58,37 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
   sortedPlayers.forEach((player, pIdx) => {
     const playerAnswers = player.answers || {};
     let correctCount = 0;
-    questions.forEach(q => {
+    gradedQuestions.forEach(q => {
       if (playerAnswers[q.id] === true) correctCount++;
     });
-    const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+    const accuracy = totalGraded > 0 ? Math.round((correctCount / totalGraded) * 100) : 100;
     
     const row = [
       pIdx + 1,
       player.name,
       player.score || 0,
-      `${correctCount} / ${questions.length}`,
+      `${correctCount} / ${totalGraded}`,
       `${accuracy}%`
     ];
     
     questions.forEach(q => {
       const status = playerAnswers[q.id];
-      if (status === true) {
-        row.push('Correct');
-      } else if (status === false) {
-        row.push('Incorrect');
+      if (q.type === 'DISCUSSION') {
+        if (typeof status === 'string' && status.trim()) {
+          row.push(status.trim());
+        } else if (status && typeof status === 'object' && typeof status.text === 'string' && status.text.trim()) {
+          row.push(status.text.trim());
+        } else {
+          row.push('[No response]');
+        }
       } else {
-        row.push('Unanswered');
+        if (status === true) {
+          row.push('Correct');
+        } else if (status === false) {
+          row.push('Incorrect');
+        } else {
+          row.push('Unanswered');
+        }
       }
     });
     

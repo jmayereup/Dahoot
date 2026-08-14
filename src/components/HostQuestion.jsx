@@ -239,6 +239,25 @@ export function HostQuestion({
           </div>
         )}
 
+        {/* 6. DISCUSSION */}
+        {type === 'DISCUSSION' && (
+          <div className="max-w-xl mx-auto text-center p-6 bg-slate-50/70 border border-slate-200/80 rounded-3xl shadow-xs">
+            <div className="w-16 h-16 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
+              💬
+            </div>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight mb-1">
+              Classroom Discussion
+            </h3>
+            <p className="text-sm font-medium text-slate-500 mb-4 max-w-md mx-auto">
+              Students are writing their answers on their devices. When ready, reveal all responses on screen for discussion!
+            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-2xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{answeredCount} of {hostPlayers.length} responses collected</span>
+            </div>
+          </div>
+        )}
+
       </div>
 
       <div style={{ marginTop: 16, display: 'flex', gap: 16, justifyContent: 'center' }}>

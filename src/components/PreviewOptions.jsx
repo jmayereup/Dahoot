@@ -220,5 +220,43 @@ export function PreviewOptions({ question, editingQuestion }) {
     return renderPreviewCategorize(question.options);
   }
 
+  if (type === 'DISCUSSION') {
+    const placeholder = question.options?.placeholder || 'Type your opinion or response here...';
+    const sampleAnswers = question.options?.sample_answers || [];
+    const maxLen = question.options?.max_length || 250;
+
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-sky-50 text-sky-700 rounded-lg border border-sky-200/80 text-[10px] font-bold uppercase tracking-wider w-fit">
+          <span>💬 Classroom Discussion</span>
+          <span>•</span>
+          <span>0 Points</span>
+        </div>
+
+        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Student Input Preview (Max {maxLen} chars):
+          </div>
+          <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-400 italic shadow-2xs">
+            {placeholder}
+          </div>
+        </div>
+
+        {sampleAnswers.length > 0 && (
+          <div className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200/70 text-xs">
+            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">
+              Discussion Guide / Sample Points:
+            </span>
+            <ul className="list-disc list-inside text-amber-900/80 space-y-0.5 text-[11px]">
+              {sampleAnswers.map((sample, sIdx) => (
+                <li key={sIdx}>{sample}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return null;
 }

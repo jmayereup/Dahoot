@@ -26,6 +26,7 @@ export function QuestionInteraction({
   const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
   const [categoryAssignments, setCategoryAssignments] = useState({});
+  const [discussionText, setDiscussionText] = useState('');
 
   const { mcOptions: shuffledMcOptions, sortingPool: shuffledSortingPool, dragDropChoices: shuffledDragDropChoices, dropDownChoices: shuffledDropDownChoices, categorizeItems: shuffledCategorizeItems, categorizeCategories: shuffledCategorizeCategories } = useShuffledOptions(question, question?.id);
 
@@ -48,6 +49,8 @@ export function QuestionInteraction({
     } else if (type === 'CATEGORIZE' && n?.options) {
       effectiveSetCategorizeIdx(0);
       setCategoryAssignments({});
+    } else if (type === 'DISCUSSION') {
+      setDiscussionText('');
     }
   }, [question, type, shuffledSortingPool, effectiveSetCategorizeIdx]);
 
@@ -765,6 +768,64 @@ export function QuestionInteraction({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 6. DISCUSSION */}
+          {type === 'DISCUSSION' && (
+            <div className="w-full max-w-lg mx-auto flex flex-col gap-4">
+              <div className="p-3 bg-sky-50/80 border border-sky-200/80 rounded-2xl text-center">
+                <span className="text-xs font-black text-sky-800 uppercase tracking-wider inline-flex items-center gap-1.5">
+                  <span>💬</span> Classroom Discussion • No Points
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <textarea
+                  rows={4}
+                  className="form-input !p-4 !text-base !rounded-2xl !bg-white/95 !border-slate-300 focus:!border-rose-400 focus:!ring-2 focus:!ring-rose-200 shadow-xs resize-none"
+                  placeholder={question.options?.placeholder || "Type your thoughts, answer, or opinion here..."}
+                  value={discussionText}
+                  onChange={(e) => {
+                    const maxLen = question.options?.max_length || 250;
+                    if (e.target.value.length <= maxLen) {
+                      setDiscussionText(e.target.value);
+                    }
+                  }}
+                  maxLength={question.options?.max_length || 250}
+                  disabled={disabled}
+                  autoFocus
+                />
+
+                <div className="flex justify-between items-center text-xs px-1 text-slate-400">
+                  <span>Type your reflection</span>
+                  <span className="font-mono font-bold">
+                    {discussionText.length} / {question.options?.max_length || 250}
+                  </span>
+                </div>
+              </div>
+
+              {question.options?.sample_answers && question.options.sample_answers.length > 0 && playerAnswer && (
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-left">
+                  <span className="font-extrabold text-amber-800 uppercase tracking-wider block mb-1">
+                    Discussion Guide / Sample Points:
+                  </span>
+                  <ul className="list-disc list-inside text-amber-900/80 space-y-0.5 text-[11px]">
+                    {question.options.sample_answers.map((s, idx) => (
+                      <li key={idx}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => onSubmit(discussionText.trim())}
+                className="btn btn-primary !py-3.5 !text-lg !rounded-2xl shadow-md"
+                disabled={!discussionText.trim() || disabled}
+              >
+                🚀 Submit Response
+              </button>
             </div>
           )}
 

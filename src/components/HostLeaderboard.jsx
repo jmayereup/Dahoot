@@ -21,6 +21,26 @@ export function HostLeaderboard({
   const isLastQuestion = qIndex + 1 >= questions.length;
   const type = activeQuestion.type || 'MULTIPLE_CHOICE';
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [spotlightItem, setSpotlightItem] = useState(null);
+
+  // Discussion responses collection
+  const discussionResponses = useMemo(() => {
+    if (type !== 'DISCUSSION') return [];
+    return hostPlayers
+      .map(p => {
+        const raw = p.answers?.[activeQuestion.id];
+        let text = '';
+        if (typeof raw === 'string') text = raw;
+        else if (raw && typeof raw === 'object' && typeof raw.text === 'string') text = raw.text;
+        return {
+          id: p.id,
+          name: p.name,
+          text: text.trim()
+        };
+      })
+      .filter(item => Boolean(item.text));
+  }, [hostPlayers, activeQuestion.id, type]);
 
   // Shuffle multiple choice options deterministically based on roomCode and question ID
   const shuffledMultipleChoiceOptions = useMemo(() => {
@@ -150,104 +170,238 @@ export function HostLeaderboard({
         </div>
       )}
 
-      {/* Show Correct Answer breakdown */}
-      <div style={{ marginBottom: 16, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '14px 20px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
-          Correct Answer Key:
-        </div>
-
-        {/* 1. MULTIPLE CHOICE */}
-        {type === 'MULTIPLE_CHOICE' && correctShuffledIdx !== -1 && (
-          <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]} !p-3 !rounded-xl !text-base`} style={{ maxWidth: '450px', cursor: 'default' }}>
-            <div className="option-icon !w-8 !h-8 !text-base">{String.fromCharCode(65 + correctShuffledIdx)}</div>
-            <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
-          </div>
-        )}
-
-        {/* 2. SORTING */}
-        {type === 'SORTING' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: '450px' }}>
-            {getSortingCorrect(activeQuestion).map((opt, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  color: '#10b981',
-                  fontWeight: 600,
-                  fontSize: '0.95rem'
-                }}
-              >
-                <span style={{ fontSize: '0.85rem', background: '#10b981', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {idx + 1}
-                </span>
-                {opt}
+      {/* 1. DISCUSSION BOARD (FOR DISCUSSION QUESTIONS) */}
+      {type === 'DISCUSSION' ? (
+        <div className="mb-6 p-4 sm:p-5 bg-white border border-slate-200/90 rounded-2xl shadow-xs text-left">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💬</span>
+              <div>
+                <h3 className="text-base font-black text-slate-800 tracking-tight m-0">
+                  Classroom Discussion Board
+                </h3>
+                <p className="text-xs font-semibold text-slate-400 m-0">
+                  {discussionResponses.length} of {hostPlayers.length} students responded • Click any response to spotlight
+                </p>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
 
-        {/* 3. DRAG AND DROP */}
-        {type === 'DRAG_DROP' && activeQuestion.options && (
-          <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
-            {fillSentenceBlanks(activeQuestion.options.sentence)}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAnonymous(!isAnonymous)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isAnonymous
+                    ? 'bg-slate-800 text-white border-slate-900 shadow-xs'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle student names on/off"
+              >
+                <span>{isAnonymous ? '🕶️ Names Hidden' : '👤 Names Visible'}</span>
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* 4. DROP DOWN */}
-        {type === 'DROP_DOWN' && activeQuestion.options && (
-          <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
-            {fillSentenceDropdowns(activeQuestion.options.sentence)}
-          </div>
-        )}
+          {/* Teacher Guide Note if Present */}
+          {activeQuestion.options?.sample_answers && activeQuestion.options.sample_answers.length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs">
+              <span className="font-extrabold text-amber-800 uppercase tracking-wider block mb-1">
+                Teacher Talking Points & Ideas:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {activeQuestion.options.sample_answers.map((idea, idx) => (
+                  <span key={idx} className="px-2.5 py-1 bg-white border border-amber-200 text-amber-900 font-semibold rounded-lg shadow-2xs">
+                    💡 {idea}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* 5. CATEGORIZE */}
-        {type === 'CATEGORIZE' && activeQuestion.options && (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: `repeat(${Math.min(activeQuestion.options.categories?.length || 2, 4)}, 1fr)`,
-            gap: 10 
-          }}>
-            {Object.keys(categorizedMap).map((cat, idx) => {
-              const catIdx = activeQuestion.options.categories?.indexOf(cat);
-              const colorSet = BUCKET_COLORS[catIdx !== -1 ? catIdx % BUCKET_COLORS.length : idx % BUCKET_COLORS.length];
-              return (
-                <div 
-                  key={idx}
-                  style={{
-                    background: colorSet.background,
-                    border: colorSet.border,
-                    borderRadius: '12px',
-                    padding: '12px 10px',
-                    boxShadow: colorSet.shadow
-                  }}
+          {/* Student Cards Grid */}
+          {discussionResponses.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[380px] overflow-y-auto pr-1">
+              {discussionResponses.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  onClick={() => setSpotlightItem(item)}
+                  className="group relative p-3.5 bg-slate-50 hover:bg-rose-50/40 border border-slate-200 hover:border-rose-300 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-md flex flex-col justify-between"
+                  title="Click to spotlight this response on screen"
                 >
-                  <div style={{ fontWeight: 800, color: colorSet.color, marginBottom: 6, borderBottom: `1.5px solid ${colorSet.color}33`, paddingBottom: 4 }}>
-                    {cat}
+                  <div className="text-slate-800 text-sm font-medium leading-relaxed mb-3">
+                    <span className="text-rose-400 font-serif text-lg mr-1">“</span>
+                    {item.text}
+                    <span className="text-rose-400 font-serif text-lg ml-1">”</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {categorizedMap[cat].map((item, iIdx) => (
-                      <div key={iIdx} style={{ fontSize: '0.9rem', color: colorSet.color, fontWeight: 500 }}>
-                        • {item.name}
-                      </div>
-                    ))}
-                    {categorizedMap[cat].length === 0 && (
-                      <div style={{ fontSize: '0.8rem', color: colorSet.color, opacity: 0.6, fontStyle: 'italic' }}>
-                        No items
-                      </div>
-                    )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span className="text-xs font-bold text-slate-500 inline-flex items-center gap-1">
+                      <span>{isAnonymous ? '👤' : '🎓'}</span>
+                      <span>{isAnonymous ? `Student ${idx + 1}` : item.name}</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                      🔍 Spotlight
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-400 text-sm italic">
+              No written responses submitted for this question.
+            </div>
+          )}
+        </div>
+      ) : (
+        /* STANDARD ANSWER KEY (FOR GRADED QUESTIONS) */
+        <div style={{ marginBottom: 16, textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', padding: '14px 20px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
+            Correct Answer Key:
           </div>
-        )}
-      </div>
+
+          {/* 1. MULTIPLE CHOICE */}
+          {type === 'MULTIPLE_CHOICE' && correctShuffledIdx !== -1 && (
+            <div className={`option-card ${OPTION_CLASSES[correctShuffledIdx]} !p-3 !rounded-xl !text-base`} style={{ maxWidth: '450px', cursor: 'default' }}>
+              <div className="option-icon !w-8 !h-8 !text-base">{String.fromCharCode(65 + correctShuffledIdx)}</div>
+              <span>{shuffledMultipleChoiceOptions[correctShuffledIdx].item}</span>
+            </div>
+          )}
+
+          {/* 2. SORTING */}
+          {type === 'SORTING' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: '450px' }}>
+              {getSortingCorrect(activeQuestion).map((opt, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    color: '#10b981',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  <span style={{ fontSize: '0.85rem', background: '#10b981', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {idx + 1}
+                  </span>
+                  {opt}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 3. DRAG AND DROP */}
+          {type === 'DRAG_DROP' && activeQuestion.options && (
+            <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
+              {fillSentenceBlanks(activeQuestion.options.sentence)}
+            </div>
+          )}
+
+          {/* 4. DROP DOWN */}
+          {type === 'DROP_DOWN' && activeQuestion.options && (
+            <div style={{ fontSize: '1.05rem', lineHeight: '1.5rem', color: 'var(--text-primary)' }}>
+              {fillSentenceDropdowns(activeQuestion.options.sentence)}
+            </div>
+          )}
+
+          {/* 5. CATEGORIZE */}
+          {type === 'CATEGORIZE' && activeQuestion.options && (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: `repeat(${Math.min(activeQuestion.options.categories?.length || 2, 4)}, 1fr)`,
+              gap: 10 
+            }}>
+              {Object.keys(categorizedMap).map((cat, idx) => {
+                const catIdx = activeQuestion.options.categories?.indexOf(cat);
+                const colorSet = BUCKET_COLORS[catIdx !== -1 ? catIdx % BUCKET_COLORS.length : idx % BUCKET_COLORS.length];
+                return (
+                  <div 
+                    key={idx}
+                    style={{
+                      background: colorSet.background,
+                      border: colorSet.border,
+                      borderRadius: '12px',
+                      padding: '12px 10px',
+                      boxShadow: colorSet.shadow
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: colorSet.color, marginBottom: 6, borderBottom: `1.5px solid ${colorSet.color}33`, paddingBottom: 4 }}>
+                      {cat}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {categorizedMap[cat].map((item, iIdx) => (
+                        <div key={iIdx} style={{ fontSize: '0.9rem', color: colorSet.color, fontWeight: 500 }}>
+                          • {item.name}
+                        </div>
+                      ))}
+                      {categorizedMap[cat].length === 0 && (
+                        <div style={{ fontSize: '0.8rem', color: colorSet.color, opacity: 0.6, fontStyle: 'italic' }}>
+                          No items
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Spotlight Overlay Modal */}
+      {spotlightItem && (
+        <div 
+          onClick={() => setSpotlightItem(null)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-2 border-rose-300 rounded-3xl p-6 sm:p-10 max-w-2xl w-full shadow-2xl animate-join-focus relative text-left"
+          >
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-200 rounded-full text-rose-600 font-extrabold text-xs tracking-wider uppercase">
+                <span>💬 Discussion Spotlight</span>
+                <span>•</span>
+                <span>{isAnonymous ? 'Anonymous' : spotlightItem.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSpotlightItem(null)}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold flex items-center justify-center cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Question: {activeQuestion.text}
+            </p>
+
+            <div className="p-6 bg-slate-50/80 border border-slate-200/80 rounded-2xl mb-6">
+              <p className="text-2xl sm:text-3xl font-black text-slate-800 leading-snug tracking-tight">
+                <span className="text-rose-500 font-serif text-4xl mr-1.5">“</span>
+                {spotlightItem.text}
+                <span className="text-rose-500 font-serif text-4xl ml-1.5">”</span>
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="btn btn-primary !py-2.5 !px-6 !text-sm"
+                onClick={() => setSpotlightItem(null)}
+              >
+                Done Discussing (Close)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="leaderboard-list !my-4 !gap-2">
         {hostPlayers.slice(0, 5).map((player, idx) => (

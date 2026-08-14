@@ -307,15 +307,71 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
           </div>
         )}
 
+        {/* 6. DISCUSSION */}
+        {type === 'DISCUSSION' && (
+          <div className="flex flex-col gap-3">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-left">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Your Shared Response:
+              </span>
+              {playerSelectedIdx || playerRecord.answers?.[activeQuestion.id]?.text || (typeof playerRecord.answers?.[activeQuestion.id] === 'string' ? playerRecord.answers[activeQuestion.id] : null) ? (
+                <p className="text-sm font-semibold text-slate-800 italic">
+                  "{typeof playerSelectedIdx === 'string' ? playerSelectedIdx : (playerSelectedIdx?.text || playerRecord.answers?.[activeQuestion.id]?.text || playerRecord.answers?.[activeQuestion.id])}"
+                </p>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  [No response submitted]
+                </p>
+              )}
+            </div>
+
+            {activeQuestion.options?.sample_answers && activeQuestion.options.sample_answers.length > 0 && (
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-left text-xs">
+                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">
+                  Talking Points / Ideas:
+                </span>
+                <ul className="list-disc list-inside text-amber-900/80 space-y-0.5 text-[11px]">
+                  {activeQuestion.options.sample_answers.map((s, idx) => (
+                    <li key={idx}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     );
   };
 
   const hasAnswered = playerRecord.answers && playerRecord.answers[activeQuestion.id] !== undefined;
+  const isDiscussion = type === 'DISCUSSION';
 
   return (
     <div className="feedback-screen">
-      {playerFeedback ? (
+      {isDiscussion ? (
+        <div>
+          {hasAnswered || playerFeedback ? (
+            <div>
+              <div className="feedback-icon !bg-sky-50 !text-sky-600 !border-sky-200">💬</div>
+              <h2>Response Shared!</h2>
+              <div className="points-text !text-sky-600">Discussion • 0 pts</div>
+              <p style={{ color: '#475569', fontSize: '0.9rem', marginTop: 8 }}>
+                Check the main screen for class discussion!
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="feedback-icon !bg-slate-100 !text-slate-500 !border-slate-200">💬</div>
+              <h2>No Response</h2>
+              <div className="points-text !text-slate-500">+0 pts</div>
+              <p style={{ color: '#475569', fontSize: '0.9rem', marginTop: 8 }}>
+                Join the classroom discussion on the main screen!
+              </p>
+            </div>
+          )}
+        </div>
+      ) : playerFeedback ? (
         <div>
           {playerFeedback.correct ? (
             <div>

@@ -16,7 +16,7 @@ export function useTeacherDashboard(view, currentUser) {
   const [gamesList, setGamesList] = useState([]);
   const { userInfo, setUserInfo } = useUserInfo(currentUser);
   const [selectedGame, setSelectedGame] = useState(null); // The game whose questions we are currently viewing/editing
-  
+
   const [questionsList, setQuestionsList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +38,7 @@ export function useTeacherDashboard(view, currentUser) {
   const [selectedQuestion, setSelectedQuestion] = useState(null); // null if creating, question object if editing
   const [questionType, setQuestionType] = useState('MULTIPLE_CHOICE');
   const [questionText, setQuestionText] = useState('');
-  
+
   // Bulk Import state
   const [isImporting, setIsImporting] = useState(false);
   const [importText, setImportText] = useState('');
@@ -61,6 +61,11 @@ export function useTeacherDashboard(view, currentUser) {
   // CATEGORIZE (row 0 = categories, row 1+ = items per cell, newline-separated)
   const [categorizeGrid, setCategorizeGrid] = useState([['', ''], ['', '']]);
 
+  // DISCUSSION (open-ended / no points)
+  const [discussionPlaceholder, setDiscussionPlaceholder] = useState('');
+  const [discussionSampleAnswers, setDiscussionSampleAnswers] = useState('');
+  const [discussionMaxLength, setDiscussionMaxLength] = useState(250);
+
   // Fetch games from PocketBase (including question count per game)
   const fetchGames = async () => {
     setLoading(true);
@@ -69,7 +74,7 @@ export function useTeacherDashboard(view, currentUser) {
       const games = await pb.collection('dahoot_games').getFullList({
         sort: '-created'
       });
-      
+
       // Fetch question counts for each game
       const gamesWithCounts = await Promise.all(games.map(async (game) => {
         try {
@@ -87,7 +92,7 @@ export function useTeacherDashboard(view, currentUser) {
           };
         }
       }));
-      
+
       setGamesList(gamesWithCounts);
     } catch (err) {
       console.error("Error fetching games:", err);
@@ -308,6 +313,9 @@ export function useTeacherDashboard(view, currentUser) {
     setDragDistractors(['']);
     setDropdownSentence('');
     setCategorizeGrid([['', ''], ['', '']]);
+    setDiscussionPlaceholder('');
+    setDiscussionSampleAnswers('');
+    setDiscussionMaxLength(250);
     setIsEditing(true);
     setError('');
   };
@@ -343,6 +351,11 @@ export function useTeacherDashboard(view, currentUser) {
       setDragDistractors(union.length ? union : ['']);
     } else if (type === 'CATEGORIZE') {
       setCategorizeGrid(categorizeOptionsToGrid(n.options));
+    } else if (type === 'DISCUSSION') {
+      setDiscussionPlaceholder(n.options?.placeholder || '');
+      const samples = Array.isArray(n.options?.sample_answers) ? n.options.sample_answers.join('\n') : (n.options?.sample_answers || '');
+      setDiscussionSampleAnswers(samples);
+      setDiscussionMaxLength(n.options?.max_length || 250);
     }
 
     setIsEditing(true);
@@ -389,43 +402,36 @@ export function useTeacherDashboard(view, currentUser) {
     setError('');
 
     if (!questionText.trim()) {
-      setError('Question text is required.');
+      setError('Question prompt is required.');
       return;
     }
 
-    let optionsPayload = null;
+    let optionsPayload = {};
 
     if (questionType === 'MULTIPLE_CHOICE') {
       if (!mcCorrectAnswer.trim()) {
         setError('Correct answer is required.');
         return;
       }
-      if (mcDistractors.some(d => !d.trim())) {
-        setError('All 3 distractors must be filled out.');
-        return;
-      }
-      const seen = new Set([mcCorrectAnswer.trim().toLowerCase(), ...mcDistractors.map(d => d.trim().toLowerCase())]);
-      if (seen.size < 4) {
-        setError('Correct answer and distractors must all be unique.');
+      const filledDistractors = mcDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
+      if (filledDistractors.length === 0) {
+        setError('Please enter at least 1 distractor (incorrect option).');
         return;
       }
       optionsPayload = {
         correct_answer: mcCorrectAnswer.trim(),
-        distractors: mcDistractors.map(d => d.trim())
+        distractors: filledDistractors
       };
     }
 
     else if (questionType === 'SORTING') {
-      if (sortingItems.length < 2) {
-        setError('A sorting question must have at least 2 items.');
-        return;
-      }
-      if (sortingItems.some(opt => !opt.trim())) {
-        setError('All sorting items must be filled out.');
+      const filledItems = sortingItems.map(item => item.trim()).filter(Boolean);
+      if (filledItems.length < 2) {
+        setError('Sorting question requires at least 2 items.');
         return;
       }
       optionsPayload = {
-        correct_sequence: sortingItems.map(o => o.trim())
+        correct_sequence: filledItems
       };
     }
 
@@ -436,7 +442,7 @@ export function useTeacherDashboard(view, currentUser) {
       }
       const answers = extractBracketedAnswers(dragSentence);
       if (answers.length === 0) {
-        setError('The sentence must contain at least one bracketed answer (e.g. [hooks]).');
+        setError('The sentence must contain at least one bracketed answer (e.g. [dog]).');
         return;
       }
       const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
@@ -478,6 +484,17 @@ export function useTeacherDashboard(view, currentUser) {
         return;
       }
       optionsPayload = { categories, items };
+    }
+
+    else if (questionType === 'DISCUSSION') {
+      const sampleAnswersArr = typeof discussionSampleAnswers === 'string'
+        ? discussionSampleAnswers.split('\n').map(s => s.trim()).filter(Boolean)
+        : (Array.isArray(discussionSampleAnswers) ? discussionSampleAnswers : []);
+      optionsPayload = {
+        placeholder: discussionPlaceholder.trim(),
+        sample_answers: sampleAnswersArr,
+        max_length: parseInt(discussionMaxLength, 10) || 250
+      };
     }
 
     setLoading(true);
@@ -545,14 +562,14 @@ export function useTeacherDashboard(view, currentUser) {
     }
     for (let i = 0; i < parsed.length; i++) {
       const q = parsed[i];
-      if (!q.type || !q.text || !q.options) {
-        throw new Error(`Question ${i + 1} is missing required fields (type, text, options).`);
+      if (!q.type || !q.text) {
+        throw new Error(`Question ${i + 1} is missing required fields (type, text).`);
       }
-      const validTypes = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'];
+      const validTypes = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE', 'DISCUSSION'];
       if (!validTypes.includes(q.type)) {
         throw new Error(`Question ${i + 1} has invalid type "${q.type}". Must be one of: ${validTypes.join(', ')}`);
       }
-      
+
       // Drop extra distractors for future requests (if it doesn't follow the directions)
       if (q.type === 'MULTIPLE_CHOICE' && q.options && Array.isArray(q.options.distractors)) {
         q.options.distractors = q.options.distractors.slice(0, 3);
@@ -579,25 +596,26 @@ export function useTeacherDashboard(view, currentUser) {
       return;
     }
 
-    setLoading(true);
     try {
-      const parsed = parseAndValidateQuestions(importText);
+      const questionsToSave = parseAndValidateQuestions(importText);
+      setLoading(true);
 
-      await Promise.all(parsed.map(q =>
-        pb.collection('dahoot_questions').create({
+      for (const q of questionsToSave) {
+        const questionData = {
           game_id: selectedGame.id,
           text: q.text,
-          options: q.options,
-          type: q.type
-        })
-      ));
+          type: q.type,
+          options: q.options || {}
+        };
+        await pb.collection('dahoot_questions').create(questionData);
+      }
 
       setIsImporting(false);
       setImportText('');
       await fetchQuestions(selectedGame.id);
     } catch (err) {
-      console.error("Error saving imported questions:", err);
-      setError("Import failed: " + err.message);
+      console.error("Error bulk saving questions:", err);
+      setError(err.message || 'Failed to save imported questions.');
     } finally {
       setLoading(false);
     }
@@ -647,7 +665,7 @@ export function useTeacherDashboard(view, currentUser) {
     startImporting,
     cancelImporting,
     saveImportedQuestions,
-    
+
     // Multiple Choice
     mcCorrectAnswer,
     setMcCorrectAnswer,
@@ -674,6 +692,14 @@ export function useTeacherDashboard(view, currentUser) {
     // Categorize
     categorizeGrid,
     setCategorizeGrid,
+
+    // Discussion
+    discussionPlaceholder,
+    setDiscussionPlaceholder,
+    discussionSampleAnswers,
+    setDiscussionSampleAnswers,
+    discussionMaxLength,
+    setDiscussionMaxLength,
 
     startCreating,
     startEditing,

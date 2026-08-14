@@ -313,10 +313,13 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     
     if (!activeQuestion) return;
 
+    const isDiscussion = activeQuestion && activeQuestion.type === 'DISCUSSION';
     const isCorrect = isAnswerCorrect(activeQuestion, userAnswer);
 
     let points = 0;
-    if (isCorrect) {
+    if (isDiscussion) {
+      points = 0;
+    } else if (isCorrect) {
       const duration = playerRoom.timer_duration;
       const isCategorize = activeQuestion && activeQuestion.type === 'CATEGORIZE';
       const limit = (duration || 20) * (isCategorize ? 2 : 1);
@@ -327,9 +330,13 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
 
     try {
       const currentAnswers = playerRecord.answers || {};
+      const answerVal = isDiscussion
+        ? { text: typeof userAnswer === 'string' ? userAnswer : (userAnswer?.text || ''), isDiscussion: true }
+        : isCorrect;
+
       const newAnswers = {
         ...currentAnswers,
-        [activeQuestion.id]: isCorrect
+        [activeQuestion.id]: answerVal
       };
 
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
@@ -338,12 +345,15 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         answers: newAnswers
       });
       setPlayerRecord(updatedPlayer);
-      setPlayerFeedback({ correct: isCorrect, points });
+      const feedbackPayload = isDiscussion
+        ? { correct: true, isDiscussion: true, points: 0, responseText: typeof userAnswer === 'string' ? userAnswer : (userAnswer?.text || '') }
+        : { correct: isCorrect, points };
+      setPlayerFeedback(feedbackPayload);
 
       // Save feedback and selection to localStorage for reconnect support
       localStorage.setItem('dahoot_last_feedback', JSON.stringify({
         questionId: activeQuestion.id,
-        feedback: { correct: isCorrect, points }
+        feedback: feedbackPayload
       }));
       localStorage.setItem('dahoot_last_selected_idx', JSON.stringify({
         questionId: activeQuestion.id,

@@ -54,6 +54,9 @@ export function TeacherDashboard({
   dragDistractors, updateDragDistractor,
   dropdownSentence, setDropdownSentence,
   categorizeGrid, setCategorizeGrid,
+  discussionPlaceholder, setDiscussionPlaceholder,
+  discussionSampleAnswers, setDiscussionSampleAnswers,
+  discussionMaxLength, setDiscussionMaxLength,
   startCreating,
   startEditing,
   cancelEditing,
@@ -289,6 +292,15 @@ export function TeacherDashboard({
       if (categories.length < 2) { setPreviewEditError('Please enter at least 2 categories in the first row.'); return; }
       if (items.length === 0) { setPreviewEditError('Please add at least one item in any cell.'); return; }
       optionsPayload = { categories, items };
+    } else if (questionType === 'DISCUSSION') {
+      const sampleAnswersArr = typeof discussionSampleAnswers === 'string'
+        ? discussionSampleAnswers.split('\n').map(s => s.trim()).filter(Boolean)
+        : (Array.isArray(discussionSampleAnswers) ? discussionSampleAnswers : []);
+      optionsPayload = {
+        placeholder: discussionPlaceholder ? discussionPlaceholder.trim() : '',
+        sample_answers: sampleAnswersArr,
+        max_length: parseInt(discussionMaxLength, 10) || 250
+      };
     }
 
     setPreviewEditLoading(true);
@@ -350,11 +362,12 @@ Target Student Profile:
 - Subject: ${subject || 'General'}
 
 Generate the following question counts:
-- Multiple Choice (MULTIPLE_CHOICE): ${counts.MULTIPLE_CHOICE}
-- Sorting (SORTING): ${counts.SORTING}
-- Categorization (CATEGORIZE): ${counts.CATEGORIZATION || counts.CATEGORIZE}
-- Drag & Drop (DRAG_DROP): ${counts.DRAG_DROP}
-- Drop Down (DROP_DOWN): ${counts.DROP_DOWN}
+- Multiple Choice (MULTIPLE_CHOICE): ${counts.MULTIPLE_CHOICE || 0}
+- Sorting (SORTING): ${counts.SORTING || 0}
+- Categorization (CATEGORIZE): ${counts.CATEGORIZATION || counts.CATEGORIZE || 0}
+- Drag & Drop (DRAG_DROP): ${counts.DRAG_DROP || 0}
+- Drop Down (DROP_DOWN): ${counts.DROP_DOWN || 0}
+- Discussion / Open-Ended (DISCUSSION): ${counts.DISCUSSION || 0}
 
 JSON Response Schema:
 {
@@ -424,8 +437,19 @@ Question Type Examples (use these exact shapes):
   }
 }
 
+6) DISCUSSION — open-ended opinion, reflection, or debate prompt (no correct answer, 0 points)
+{
+  "text": "Why do you think learning a second language is beneficial in today's world?",
+  "type": "DISCUSSION",
+  "options": {
+    "placeholder": "Share your thoughts or personal experience...",
+    "sample_answers": ["Global career opportunities", "Cultural appreciation", "Cognitive benefits"],
+    "max_length": 250
+  }
+}
+
 Important rules:
-- The "type" field must be exactly one of: MULTIPLE_CHOICE, SORTING, CATEGORIZE, DRAG_DROP, DROP_DOWN.
+- The "type" field must be exactly one of: MULTIPLE_CHOICE, SORTING, CATEGORIZE, DRAG_DROP, DROP_DOWN, DISCUSSION.
 - For MULTIPLE_CHOICE, DRAG_DROP, and DROP_DOWN questions, you MUST limit the number of distractors to a maximum of 3 distractors total per question or dropdown blank.
 - For DRAG_DROP, every answer in answers_in_order must appear as a [word] bracket in the sentence, in the same order.
 - For DROP_DOWN, the number of dropdowns must match the number of blanks in the sentence.
@@ -544,6 +568,9 @@ Important rules:
           dragDistractors={dragDistractors} updateDragDistractor={updateDragDistractor}
           dropdownSentence={dropdownSentence} setDropdownSentence={setDropdownSentence}
           categorizeGrid={categorizeGrid} setCategorizeGrid={setCategorizeGrid}
+          discussionPlaceholder={discussionPlaceholder} setDiscussionPlaceholder={setDiscussionPlaceholder}
+          discussionSampleAnswers={discussionSampleAnswers} setDiscussionSampleAnswers={setDiscussionSampleAnswers}
+          discussionMaxLength={discussionMaxLength} setDiscussionMaxLength={setDiscussionMaxLength}
           disabled={previewEditLoading}
         />
 

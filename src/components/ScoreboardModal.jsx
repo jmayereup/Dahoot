@@ -130,11 +130,13 @@ export function ScoreboardModal({
               {filteredPlayers.map((player) => {
                 const rankIdx = sortedPlayers.findIndex(p => p.id === player.id) + 1;
                 const playerAnswers = player.answers || {};
+                const gradedQuestions = questions.filter(q => q.type !== 'DISCUSSION');
+                const totalGraded = gradedQuestions.length;
                 let correctCount = 0;
-                questions.forEach(q => {
+                gradedQuestions.forEach(q => {
                   if (playerAnswers[q.id] === true) correctCount++;
                 });
-                const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+                const accuracy = totalGraded > 0 ? Math.round((correctCount / totalGraded) * 100) : 100;
 
                 let rankBadge = `${rankIdx}`;
                 if (rankIdx === 1) rankBadge = '🥇';
@@ -147,7 +149,10 @@ export function ScoreboardModal({
                     <td className="px-6 py-3.5 font-bold text-slate-800">{player.name}</td>
                     <td className="px-6 py-3.5 text-right font-semibold text-slate-700">{player.score || 0} pts</td>
                     <td className="px-6 py-3.5 text-center font-medium text-slate-600">
-                      {correctCount} / {questions.length}
+                      {correctCount} / {totalGraded}
+                      {questions.length > totalGraded && (
+                        <span className="text-[10px] text-slate-400 block font-normal">(+{questions.length - totalGraded} discussion)</span>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 text-center">
                       <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${

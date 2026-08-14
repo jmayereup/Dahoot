@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { pb } from '../pb';
 
-const ALL_QUESTION_TYPES = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE'];
+const ALL_QUESTION_TYPES = ['MULTIPLE_CHOICE', 'SORTING', 'DRAG_DROP', 'DROP_DOWN', 'CATEGORIZE', 'DISCUSSION'];
 
 const DEFAULT_SETUP = {
   randomize: true,
@@ -97,7 +97,8 @@ export function useHostGameSetup() {
       SORTING: 'Sorting Order',
       DRAG_DROP: 'Drag & Drop (Blanks)',
       DROP_DOWN: 'Drop-Down (Select Blanks)',
-      CATEGORIZE: 'Categorization Groups'
+      CATEGORIZE: 'Categorization Groups',
+      DISCUSSION: 'Classroom Discussion (0 pts)'
     };
     return QUESTION_TYPE_LABELS[type] || type.replace('_', ' ');
   };
