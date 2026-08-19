@@ -20,8 +20,8 @@ export function QuestionInteraction({
   const type = question?.type || 'MULTIPLE_CHOICE';
 
   const [sortingPool, setSortingPool] = useState([]);
-  const [sortedItems, setSortedItems] = useState([]);
-  const [placedWords, setPlacedWords] = useState([]);
+  const [sortedIndices, setSortedIndices] = useState([]);
+  const [placedPoolIndices, setPlacedPoolIndices] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
   const [dropdownSelections, setDropdownSelections] = useState([]);
   const [categorizeIdx, setCategorizeIdx] = useState(0);
@@ -38,10 +38,10 @@ export function QuestionInteraction({
     const n = normalizeQuestion(question);
     if (type === 'SORTING' && n?.options?.correct_sequence) {
       setSortingPool(shuffledSortingPool);
-      setSortedItems([]);
+      setSortedIndices([]);
     } else if (type === 'DRAG_DROP' && n?.options) {
       const correctLen = (n.options.answers_in_order || []).length;
-      setPlacedWords(Array(correctLen).fill(null));
+      setPlacedPoolIndices(Array(correctLen).fill(null));
       setActiveBlankIdx(0);
     } else if (type === 'DROP_DOWN' && n?.options?.dropdowns) {
       const dropLen = n.options.dropdowns.length;
@@ -54,25 +54,25 @@ export function QuestionInteraction({
     }
   }, [question, type, shuffledSortingPool, effectiveSetCategorizeIdx]);
 
-  const handlePoolItemClick = (item) => {
-    if (sortedItems.includes(item)) return;
-    setSortedItems([...sortedItems, item]);
+  const handlePoolItemClick = (idx) => {
+    if (sortedIndices.includes(idx)) return;
+    setSortedIndices([...sortedIndices, idx]);
   };
 
-  const handleSortedItemClick = (item) => {
-    setSortedItems(sortedItems.filter(i => i !== item));
+  const handleSortedItemClick = (slotIdx) => {
+    setSortedIndices(sortedIndices.filter((_, i) => i !== slotIdx));
   };
 
-  const handlePoolWordTap = (word) => {
-    if (placedWords.includes(word)) return;
+  const handlePoolWordTap = (poolIdx) => {
+    if (placedPoolIndices.includes(poolIdx)) return;
     let fillIdx = activeBlankIdx;
-    if (placedWords[fillIdx] !== null) {
-      fillIdx = placedWords.indexOf(null);
+    if (placedPoolIndices[fillIdx] !== null) {
+      fillIdx = placedPoolIndices.indexOf(null);
     }
     if (fillIdx !== -1) {
-      const updated = [...placedWords];
-      updated[fillIdx] = word;
-      setPlacedWords(updated);
+      const updated = [...placedPoolIndices];
+      updated[fillIdx] = poolIdx;
+      setPlacedPoolIndices(updated);
       const nextEmpty = updated.indexOf(null);
       if (nextEmpty !== -1) {
         setActiveBlankIdx(nextEmpty);
@@ -81,10 +81,10 @@ export function QuestionInteraction({
   };
 
   const handleBlankTap = (blankIdx) => {
-    if (placedWords[blankIdx] !== null) {
-      const updated = [...placedWords];
+    if (placedPoolIndices[blankIdx] !== null) {
+      const updated = [...placedPoolIndices];
       updated[blankIdx] = null;
-      setPlacedWords(updated);
+      setPlacedPoolIndices(updated);
       setActiveBlankIdx(blankIdx);
     } else {
       setActiveBlankIdx(blankIdx);
@@ -114,29 +114,14 @@ export function QuestionInteraction({
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
     const parts = splitBracketTokens(sentence);
+    let sequentialBlank = 0;
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
-        const word = placedWords[blankIdx];
-        const isActive = blankIdx === activeBlankIdx;
-        return (
-          <span
-            key={idx}
-            onClick={() => !disabled && handleBlankTap(blankIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive && !disabled ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
-          >
-            {word || '_____'}
-          </span>
-        );
-      }
-      if (inner) {
-        let mappedIdx = -1;
-        const correctAnswers = getDragDropCorrect(question) || [];
-        if (correctAnswers.length) mappedIdx = correctAnswers.findIndex(c => c === inner);
-        const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
-        const word = placedWords[blankIdx];
+      if (numericIdx !== null || inner) {
+        const blankIdx = numericIdx !== null ? numericIdx : sequentialBlank++;
+        const poolIdx = placedPoolIndices[blankIdx];
+        const word = poolIdx !== null && poolIdx !== undefined ? shuffledDragDropChoices[poolIdx] : null;
         const isActive = blankIdx === activeBlankIdx;
         return (
           <span
@@ -159,27 +144,8 @@ export function QuestionInteraction({
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const choices = shuffledDropDownChoices[dropIdx] || getDropDownChoices(question, dropIdx);
-        return (
-          <select
-            key={idx}
-            className="player-sentence-select"
-            value={dropdownSelections[dropIdx] || ''}
-            onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-            disabled={disabled}
-          >
-            <option value="">-- Choose --</option>
-            {choices.map((choice, cIdx) => (
-              <option key={cIdx} value={choice}>{choice}</option>
-            ))}
-          </select>
-        );
-      }
-      if (inner) {
-        const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-        const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
-        if (ddIdx === -1) sequentialDrop += 1;
+      if (dropIdx !== null || inner) {
+        const idxToUse = dropIdx !== null ? dropIdx : sequentialDrop++;
         const choices = shuffledDropDownChoices[idxToUse] || getDropDownChoices(question, idxToUse);
         return (
           <select
@@ -208,10 +174,10 @@ export function QuestionInteraction({
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
-        const playerWord = pAnswer ? pAnswer[blankIdx] : null;
-        const correctWord = correctAnswers[blankIdx] || '';
+      if (numericIdx !== null || inner) {
+        const blankIdx = numericIdx !== null ? numericIdx : sequentialBlank++;
+        const playerWord = (pAnswer && Array.isArray(pAnswer)) ? pAnswer[blankIdx] : null;
+        const correctWord = correctAnswers[blankIdx] || inner || '';
         const isBlankCorrect = playerWord === correctWord;
         return (
           <span
@@ -223,34 +189,6 @@ export function QuestionInteraction({
               <span>{playerWord} {isBlankCorrect ? '✓' : `(Correct: ${correctWord})`}</span>
             ) : (
               <span>_____ (Correct: {correctWord})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        const valIdx = correctAnswers.findIndex(c => c === inner);
-        let blankIdx;
-        let usedSequential = false;
-        if (valIdx !== -1) {
-          blankIdx = valIdx;
-        } else {
-          blankIdx = sequentialBlank;
-          usedSequential = true;
-        }
-        if (usedSequential) sequentialBlank += 1;
-        const correctWord = correctAnswers[blankIdx] || inner;
-        const playerWord = (pAnswer && Array.isArray(pAnswer)) ? pAnswer[blankIdx] : null;
-        const isBlankCorrect = playerWord === correctWord;
-        return (
-          <span
-            key={idx}
-            className={`player-sentence-blank feedback-blank ${playerWord ? (isBlankCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-            style={{ cursor: 'default' }}
-          >
-            {playerWord ? (
-              <span>{playerWord} {isBlankCorrect ? '✓' : `(Correct: ${correctWord})`}</span>
-            ) : (
-              <span>_____ (Correct: ${correctWord})</span>
             )}
           </span>
         );
@@ -267,30 +205,11 @@ export function QuestionInteraction({
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const correctChoice = getDropDownCorrect(question, dropIdx);
-        const playerChoice = pAnswer ? pAnswer[dropIdx] : '';
-        const isDropCorrect = playerChoice === correctChoice;
-        return (
-          <span
-            key={idx}
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isDropCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>{playerChoice} {isDropCorrect ? '✓' : `(Correct: ${correctChoice})`}</span>
-            ) : (
-              <span>_____ (Correct: {correctChoice})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        const guessedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-        const idxToUse = guessedIdx !== -1 ? guessedIdx : sequentialDrop;
-        if (guessedIdx === -1) sequentialDrop += 1;
+      if (dropIdx !== null || inner) {
+        const idxToUse = dropIdx !== null ? dropIdx : sequentialDrop++;
         const config = dropdowns[idxToUse] || { correct_answer: inner };
-        const correctChoice = config.correct_answer || config.correct || inner;
-        const playerChoice = pAnswer && idxToUse !== -1 ? pAnswer[idxToUse] : '';
+        const correctChoice = getDropDownCorrect(question, idxToUse) || config.correct_answer || config.correct || inner;
+        const playerChoice = (pAnswer && Array.isArray(pAnswer)) ? pAnswer[idxToUse] : '';
         const isDropCorrect = playerChoice === correctChoice;
         return (
           <span
@@ -300,7 +219,7 @@ export function QuestionInteraction({
             {playerChoice ? (
               <span>{playerChoice} {isDropCorrect ? '✓' : `(Correct: ${correctChoice})`}</span>
             ) : (
-              <span>_____ (Correct: {correctChoice})</span>
+              <span>_____ (Correct: ${correctChoice})</span>
             )}
           </span>
         );
@@ -518,24 +437,24 @@ export function QuestionInteraction({
           {type === 'SORTING' && (
             <div className="w-full flex flex-col">
               <div className="player-sorting-container bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-5 flex flex-col gap-3 min-h-[120px] transition-all justify-center">
-                {sortedItems.length === 0 ? (
+                {sortedIndices.length === 0 ? (
                   <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none">
                     Tap items below to rank them in order...
                   </div>
                 ) : (
-                  sortedItems.map((item, idx) => (
+                  sortedIndices.map((poolIdx, slotIdx) => (
                     <button
-                      key={idx}
+                      key={slotIdx}
                       type="button"
-                      onClick={() => handleSortedItemClick(item)}
+                      onClick={() => handleSortedItemClick(slotIdx)}
                       className={`flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       disabled={disabled}
                     >
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
-                          {idx + 1}
+                          {slotIdx + 1}
                         </span>
-                        <span className="font-bold text-slate-700">{item}</span>
+                        <span className="font-bold text-slate-700">{sortingPool[poolIdx]}</span>
                       </div>
                       <span className="text-slate-400 font-bold text-sm">✕</span>
                     </button>
@@ -548,12 +467,12 @@ export function QuestionInteraction({
               </div>
               <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
                 {sortingPool.map((item, idx) => {
-                  const isPlaced = sortedItems.includes(item);
+                  const isPlaced = sortedIndices.includes(idx);
                   return (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handlePoolItemClick(item)}
+                      onClick={() => handlePoolItemClick(idx)}
                       className={`px-4.5 py-2.5 rounded-xl border text-sm font-bold shadow-xs transition-all ${
                         isPlaced
                           ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95'
@@ -568,9 +487,9 @@ export function QuestionInteraction({
               </div>
 
               <button
-                onClick={() => onSubmit(sortedItems)}
+                onClick={() => onSubmit(sortedIndices.map(idx => sortingPool[idx]))}
                 className="btn btn-primary"
-                disabled={sortedItems.length < sortingPool.length || disabled}
+                disabled={sortedIndices.length < sortingPool.length || disabled}
                 style={{ marginTop: 16 }}
               >
                 Submit Order
@@ -594,13 +513,14 @@ export function QuestionInteraction({
                   } : undefined}
                 >
                   {isScramble ? (
-                    placedWords.every(w => w === null) ? (
+                    placedPoolIndices.every(w => w === null) ? (
                       <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none py-1.5">
                         Click words below to form the sentence...
                       </div>
                     ) : (
-                      placedWords.map((word, blankIdx) => {
-                        if (word === null) return null;
+                      placedPoolIndices.map((poolIdx, blankIdx) => {
+                        if (poolIdx === null) return null;
+                        const word = shuffledDragDropChoices[poolIdx];
                         return (
                           <button
                             key={blankIdx}
@@ -621,12 +541,12 @@ export function QuestionInteraction({
 
                 <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
                   {shuffledDragDropChoices.map((choice, idx) => {
-                    const isPlaced = placedWords.includes(choice);
+                    const isPlaced = placedPoolIndices.includes(idx);
                     return (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => handlePoolWordTap(choice)}
+                        onClick={() => handlePoolWordTap(idx)}
                         className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
                         disabled={isPlaced || disabled}
                       >
@@ -637,9 +557,9 @@ export function QuestionInteraction({
                 </div>
 
                 <button
-                  onClick={() => onSubmit(placedWords)}
+                  onClick={() => onSubmit(placedPoolIndices.map(idx => (idx !== null && idx !== undefined ? shuffledDragDropChoices[idx] : '')))}
                   className="btn btn-primary"
-                  disabled={placedWords.includes(null) || disabled}
+                  disabled={placedPoolIndices.includes(null) || disabled}
                 >
                   {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
                 </button>

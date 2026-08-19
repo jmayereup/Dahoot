@@ -24,61 +24,58 @@ export function PlayerQuestion({
   // SORTING (Tap to Order) STATE & HANDLERS
   // ----------------------------------------------------
   const [sortingPool, setSortingPool] = useState([]);
-  const [sortedItems, setSortedItems] = useState([]);
+  const [sortedIndices, setSortedIndices] = useState([]);
 
   useEffect(() => {
     if (type === 'SORTING') {
       if (shuffledSortingPool.length) {
         setSortingPool(shuffledSortingPool);
-        setSortedItems([]);
+        setSortedIndices([]);
       }
     }
   }, [activeQuestion.id, shuffledSortingPool, type]);
 
-  const handlePoolItemClick = (item) => {
-    if (sortedItems.includes(item)) return;
-    setSortedItems([...sortedItems, item]);
+  const handlePoolItemClick = (idx) => {
+    if (sortedIndices.includes(idx)) return;
+    setSortedIndices([...sortedIndices, idx]);
   };
 
-  const handleSortedItemClick = (item) => {
-    setSortedItems(sortedItems.filter(i => i !== item));
+  const handleSortedItemClick = (slotIdx) => {
+    setSortedIndices(sortedIndices.filter((_, i) => i !== slotIdx));
   };
 
   const handleSortingSubmit = () => {
-    submitAnswer(sortedItems);
+    submitAnswer(sortedIndices.map(idx => sortingPool[idx]));
   };
 
   // ----------------------------------------------------
   // DRAG & DROP (Duolingo Style Tap-to-Place) STATE & HANDLERS
   // ----------------------------------------------------
-  const [placedWords, setPlacedWords] = useState([]);
+  const [placedPoolIndices, setPlacedPoolIndices] = useState([]);
   const [activeBlankIdx, setActiveBlankIdx] = useState(0);
 
   const totalBlanks = type === 'DRAG_DROP' ? getDragDropCorrect(activeQuestion).length : 0;
 
   useEffect(() => {
     if (type === 'DRAG_DROP') {
-      setPlacedWords(Array(totalBlanks).fill(null));
+      setPlacedPoolIndices(Array(totalBlanks).fill(null));
       setActiveBlankIdx(0);
     }
   }, [activeQuestion.id, totalBlanks, type]);
 
-  const handlePoolWordTap = (word) => {
-    // If the word is already placed, do nothing
-    if (placedWords.includes(word)) return;
+  const handlePoolWordTap = (poolIdx) => {
+    if (placedPoolIndices.includes(poolIdx)) return;
 
-    // Find the blank to fill (either activeBlankIdx if empty, or first empty blank)
     let fillIdx = activeBlankIdx;
-    if (placedWords[fillIdx] !== null) {
-      fillIdx = placedWords.indexOf(null);
+    if (placedPoolIndices[fillIdx] !== null) {
+      fillIdx = placedPoolIndices.indexOf(null);
     }
 
     if (fillIdx !== -1) {
-      const updated = [...placedWords];
-      updated[fillIdx] = word;
-      setPlacedWords(updated);
+      const updated = [...placedPoolIndices];
+      updated[fillIdx] = poolIdx;
+      setPlacedPoolIndices(updated);
 
-      // Move active index to next empty blank
       const nextEmpty = updated.indexOf(null);
       if (nextEmpty !== -1) {
         setActiveBlankIdx(nextEmpty);
@@ -87,11 +84,10 @@ export function PlayerQuestion({
   };
 
   const handleBlankTap = (blankIdx) => {
-    // If there is a word in the blank, remove it and set active to this blank
-    if (placedWords[blankIdx] !== null) {
-      const updated = [...placedWords];
+    if (placedPoolIndices[blankIdx] !== null) {
+      const updated = [...placedPoolIndices];
       updated[blankIdx] = null;
-      setPlacedWords(updated);
+      setPlacedPoolIndices(updated);
       setActiveBlankIdx(blankIdx);
     } else {
       setActiveBlankIdx(blankIdx);
@@ -99,7 +95,8 @@ export function PlayerQuestion({
   };
 
   const handleDragDropSubmit = () => {
-    submitAnswer(placedWords);
+    const answer = placedPoolIndices.map(idx => (idx !== null && idx !== undefined ? shuffledDragDropChoices[idx] : ''));
+    submitAnswer(answer);
   };
 
   // ----------------------------------------------------
@@ -180,30 +177,14 @@ export function PlayerQuestion({
   const renderPlayerSentenceBlanks = (sentence) => {
     if (!sentence) return '';
     const parts = splitBracketTokens(sentence);
-    const correctAnswers = getDragDropCorrect(activeQuestion);
     let sequentialBlank = 0;
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
-        const word = placedWords[blankIdx];
-        const isActive = blankIdx === activeBlankIdx;
-        return (
-          <span
-            key={idx}
-            onClick={() => handleBlankTap(blankIdx)}
-            className={`player-sentence-blank ${word ? 'filled' : ''} ${isActive ? 'active' : ''}`}
-          >
-            {word || '_____'}
-          </span>
-        );
-      }
-      if (inner) {
-        let mappedIdx = correctAnswers.findIndex(c => c === inner);
-        const blankIdx = mappedIdx !== -1 ? mappedIdx : sequentialBlank;
-        if (mappedIdx === -1) sequentialBlank += 1;
-        const word = placedWords[blankIdx];
+      if (numericIdx !== null || inner) {
+        const blankIdx = numericIdx !== null ? numericIdx : sequentialBlank++;
+        const poolIdx = placedPoolIndices[blankIdx];
+        const word = poolIdx !== null && poolIdx !== undefined ? shuffledDragDropChoices[poolIdx] : null;
         const isActive = blankIdx === activeBlankIdx;
         return (
           <span
@@ -226,27 +207,8 @@ export function PlayerQuestion({
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const choices = shuffledDropDownChoices[dropIdx] || getDropDownChoices(activeQuestion, dropIdx);
-        return (
-          <select
-            key={idx}
-            className="player-sentence-select"
-            value={dropdownSelections[dropIdx] || ''}
-            onChange={(e) => handleDropdownChange(dropIdx, e.target.value)}
-            disabled={isTimeUp}
-          >
-            <option value="">-- Choose --</option>
-            {choices.map((choice, cIdx) => (
-              <option key={cIdx} value={choice}>{choice}</option>
-            ))}
-          </select>
-        );
-      }
-      if (inner) {
-        const ddIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-        const idxToUse = ddIdx !== -1 ? ddIdx : sequentialDrop;
-        if (ddIdx === -1) sequentialDrop += 1;
+      if (dropIdx !== null || inner) {
+        const idxToUse = dropIdx !== null ? dropIdx : sequentialDrop++;
         const choices = shuffledDropDownChoices[idxToUse] || getDropDownChoices(activeQuestion, idxToUse);
         return (
           <select
@@ -322,24 +284,24 @@ export function PlayerQuestion({
               <div className="w-full flex flex-col">
                 {/* Sorted items container */}
                 <div className="player-sorting-container bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-5 flex flex-col gap-3 min-h-[120px] transition-all justify-center">
-                  {sortedItems.length === 0 ? (
+                  {sortedIndices.length === 0 ? (
                     <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none">
                       Tap items below to rank them in order...
                     </div>
                   ) : (
-                    sortedItems.map((item, idx) => (
+                    sortedIndices.map((poolIdx, slotIdx) => (
                       <button
-                        key={idx}
+                        key={slotIdx}
                         type="button"
-                        onClick={() => handleSortedItemClick(item)}
+                        onClick={() => handleSortedItemClick(slotIdx)}
                         className="flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs text-left w-full transition-all hover:bg-rose-50/30 hover:border-rose-200 active:scale-[0.99] cursor-pointer"
                         disabled={isTimeUp}
                       >
                         <div className="flex items-center gap-3">
                           <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
-                            {idx + 1}
+                            {slotIdx + 1}
                           </span>
-                          <span className="font-bold text-slate-700">{item}</span>
+                          <span className="font-bold text-slate-700">{sortingPool[poolIdx]}</span>
                         </div>
                         <span className="text-slate-400 font-bold text-sm">✕</span>
                       </button>
@@ -353,12 +315,12 @@ export function PlayerQuestion({
                 </div>
                 <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
                   {sortingPool.map((item, idx) => {
-                    const isPlaced = sortedItems.includes(item);
+                    const isPlaced = sortedIndices.includes(idx);
                     return (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => handlePoolItemClick(item)}
+                        onClick={() => handlePoolItemClick(idx)}
                         className={`px-4.5 py-2.5 rounded-xl border text-sm font-bold shadow-xs transition-all ${
                           isPlaced 
                             ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-30 cursor-not-allowed scale-95' 
@@ -375,7 +337,7 @@ export function PlayerQuestion({
                 <button
                   onClick={handleSortingSubmit}
                   className="btn btn-primary"
-                  disabled={sortedItems.length < sortingPool.length || isTimeUp}
+                  disabled={sortedIndices.length < sortingPool.length || isTimeUp}
                   style={{ marginTop: 16 }}
                 >
                   Submit Order
@@ -401,13 +363,14 @@ export function PlayerQuestion({
                     } : undefined}
                   >
                     {isScramble ? (
-                      placedWords.every(w => w === null) ? (
+                      placedPoolIndices.every(w => w === null) ? (
                         <div className="text-slate-400/90 italic font-medium text-base text-center w-full select-none py-1.5">
                           Click words below to form the sentence...
                         </div>
                       ) : (
-                        placedWords.map((word, blankIdx) => {
-                          if (word === null) return null;
+                        placedPoolIndices.map((poolIdx, blankIdx) => {
+                          if (poolIdx === null) return null;
+                          const word = shuffledDragDropChoices[poolIdx];
                           return (
                             <button
                               key={blankIdx}
@@ -428,12 +391,12 @@ export function PlayerQuestion({
                   {/* Choices Pool */}
                   <div className="flex gap-3 flex-wrap justify-center min-h-[60px] mb-6">
                     {shuffledDragDropChoices.map((choice, idx) => {
-                      const isPlaced = placedWords.includes(choice);
+                      const isPlaced = placedPoolIndices.includes(idx);
                       return (
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => handlePoolWordTap(choice)}
+                          onClick={() => handlePoolWordTap(idx)}
                           className={`player-pool-chip ${isPlaced ? 'placed' : ''}`}
                           disabled={isPlaced || isTimeUp}
                         >
@@ -446,7 +409,7 @@ export function PlayerQuestion({
                   <button
                     onClick={handleDragDropSubmit}
                     className="btn btn-primary"
-                    disabled={placedWords.includes(null) || isTimeUp}
+                    disabled={placedPoolIndices.includes(null) || isTimeUp}
                   >
                     {isScramble ? 'Submit Sentence' : 'Submit Blanks'}
                   </button>

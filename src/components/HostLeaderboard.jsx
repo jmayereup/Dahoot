@@ -63,24 +63,8 @@ export function HostLeaderboard({
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const valIdx = numericIdx;
-        return (
-          <span key={idx} style={{
-            color: 'var(--accent-light)',
-            fontWeight: 700,
-            borderBottom: '2px solid var(--accent-light)',
-            padding: '0 6px',
-            margin: '0 4px'
-          }}>
-            {correctAnswers[valIdx] || '???'}
-          </span>
-        );
-      }
-      if (inner) {
-        const mapped = correctAnswers.findIndex(c => c === inner);
-        const valIdx = mapped !== -1 ? mapped : sequential;
-        if (mapped === -1) sequential += 1;
+      if (numericIdx !== null || inner) {
+        const valIdx = numericIdx !== null ? numericIdx : sequential++;
         return (
           <span key={idx} style={{
             color: 'var(--accent-light)',
@@ -106,25 +90,10 @@ export function HostLeaderboard({
     return parts.map((part, idx) => {
       const valIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
-      if (valIdx !== null) {
-        return (
-          <span key={idx} style={{
-            color: 'var(--accent-light)',
-            fontWeight: 700,
-            borderBottom: '2px solid var(--accent-light)',
-            padding: '0 6px',
-            margin: '0 4px'
-          }}>
-            {getDropDownCorrect(activeQuestion, valIdx) || '???'}
-          </span>
-        );
-      }
-      if (inner) {
-        const mapped = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-        const idxToUse = mapped !== -1 ? mapped : sequential;
-        if (mapped === -1) sequential += 1;
+      if (valIdx !== null || inner) {
+        const idxToUse = valIdx !== null ? valIdx : sequential++;
         const cfg = dropdowns[idxToUse];
-        const correctVal = cfg ? (cfg.correct_answer || cfg.correct || inner) : inner;
+        const correctVal = getDropDownCorrect(activeQuestion, idxToUse) || (cfg ? (cfg.correct_answer || cfg.correct || inner) : inner);
         return (
           <span key={idx} style={{
             color: 'var(--accent-light)',
@@ -133,7 +102,7 @@ export function HostLeaderboard({
             padding: '0 6px',
             margin: '0 4px'
           }}>
-            {correctVal}
+            {correctVal || '???'}
           </span>
         );
       }

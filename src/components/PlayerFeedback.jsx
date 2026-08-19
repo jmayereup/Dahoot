@@ -23,42 +23,10 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
     return parts.map((part, idx) => {
       const numericIdx = getBlankIndex(part);
       const inner = getBracketInner(part);
-      if (numericIdx !== null) {
-        const blankIdx = numericIdx;
+      if (numericIdx !== null || inner) {
+        const blankIdx = numericIdx !== null ? numericIdx : sequentialBlank++;
         const playerWord = playerAnswer ? playerAnswer[blankIdx] : null;
-        const correctWord = correctAnswers[blankIdx] || '';
-        const isCorrect = playerWord === correctWord;
-
-        return (
-          <span
-            key={idx}
-            className={`player-sentence-blank feedback-blank ${playerWord ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-            style={{ cursor: 'default' }}
-          >
-            {playerWord ? (
-              <span>
-                {playerWord} {isCorrect ? '✓' : `(Correct: ${correctWord})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: {correctWord})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        const valIdx = correctAnswers.findIndex(c => c === inner);
-        let blankIdx;
-        let usedSequential = false;
-        if (valIdx !== -1) {
-          blankIdx = valIdx;
-        } else {
-          blankIdx = sequentialBlank;
-          usedSequential = true;
-        }
-        if (usedSequential) sequentialBlank += 1;
-
-        const correctWord = correctAnswers[blankIdx] || inner;
-        const playerWord = (playerAnswer && Array.isArray(playerAnswer)) ? playerAnswer[blankIdx] : null;
+        const correctWord = correctAnswers[blankIdx] || inner || '';
         const isCorrect = playerWord === correctWord;
 
         return (
@@ -89,38 +57,13 @@ export function PlayerFeedback({ playerFeedback, activeQuestion, playerRecord, p
     return parts.map((part, idx) => {
       const dropIdx = getCurlyIndex(part);
       const inner = getCurlyInner(part);
-      if (dropIdx !== null) {
-        const correctChoice = getDropDownCorrect(activeQuestion, dropIdx);
-        const playerChoice = playerAnswer ? playerAnswer[dropIdx] : '';
+      if (dropIdx !== null || inner) {
+        const idxToUse = dropIdx !== null ? dropIdx : sequentialDrop++;
+        const config = dropdowns[idxToUse] || { correct_answer: inner };
+        const correctChoice = getDropDownCorrect(activeQuestion, idxToUse) || config.correct_answer || config.correct || inner;
+        const playerChoice = playerAnswer ? playerAnswer[idxToUse] : '';
         const isCorrect = playerChoice === correctChoice;
 
-        return (
-          <span
-            key={idx}
-            className={`player-sentence-blank feedback-blank ${playerChoice ? (isCorrect ? 'correct' : 'incorrect') : 'unanswered'}`}
-          >
-            {playerChoice ? (
-              <span>
-                {playerChoice} {isCorrect ? '✓' : `(Correct: ${correctChoice})`}
-              </span>
-            ) : (
-              <span>_____ (Correct: ${correctChoice})</span>
-            )}
-          </span>
-        );
-      }
-      if (inner) {
-        let guessedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-        let usedSequential = false;
-        if (guessedIdx === -1) {
-          guessedIdx = sequentialDrop;
-          usedSequential = true;
-        }
-        if (usedSequential) sequentialDrop += 1;
-        const config = guessedIdx !== -1 ? dropdowns[guessedIdx] : null;
-        const playerChoice = playerAnswer && guessedIdx !== -1 ? playerAnswer[guessedIdx] : '';
-        const correctChoice = config ? (config.correct_answer || config.correct || inner) : inner;
-        const isCorrect = playerChoice === correctChoice;
         return (
           <span
             key={idx}

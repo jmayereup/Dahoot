@@ -12,25 +12,16 @@ function renderPreviewSentenceWithBlanks(sentence, editingQuestion) {
   if (!sentence) return '';
   const correctAnswers = getDragDropCorrect(editingQuestion || {});
   const parts = splitBracketTokens(sentence);
+  let sequential = 0;
   return parts.map((part, idx) => {
     const numericIdx = getBlankIndex(part);
     const inner = getBracketInner(part);
-    if (numericIdx !== null) {
-      const blankIdx = numericIdx;
-      const correctWord = correctAnswers[blankIdx] || '';
+    if (numericIdx !== null || inner) {
+      const blankIdx = numericIdx !== null ? numericIdx : sequential++;
+      const correctWord = correctAnswers[blankIdx] || inner || '';
       return (
         <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
           {correctWord || '_____'}
-        </span>
-      );
-    }
-    if (inner) {
-      const mappedIdx = correctAnswers.findIndex(c => c === inner);
-      const blankIdx = mappedIdx !== -1 ? mappedIdx : 0;
-      const correctWord = correctAnswers[blankIdx] || inner;
-      return (
-        <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
-          {correctWord || inner}
         </span>
       );
     }
@@ -46,23 +37,13 @@ function renderPreviewSentenceWithDropdowns(sentence, editingQuestion) {
   return parts.map((part, idx) => {
     const dropIdx = getCurlyIndex(part);
     const inner = getCurlyInner(part);
-    if (dropIdx !== null) {
-      const correctVal = getDropDownCorrect(editingQuestion || {}, dropIdx);
+    if (dropIdx !== null || inner) {
+      const idxToUse = dropIdx !== null ? dropIdx : sequentialDrop++;
+      const config = dropdowns[idxToUse] || { correct_answer: inner };
+      const correctVal = getDropDownCorrect(editingQuestion || {}, idxToUse) || config.correct_answer || config.correct || inner;
       return (
         <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
           {correctVal || '_____'}
-        </span>
-      );
-    }
-    if (inner) {
-      const mappedIdx = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-      const idxToUse = mappedIdx !== -1 ? mappedIdx : sequentialDrop;
-      if (mappedIdx === -1) sequentialDrop += 1;
-      const config = dropdowns[idxToUse] || { correct_answer: inner };
-      const correctVal = config.correct_answer || config.correct || inner;
-      return (
-        <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
-          {correctVal}
         </span>
       );
     }

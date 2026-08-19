@@ -326,18 +326,8 @@ export function HostFinished({
             {parts.map((part, idx) => {
               const numericIdx = part && part.match(/\[blank(\d+)\]/i);
               const inner = getBracketInner(part);
-              if (numericIdx) {
-                const valIdx = parseInt(numericIdx[1]);
-                return (
-                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {correctAnswers[valIdx] || '???'}
-                  </strong>
-                );
-              }
-              if (inner) {
-                const mapped = correctAnswers.findIndex(c => c === inner);
-                const valIdx = mapped !== -1 ? mapped : sequential;
-                if (mapped === -1) sequential += 1;
+              if (numericIdx || inner) {
+                const valIdx = numericIdx ? parseInt(numericIdx[1], 10) : sequential++;
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
                     {correctAnswers[valIdx] || inner || '???'}
@@ -363,22 +353,13 @@ export function HostFinished({
             {partsDropdown.map((part, idx) => {
               const valIdx = getCurlyIndex(part);
               const inner = getCurlyInner(part);
-              if (valIdx !== null) {
-                return (
-                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {getDropDownCorrect(q, valIdx) || '???'}
-                  </strong>
-                );
-              }
-              if (inner) {
-                const mapped = dropdowns.findIndex(d => d.correct_answer === inner || d.correct === inner);
-                const idxToUse = mapped !== -1 ? mapped : sequential;
-                if (mapped === -1) sequential += 1;
+              if (valIdx !== null || inner) {
+                const idxToUse = valIdx !== null ? valIdx : sequential++;
                 const cfg = dropdowns[idxToUse];
-                const correctVal = cfg ? (cfg.correct_answer || cfg.correct || inner) : inner;
+                const correctVal = getDropDownCorrect(q, idxToUse) || (cfg ? (cfg.correct_answer || cfg.correct || inner) : inner);
                 return (
                   <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {correctVal}
+                    {correctVal || '???'}
                   </strong>
                 );
               }

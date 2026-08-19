@@ -246,7 +246,7 @@ export function isScrambleSentence(q) {
   const n = normalizeQuestion(q);
   const s = n?.options?.sentence;
   if (!s) return false;
-  return !s.replace(/\[blank\d+\]/g, '').trim();
+  return !s.replace(/\[[^\]]+\]/g, '').trim();
 }
 
 /**
