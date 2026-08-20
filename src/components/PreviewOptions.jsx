@@ -20,7 +20,7 @@ function renderPreviewSentenceWithBlanks(sentence, editingQuestion) {
       const blankIdx = numericIdx !== null ? numericIdx : sequential++;
       const correctWord = correctAnswers[blankIdx] || inner || '';
       return (
-        <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+        <span key={idx} className="inline-block align-baseline mx-1 px-2 py-0.5 my-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
           {correctWord || '_____'}
         </span>
       );
@@ -42,7 +42,7 @@ function renderPreviewSentenceWithDropdowns(sentence, editingQuestion) {
       const config = dropdowns[idxToUse] || { correct_answer: inner };
       const correctVal = getDropDownCorrect(editingQuestion || {}, idxToUse) || config.correct_answer || config.correct || inner;
       return (
-        <span key={idx} className="mx-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
+        <span key={idx} className="inline-block align-baseline mx-1 px-2 py-0.5 my-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg whitespace-nowrap">
           {correctVal || '_____'}
         </span>
       );
@@ -143,7 +143,7 @@ export function PreviewOptions({ question, editingQuestion }) {
     return (
       <div className="flex flex-col gap-2">
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-loose">
           {renderPreviewSentenceWithBlanks(question.options.sentence, editingQuestion || question)}
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5 items-center">
@@ -172,7 +172,7 @@ export function PreviewOptions({ question, editingQuestion }) {
     return (
       <div className="flex flex-col gap-2">
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sentence:</div>
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-loose">
           {renderPreviewSentenceWithDropdowns(question.options.sentence, editingQuestion || question)}
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5 items-center">
