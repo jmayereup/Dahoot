@@ -48,6 +48,17 @@ routerAdd("POST", "/api/dahoot/generate-questions", (e) => {
         "Content-Type": "application/json"
     };
     const reqHeaders = e.requestInfo().headers || {};
+
+    const authHeader = reqHeaders["authorization"] || reqHeaders["Authorization"];
+    if (authHeader) {
+        headers["Authorization"] = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+    }
+
+    const serviceKey = $os.getenv("INTERNAL_SERVICE_KEY") || $os.getenv("TJ_GEN_SERVICE_KEY");
+    if (serviceKey) {
+        headers["X-Service-Key"] = serviceKey;
+    }
+
     const customKey = reqHeaders["x-openrouter-api-key"] || reqHeaders["X-OpenRouter-API-Key"];
     if (customKey) {
         headers["X-OpenRouter-API-Key"] = Array.isArray(customKey) ? customKey[0] : customKey;
