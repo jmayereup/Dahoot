@@ -188,13 +188,18 @@ async function runSetup() {
         if (fs.existsSync(pbExecutable)) {
           try {
             console.log(`[Dahoot DB] Bootstrapping initial superuser (${adminEmail}) via PocketBase CLI...`);
-            execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+            execSync(`"${pbExecutable}" superuser upsert "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
             bootstrapped = true;
           } catch (cliErr) {
             try {
-              execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+              execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
               bootstrapped = true;
-            } catch (cliErr2) {}
+            } catch (cliErr2) {
+              try {
+                execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+                bootstrapped = true;
+              } catch (cliErr3) {}
+            }
           }
         }
       }

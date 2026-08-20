@@ -11,7 +11,7 @@ const rootDir = path.resolve(__dirname, '..');
 
 dotenv.config({ path: path.resolve(rootDir, '.env') });
 
-const POCKETBASE_VERSION = '0.39.5'; // Modern superuser version matching db-setup.js
+const POCKETBASE_VERSION = '0.39.11'; // Modern superuser version matching db-setup.js
 
 // Determine PocketBase binary release name based on OS & Architecture
 function getDownloadUrl() {
@@ -52,7 +52,7 @@ function downloadFile(url, destPath) {
     const file = fs.createWriteStream(destPath);
     let redirectCount = 0;
     const maxRedirects = 5;
-    
+
     const request = (targetUrl) => {
       https.get(targetUrl, (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {
@@ -78,7 +78,7 @@ function downloadFile(url, destPath) {
           resolve();
         });
       }).on('error', (err) => {
-        fs.unlink(destPath, () => {}); // delete partial file
+        fs.unlink(destPath, () => { }); // delete partial file
         reject(err);
       });
     };
@@ -89,7 +89,7 @@ function downloadFile(url, destPath) {
 
 async function install() {
   const targetDir = path.join(rootDir, 'pocketbase');
-  
+
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
@@ -140,13 +140,18 @@ async function install() {
     if (adminEmail && adminPassword && fs.existsSync(pbExecutable)) {
       try {
         console.log(`\x1b[35m[Dahoot DB Install]\x1b[0m Bootstrapping initial superuser (${adminEmail}) via CLI...`);
-        execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
-        console.log(`\x1b[32m[Dahoot DB Install] Created initial superuser: ${adminEmail}\x1b[0m`);
+        execSync(`"${pbExecutable}" superuser upsert "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+        console.log(`\x1b[32m[Dahoot DB Install] Created/updated initial superuser: ${adminEmail}\x1b[0m`);
       } catch (e) {
         try {
-          execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+          execSync(`"${pbExecutable}" superuser create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
           console.log(`\x1b[32m[Dahoot DB Install] Created initial superuser: ${adminEmail}\x1b[0m`);
-        } catch (e2) {}
+        } catch (e2) {
+          try {
+            execSync(`"${pbExecutable}" admin create "${adminEmail}" "${adminPassword}" --dir="${pbDataDir}"`, { stdio: 'ignore' });
+            console.log(`\x1b[32m[Dahoot DB Install] Created initial superuser: ${adminEmail}\x1b[0m`);
+          } catch (e3) { }
+        }
       }
     }
 
