@@ -2,9 +2,22 @@ import { useEffect } from 'react';
 
 export function useAdSense() {
   useEffect(() => {
+    // Master switch to disable Google Ads across the site without removing code
+    const ENABLE_ADSENSE = false;
+
     const publisherId = import.meta.env.VITE_ADSENSE_PUBLISHER_ID || 'ca-pub-7358177326858018';
     
     const checkAndManageAds = () => {
+      const scriptId = 'google-adsense';
+      const existingScript = document.getElementById(scriptId);
+
+      if (!ENABLE_ADSENSE) {
+        if (existingScript) {
+          existingScript.remove();
+        }
+        return;
+      }
+
       let adsConsent = false;
       const consentRegistered = localStorage.getItem('dahoot_cookie_consent');
       if (consentRegistered) {
@@ -19,8 +32,6 @@ export function useAdSense() {
       }
 
       const shouldShowAds = adsConsent;
-      const scriptId = 'google-adsense';
-      const existingScript = document.getElementById(scriptId);
 
       if (!existingScript) {
         // Create the script tag once and initialize it
