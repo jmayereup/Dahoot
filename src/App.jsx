@@ -67,8 +67,24 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Sync auth state and listen to auth changes
+  // Sync auth state, refresh auth token on mount, and listen to auth changes
   useEffect(() => {
+    if (pb.authStore.isValid && pb.authStore.record) {
+      pb.collection('users').authRefresh()
+        .then((authData) => {
+          setIsAuthenticated(true);
+          setCurrentUser(authData.record);
+        })
+        .catch((err) => {
+          console.warn("[App] Auto authRefresh on mount failed:", err);
+          if (err?.status === 401 || err?.status === 403 || err?.status === 404) {
+            pb.authStore.clear();
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+          }
+        });
+    }
+
     return pb.authStore.onChange((token, record) => {
       setIsAuthenticated(pb.authStore.isValid && !!record);
       setCurrentUser(record);

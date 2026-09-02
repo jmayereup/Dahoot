@@ -51,7 +51,8 @@ routerAdd("POST", "/api/dahoot/generate-questions", (e) => {
 
     const authHeader = reqHeaders["authorization"] || reqHeaders["Authorization"];
     if (authHeader) {
-        headers["Authorization"] = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+        const rawAuth = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+        headers["Authorization"] = rawAuth.startsWith("Bearer ") ? rawAuth : "Bearer " + rawAuth;
     }
 
     const serviceKey = $os.getenv("INTERNAL_SERVICE_KEY") || $os.getenv("TJ_GEN_SERVICE_KEY");

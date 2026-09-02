@@ -15,6 +15,7 @@ export function useUserInfo(currentUser) {
         })
         .catch(err => {
           console.error("Error fetching user info in hook:", err);
+          if (active) setUserInfo(null);
         });
     } else {
       setUserInfo(null);
