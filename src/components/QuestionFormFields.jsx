@@ -137,7 +137,7 @@ function CategorizeGrid({ grid, setGrid, disabled }) {
   );
 }
 
-function DistractorList({ distractors, updateDistractor, disabled, label, help }) {
+function DistractorList({ distractors, updateDistractor, disabled, label, help, addDistractor, removeDistractor }) {
   return (
     <div>
       <div className="form-group" style={{ marginBottom: 8 }}>
@@ -182,8 +182,12 @@ function DistractorList({ distractors, updateDistractor, disabled, label, help }
               <button
                 type="button"
                 onClick={() => {
-                  const next = distractors.filter((_, i) => i !== idx);
-                  updateDistractor(next);
+                  if (typeof removeDistractor === 'function') {
+                    removeDistractor(idx);
+                  } else {
+                    const next = distractors.filter((_, i) => i !== idx);
+                    updateDistractor(next);
+                  }
                 }}
                 disabled={disabled}
                 style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#dc2626', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -197,7 +201,13 @@ function DistractorList({ distractors, updateDistractor, disabled, label, help }
       </div>
       <button
         type="button"
-        onClick={() => updateDistractor([...distractors, ''])}
+        onClick={() => {
+          if (typeof addDistractor === 'function') {
+            addDistractor();
+          } else {
+            updateDistractor([...distractors, '']);
+          }
+        }}
         disabled={disabled || distractors.length >= 3}
         className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
           distractors.length >= 3
@@ -222,10 +232,14 @@ export function QuestionFormFields({
   updateMcDistractor,
   sortingItems,
   updateSortingItem,
+  addSortingItem,
+  removeSortingItem,
   dragSentence,
   setDragSentence,
   dragDistractors,
   updateDragDistractor,
+  addDragDistractor,
+  removeDragDistractor,
   dropdownSentence,
   setDropdownSentence,
   categorizeGrid,
@@ -380,8 +394,12 @@ export function QuestionFormFields({
                   <button
                     type="button"
                     onClick={() => {
-                      const next = sortingItems.filter((_, i) => i !== idx);
-                      updateSortingItem(next);
+                      if (typeof removeSortingItem === 'function') {
+                        removeSortingItem(idx);
+                      } else {
+                        const next = sortingItems.filter((_, i) => i !== idx);
+                        updateSortingItem(next);
+                      }
                     }}
                     disabled={disabled}
                     style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#dc2626', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -395,7 +413,13 @@ export function QuestionFormFields({
             <div className="flex justify-start">
               <button
                 type="button"
-                onClick={() => updateSortingItem([...sortingItems, ''])}
+                onClick={() => {
+                  if (typeof addSortingItem === 'function') {
+                    addSortingItem();
+                  } else {
+                    updateSortingItem([...sortingItems, '']);
+                  }
+                }}
                 disabled={disabled}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
               >
@@ -439,6 +463,8 @@ export function QuestionFormFields({
           <DistractorList
             distractors={dragDistractors}
             updateDistractor={updateDragDistractor}
+            addDistractor={addDragDistractor}
+            removeDistractor={removeDragDistractor}
             disabled={disabled}
             label="Distractor Words (optional)"
             help="These appear in the choice pool alongside the correct answers. Leave empty if you only want players to choose from the correct answers."
@@ -479,6 +505,8 @@ export function QuestionFormFields({
           <DistractorList
             distractors={dragDistractors}
             updateDistractor={updateDragDistractor}
+            addDistractor={addDragDistractor}
+            removeDistractor={removeDragDistractor}
             disabled={disabled}
             label="Dropdown Choices (optional)"
             help="Enter one or more words. Every dropdown will offer these as choices along with its own correct answer. Leave empty for a 1-option dropdown."

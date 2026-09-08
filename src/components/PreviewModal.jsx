@@ -398,15 +398,23 @@ export function PreviewModal({
               setMcCorrectAnswer={(v) => updateForm({ mcCorrectAnswer: v })}
               mcDistractors={form.mcDistractors}
               updateMcDistractor={(idx, val) => {
-                const next = [...form.mcDistractors];
-                next[idx] = val;
-                updateForm({ mcDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ mcDistractors: idx });
+                } else {
+                  const next = [...form.mcDistractors];
+                  next[idx] = val;
+                  updateForm({ mcDistractors: next });
+                }
               }}
               sortingItems={form.sortingItems}
               updateSortingItem={(idx, val) => {
-                const next = [...form.sortingItems];
-                next[idx] = val;
-                updateForm({ sortingItems: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ sortingItems: idx });
+                } else {
+                  const next = [...form.sortingItems];
+                  next[idx] = val;
+                  updateForm({ sortingItems: next });
+                }
               }}
               addSortingItem={() => updateForm({ sortingItems: [...form.sortingItems, ''] })}
               removeSortingItem={(idx) => {
@@ -417,9 +425,13 @@ export function PreviewModal({
               setDragSentence={(v) => updateForm({ dragSentence: v })}
               dragDistractors={form.dragDistractors}
               updateDragDistractor={(idx, val) => {
-                const next = [...form.dragDistractors];
-                next[idx] = val;
-                updateForm({ dragDistractors: next });
+                if (Array.isArray(idx)) {
+                  updateForm({ dragDistractors: idx });
+                } else {
+                  const next = [...form.dragDistractors];
+                  next[idx] = val;
+                  updateForm({ dragDistractors: next });
+                }
               }}
               addDragDistractor={() => updateForm({ dragDistractors: [...form.dragDistractors, ''] })}
               removeDragDistractor={(idx) => updateForm({ dragDistractors: form.dragDistractors.filter((_, i) => i !== idx) })}
