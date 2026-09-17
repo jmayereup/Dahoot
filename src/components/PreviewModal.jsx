@@ -183,8 +183,9 @@ export function PreviewModal({
                 <button
                   onClick={onImport}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors cursor-pointer"
+                  title="Import questions generated with Google Gemini"
                 >
-                  📥 Import
+                  💎 Import from Gemini
                 </button>
               )}
               <button

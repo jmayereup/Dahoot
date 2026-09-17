@@ -219,8 +219,9 @@ export function GameForm({
                   type="button"
                   onClick={onImport}
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition-colors cursor-pointer shrink-0"
+                  title="Import questions generated with Google Gemini"
                 >
-                  📥 Import
+                  💎 Import from Gemini
                 </button>
               </div>
             </div>
