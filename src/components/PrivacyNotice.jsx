@@ -2,10 +2,9 @@ import { Cookie, Settings, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useRef } from 'react';
 
-export function CookieConsent() {
+export function PrivacyNotice() {
   // Master switch to disable cookie consent banner when no cookies are active
   const ENABLE_COOKIE_CONSENT = false;
-  if (!ENABLE_COOKIE_CONSENT) return null;
 
   const [showBanner, setShowBanner] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
@@ -91,6 +90,8 @@ export function CookieConsent() {
     setShowBanner(false);
     window.dispatchEvent(new CustomEvent('cookieConsentUpdated'));
   };
+
+  if (!ENABLE_COOKIE_CONSENT) return null;
 
   return (
     <AnimatePresence>

@@ -9,11 +9,8 @@ import { AdminPanel } from './AdminPanel';
 import { ProfileModal } from './ProfileModal';
 import { GenerateModal } from './GenerateModal';
 import { CopySuggestionModal } from './CopySuggestionModal';
-import { QuestionFormFields } from './QuestionFormFields';
-import {
-  extractBracketedAnswers,
-  categorizeGridToOptions
-} from '../utils/questionSchema';
+import { QuestionEditModal } from './QuestionEditModal';
+import { canEditGame as canEditGameUtil, canDeleteGame as canDeleteGameUtil } from '../utils/permissions';
 
 export function TeacherDashboard({
   gamesList = [],
@@ -21,6 +18,7 @@ export function TeacherDashboard({
   setSelectedGame,
   isEditingGame,
   selectedGameForEdit,
+  onFinishEditing,
   gameTitle, setGameTitle,
   gameDescription, setGameDescription,
   gameCreator, setGameCreator,
@@ -91,9 +89,8 @@ export function TeacherDashboard({
   const [copySuggestionGame, setCopySuggestionGame] = useState(null);
 
   // Preview inline question editing state (only for GameForm flow with 'temp' games)
+  // Preview inline question editing state (for GameForm flow)
   const [previewEditingQuestion, setPreviewEditingQuestion] = useState(null);
-  const [previewEditError, setPreviewEditError] = useState('');
-  const [previewEditLoading, setPreviewEditLoading] = useState(false);
 
   useEffect(() => {
     if (userInfo && userInfo.role) setUserRole(userInfo.role);
@@ -109,35 +106,24 @@ export function TeacherDashboard({
     return () => { active = false; };
   }, [currentUser]);
 
-  const canEditGame = (game) => {
-    if (!game) return false;
-    if (userRole === 'TEACHER' || userRole === 'ADMIN') return true;
-    const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
-    const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
-    const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
-    const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
-    const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
-    return (myDahootUsername && creatorName === myDahootUsername) ||
-           (myName && creatorName === myName) ||
-           (myEmail && creatorName === myEmail) ||
-           (myUsername && creatorName === myUsername) ||
-           (currentUser?.id && creatorName === currentUser.id);
-  };
+  useEffect(() => {
+    if (isEditingGame && selectedGameForEdit) {
+      if (!previewGame || previewGame.id !== selectedGameForEdit.id) {
+        setPreviewGame(selectedGameForEdit);
+        setPreviewLoading(true);
+        pb.collection('dahoot_questions').getFullList({
+          filter: pb.filter("game_id = {:gameId}", { gameId: selectedGameForEdit.id }),
+          sort: 'created'
+        })
+        .then(qList => setPreviewQuestions(qList))
+        .catch(err => console.error("Error loading questions for edit:", err))
+        .finally(() => setPreviewLoading(false));
+      }
+    }
+  }, [isEditingGame, selectedGameForEdit, previewGame]);
 
-  const canDeleteGame = (game) => {
-    if (!game) return false;
-    if (userRole === 'ADMIN') return true;
-    const creatorName = game.creator ? game.creator.toLowerCase().trim() : '';
-    const myDahootUsername = userInfo?.dahoot_username ? userInfo.dahoot_username.toLowerCase().trim() : '';
-    const myName = currentUser?.name ? currentUser.name.toLowerCase().trim() : '';
-    const myEmail = currentUser?.email ? currentUser.email.toLowerCase().trim() : '';
-    const myUsername = currentUser?.username ? currentUser.username.toLowerCase().trim() : '';
-    return (myDahootUsername && creatorName === myDahootUsername) ||
-           (myName && creatorName === myName) ||
-           (myEmail && creatorName === myEmail) ||
-           (myUsername && creatorName === myUsername) ||
-           (currentUser?.id && creatorName === currentUser.id);
-  };
+  const canEditGame = (game) => canEditGameUtil(game, currentUser, userInfo, userRole);
+  const canDeleteGame = (game) => canDeleteGameUtil(game, currentUser, userInfo, userRole);
 
   const handleDeleteGame = async (id, e) => {
     if (e) e.stopPropagation();
@@ -193,6 +179,7 @@ export function TeacherDashboard({
     } else {
       setPreviewGame(null);
       setPreviewQuestions([]);
+      if (onFinishEditing) onFinishEditing();
     }
   };
 
@@ -232,105 +219,42 @@ export function TeacherDashboard({
     action();
   };
 
-  // ── Preview question editing (for GameForm flow with 'temp' games) ──
+  // ── Preview question editing (for GameForm flow) ──
 
   const openPreviewAddQuestion = () => {
-    setPreviewEditError('');
-    startCreating();
     setPreviewEditingQuestion('new');
   };
 
   const openPreviewEditQuestion = (question) => {
-    setPreviewEditError('');
-    startEditing(question);
     setPreviewEditingQuestion(question);
   };
 
   const closePreviewEditQuestion = () => {
     setPreviewEditingQuestion(null);
-    setPreviewEditError('');
-    cancelEditing();
   };
 
-  const savePreviewQuestion = async () => {
-    setPreviewEditError('');
-    if (!canEditGame(previewGame)) { setPreviewEditError('You do not have permission to edit this game.'); return; }
-    if (!questionText.trim()) { setPreviewEditError('Question text is required.'); return; }
+  const handleSavePreviewQuestion = async (questionData, targetQuestion) => {
+    const payload = {
+      ...questionData,
+      game_id: previewGame.id
+    };
 
-    let optionsPayload = null;
-    if (questionType === 'MULTIPLE_CHOICE') {
-      if (!mcCorrectAnswer.trim()) { setPreviewEditError('Correct answer is required.'); return; }
-      const filledDistractors = mcDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
-      if (filledDistractors.length === 0) { setPreviewEditError('Please enter at least 1 distractor (incorrect option).'); return; }
-      optionsPayload = { correct_answer: mcCorrectAnswer.trim(), distractors: filledDistractors };
-    } else if (questionType === 'SORTING') {
-      const filledItems = sortingItems.map(s => s.trim()).filter(Boolean);
-      if (filledItems.length < 2) { setPreviewEditError('Sorting question requires at least 2 items.'); return; }
-      optionsPayload = { correct_sequence: filledItems };
-    } else if (questionType === 'DRAG_DROP') {
-      if (!dragSentence.trim()) { setPreviewEditError('Sentence is required.'); return; }
-      const answers = extractBracketedAnswers(dragSentence);
-      if (answers.length === 0) { setPreviewEditError('The sentence must contain at least one bracketed answer (e.g. [hooks]).'); return; }
-      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
-      optionsPayload = {
-        sentence: dragSentence.trim(),
-        answers_in_order: answers,
-        distractors: filledDistractors
-      };
-    } else if (questionType === 'DROP_DOWN') {
-      if (!dropdownSentence.trim()) { setPreviewEditError('Sentence is required.'); return; }
-      const dropdowns = extractBracketedAnswers(dropdownSentence);
-      if (dropdowns.length === 0) { setPreviewEditError('The sentence must contain at least one bracketed answer (e.g. [Go]).'); return; }
-      const filledDistractors = dragDistractors.map(d => d.trim()).filter(Boolean);
-      optionsPayload = {
-        sentence: dropdownSentence.trim(),
-        dropdowns: dropdowns.map(correct => ({
-          correct_answer: correct,
-          distractors: filledDistractors
-        }))
-      };
-    } else if (questionType === 'CATEGORIZE') {
-      const { categories, items } = categorizeGridToOptions(categorizeGrid);
-      if (categories.length < 2) { setPreviewEditError('Please enter at least 2 categories in the first row.'); return; }
-      if (items.length === 0) { setPreviewEditError('Please add at least one item in any cell.'); return; }
-      optionsPayload = { categories, items };
-    } else if (questionType === 'DISCUSSION') {
-      const sampleAnswersArr = typeof discussionSampleAnswers === 'string'
-        ? discussionSampleAnswers.split('\n').map(s => s.trim()).filter(Boolean)
-        : (Array.isArray(discussionSampleAnswers) ? discussionSampleAnswers : []);
-      optionsPayload = {
-        placeholder: discussionPlaceholder ? discussionPlaceholder.trim() : '',
-        sample_answers: sampleAnswersArr,
-        max_length: parseInt(discussionMaxLength, 10) || 250
-      };
-    }
-
-    setPreviewEditLoading(true);
-    const questionData = { game_id: previewGame.id, text: questionText.trim(), options: optionsPayload, type: questionType };
-    try {
-      if (previewGame.id === 'temp') {
-        if (previewEditingQuestion && previewEditingQuestion !== 'new') {
-          setPreviewQuestions(prev => prev.map(q => q.id === previewEditingQuestion.id ? { ...q, ...questionData } : q));
-        } else {
-          setPreviewQuestions(prev => [...prev, { id: 'local_' + Date.now(), ...questionData }]);
-        }
-        closePreviewEditQuestion();
+    if (previewGame.id === 'temp') {
+      if (targetQuestion && targetQuestion !== 'new') {
+        setPreviewQuestions(prev => prev.map(q => q.id === targetQuestion.id ? { ...q, ...payload } : q));
       } else {
-        if (previewEditingQuestion && previewEditingQuestion !== 'new') {
-          await pb.collection('dahoot_questions').update(previewEditingQuestion.id, questionData);
-        } else {
-          await pb.collection('dahoot_questions').create(questionData);
-        }
-        closePreviewEditQuestion();
-        const qList = await pb.collection('dahoot_questions').getFullList({
-          filter: pb.filter("game_id = {:gameId}", { gameId: previewGame.id }), sort: 'created'
-        });
-        setPreviewQuestions(qList);
+        setPreviewQuestions(prev => [...prev, { id: 'local_' + Date.now(), ...payload }]);
       }
-    } catch (err) {
-      setPreviewEditError('Failed to save question: ' + err.message);
-    } finally {
-      setPreviewEditLoading(false);
+    } else {
+      if (targetQuestion && targetQuestion !== 'new') {
+        await pb.collection('dahoot_questions').update(targetQuestion.id, payload);
+      } else {
+        await pb.collection('dahoot_questions').create(payload);
+      }
+      const qList = await pb.collection('dahoot_questions').getFullList({
+        filter: pb.filter("game_id = {:gameId}", { gameId: previewGame.id }), sort: 'created'
+      });
+      setPreviewQuestions(qList);
     }
   };
 
@@ -563,47 +487,6 @@ Important rules:
     }
   };
 
-  const editingSubModal = previewEditingQuestion && (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(9, 10, 15, 0.7)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
-      <div className="panel panel-large animate-join-focus p-4 sm:p-7" style={{ width: '100%', maxWidth: '750px', maxHeight: '94vh', overflowY: 'auto', textAlign: 'left', border: '1px solid var(--panel-border-focus)', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px' }}>
-          <div>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Question Editor</span>
-            <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{previewEditingQuestion === 'new' ? 'Add New Question' : 'Edit Question'}</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{previewGame?.title}</p>
-          </div>
-          <button type="button" onClick={closePreviewEditQuestion} style={{ background: 'rgba(93,107,130,0.08)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '1rem' }}>✕</button>
-        </div>
-        {previewEditError && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ff4b60', padding: '12px 16px', borderRadius: '8px', marginBottom: 20 }}>{previewEditError}</div>}
-
-        <QuestionFormFields
-          questionType={questionType} setQuestionType={setQuestionType}
-          questionText={questionText} setQuestionText={setQuestionText}
-          mcCorrectAnswer={mcCorrectAnswer} setMcCorrectAnswer={setMcCorrectAnswer}
-          mcDistractors={mcDistractors} updateMcDistractor={updateMcDistractor}
-          sortingItems={sortingItems} updateSortingItem={updateSortingItem}
-          dragSentence={dragSentence} setDragSentence={setDragSentence}
-          dragDistractors={dragDistractors} updateDragDistractor={updateDragDistractor}
-          dropdownSentence={dropdownSentence} setDropdownSentence={setDropdownSentence}
-          categorizeGrid={categorizeGrid} setCategorizeGrid={setCategorizeGrid}
-          discussionPlaceholder={discussionPlaceholder} setDiscussionPlaceholder={setDiscussionPlaceholder}
-          discussionSampleAnswers={discussionSampleAnswers} setDiscussionSampleAnswers={setDiscussionSampleAnswers}
-          discussionMaxLength={discussionMaxLength} setDiscussionMaxLength={setDiscussionMaxLength}
-          disabled={previewEditLoading}
-        />
-
-        <div style={{ display: 'flex', gap: 12, marginTop: '24px', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
-          <button type="button" className="btn btn-secondary" onClick={closePreviewEditQuestion} style={{ width: 'auto', minWidth: 100 }} disabled={previewEditLoading}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn-primary" onClick={savePreviewQuestion} style={{ width: 'auto', minWidth: 150 }} disabled={previewEditLoading}>
-            {previewEditLoading ? 'Saving...' : (previewEditingQuestion === 'new' ? '✓ Add Question' : '✓ Save Changes')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   // ── Disabled User Block ──
   if (userRole === 'DISABLED') {
     return (
@@ -661,14 +544,26 @@ Important rules:
           previewQuestions={previewQuestions}
           previewLoading={previewLoading}
           onSubmit={handleSubmitGame}
-          onCancel={() => { cancelEditingGame(); setPreviewGame(null); setPreviewQuestions([]); }}
+          onCancel={() => {
+            cancelEditingGame();
+            setPreviewGame(null);
+            setPreviewQuestions([]);
+            if (onFinishEditing) onFinishEditing();
+          }}
           onAddQuestion={() => requireFieldsOrWarn(openPreviewAddQuestion)}
           onEditQuestion={(q) => openPreviewEditQuestion(q)}
           onDeleteQuestion={(id) => deletePreviewQuestion(id)}
           onGenerate={() => requireFieldsOrWarn(() => setIsGenModalOpen(true))}
           onImport={() => requireFieldsOrWarn(() => { setSelectedGame(selectedGameForEdit || previewGame); startImporting(); })}
         />
-        {editingSubModal}
+        <QuestionEditModal
+          isOpen={Boolean(previewEditingQuestion)}
+          editingQuestion={previewEditingQuestion}
+          gameTitle={previewGame?.title}
+          canEdit={canEditGame(previewGame)}
+          onClose={closePreviewEditQuestion}
+          onSave={handleSavePreviewQuestion}
+        />
         <GenerateModal
           isOpen={isGenModalOpen}
           onClose={() => setIsGenModalOpen(false)}
@@ -717,6 +612,7 @@ Important rules:
         canEdit={canEditGame(previewGame)}
         currentUser={currentUser}
         userInfo={userInfo}
+        onEditGame={handleStartEditingGame}
         standalone
       />
 

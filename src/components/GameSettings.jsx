@@ -13,6 +13,8 @@ export function GameSettings({
   timerDuration, setTimerDuration,
   copied, handleCopyShareLink, handleOpenPreview,
   pacingMode = 'teacher',
+  onEditGame,
+  canEdit,
 }) {
   if (!selectedGameId || gameQuestions.length === 0) return null;
 
@@ -36,7 +38,7 @@ export function GameSettings({
       <span className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
         ⚙️ Game Settings
       </span>
-      {(handleCopyShareLink || handleOpenPreview) && (
+      {(handleCopyShareLink || handleOpenPreview || (canEdit && onEditGame)) && (
         <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
           {handleCopyShareLink && (
             <button
@@ -50,18 +52,34 @@ export function GameSettings({
               {copied ? '✅ Link Copied!' : '🔗 Share Quiz'}
             </button>
           )}
-          {handleOpenPreview && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenPreview();
-              }}
-              className="px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              Preview / Edit
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {handleOpenPreview && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPreview();
+                }}
+                className="px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Preview questions in this Dahoot"
+              >
+                📋 Preview Questions
+              </button>
+            )}
+            {canEdit && onEditGame && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditGame();
+                }}
+                className="px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Edit title, description, and questions in Dahoot Builder"
+              >
+                ✏️ Edit Game
+              </button>
+            )}
+          </div>
         </div>
       )}
 

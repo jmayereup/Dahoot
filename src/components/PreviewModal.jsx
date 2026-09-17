@@ -1,30 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { pb } from '../pb';
 import { ConfirmModal } from './ConfirmModal';
 import { QuestionPreviewCard } from './QuestionPreviewCard';
-import { QuestionFormFields } from './QuestionFormFields';
-import {
-  normalizeQuestion,
-  extractBracketedAnswers,
-  legacyDragSentenceToBracketed,
-  legacyDropDownSentenceToBracketed,
-  unionDropDownDistractors,
-  categorizeOptionsToGrid,
-  categorizeGridToOptions,
-  QUESTION_TYPE_PROMPTS
-} from '../utils/questionSchema';
-
-const defaultFormState = {
-  questionType: 'MULTIPLE_CHOICE',
-  questionText: QUESTION_TYPE_PROMPTS.MULTIPLE_CHOICE,
-  mcCorrectAnswer: '',
-  mcDistractors: ['', '', ''],
-  sortingItems: ['', '', '', ''],
-  dragSentence: '',
-  dragDistractors: [''],
-  dropdownSentence: '',
-  categorizeGrid: [['', ''], ['', '']]
-};
+import { QuestionEditModal } from './QuestionEditModal';
 
 export function PreviewModal({
   isOpen,
@@ -38,6 +16,8 @@ export function PreviewModal({
   onSaveQuestion: onSaveQuestionProp,
   onDeleteQuestion: onDeleteQuestionProp,
   onImport,
+  onEditGame,
+  onQuestionsChanged,
   standalone
 }) {
   const effectiveGameId = gameId || game?.id;
@@ -49,14 +29,6 @@ export function PreviewModal({
   const [questionToDeleteId, setQuestionToDeleteId] = useState(null);
 
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [editError, setEditError] = useState('');
-  const [editLoading, setEditLoading] = useState(false);
-
-  const [form, setForm] = useState(defaultFormState);
-
-  const resetForm = useCallback(() => {
-    setForm(defaultFormState);
-  }, []);
 
   const loadQuestions = async () => {
     if (!effectiveGameId) return;
@@ -104,157 +76,34 @@ export function PreviewModal({
   }, [isOpen, onClose, editingQuestion, deleteConfirmOpen]);
 
   const startCreating = () => {
-    resetForm();
     setEditingQuestion('new');
-    setEditError('');
   };
 
   const startEditing = (question) => {
-    setEditError('');
-    const qType = question.type || 'MULTIPLE_CHOICE';
-    const n = normalizeQuestion(question);
-    const newForm = {
-      ...EMPTY_FORM,
-      questionType: qType,
-      questionText: question.text || '',
-      mcCorrectAnswer: '',
-      mcDistractors: ['', '', ''],
-      sortingItems: ['', '', '', ''],
-      dragSentence: '',
-      dragDistractors: [''],
-      dropdownSentence: '',
-      categorizeGrid: [['', ''], ['', '']],
-      discussionPlaceholder: '',
-      discussionSampleAnswers: '',
-      discussionMaxLength: 250
-    };
-
-    if (qType === 'MULTIPLE_CHOICE') {
-      newForm.mcCorrectAnswer = n.options?.correct_answer || '';
-      const dists = [...(n.options?.distractors || [])];
-      while (dists.length < 3) dists.push('');
-      newForm.mcDistractors = dists;
-    } else if (qType === 'SORTING') {
-      const seq = [...(n.options?.correct_sequence || [])];
-      while (seq.length < 2) seq.push('');
-      newForm.sortingItems = seq;
-    } else if (qType === 'DRAG_DROP') {
-      const rawSentence = n.options?.sentence || '';
-      const answers = n.options?.answers_in_order || [];
-      newForm.dragSentence = legacyDragSentenceToBracketed(rawSentence, answers);
-      const dists = (n.options?.distractors || []).filter(d => (d || '').trim());
-      newForm.dragDistractors = dists.length ? dists : [''];
-    } else if (qType === 'DROP_DOWN') {
-      const rawSentence = n.options?.sentence || '';
-      const dds = Array.isArray(n.options?.dropdowns) ? n.options.dropdowns : [];
-      newForm.dropdownSentence = legacyDropDownSentenceToBracketed(rawSentence, dds);
-      const union = unionDropDownDistractors(dds);
-      newForm.dragDistractors = union.length ? union : [''];
-    } else if (qType === 'CATEGORIZE') {
-      newForm.categorizeGrid = categorizeOptionsToGrid(n.options);
-    } else if (qType === 'DISCUSSION') {
-      newForm.discussionPlaceholder = n.options?.placeholder || '';
-      const samples = Array.isArray(n.options?.sample_answers) ? n.options.sample_answers.join('\n') : (n.options?.sample_answers || '');
-      newForm.discussionSampleAnswers = samples;
-      newForm.discussionMaxLength = n.options?.max_length || 250;
-    }
-
-    setForm(newForm);
     setEditingQuestion(question);
   };
 
-  const closeEdit = () => {
-    setEditingQuestion(null);
-    setEditError('');
-  };
-
-  const updateForm = (updates) => {
-    setForm(prev => ({ ...prev, ...updates }));
-  };
-
-  const saveQuestion = async () => {
-    setEditError('');
-    if (!canEdit) {
-      setEditError('You do not have permission to edit this game.');
-      return;
-    }
-    if (!form.questionText.trim()) {
-      setEditError('Question text is required.');
-      return;
-    }
-
-    let optionsPayload = null;
-    if (form.questionType === 'MULTIPLE_CHOICE') {
-      if (!form.mcCorrectAnswer.trim()) { setEditError('Correct answer is required.'); return; }
-      const filledDistractors = form.mcDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
-      if (filledDistractors.length === 0) { setEditError('Please enter at least 1 distractor (incorrect option).'); return; }
-      optionsPayload = { correct_answer: form.mcCorrectAnswer.trim(), distractors: filledDistractors };
-    } else if (form.questionType === 'SORTING') {
-      const filledItems = form.sortingItems.map(s => s.trim()).filter(Boolean);
-      if (filledItems.length < 2) { setEditError('A sorting question must have at least 2 items.'); return; }
-      optionsPayload = { correct_sequence: filledItems };
-    } else if (form.questionType === 'DRAG_DROP') {
-      if (!form.dragSentence.trim()) { setEditError('Sentence is required.'); return; }
-      const answers = extractBracketedAnswers(form.dragSentence);
-      if (answers.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [hooks]).'); return; }
-      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
-      optionsPayload = {
-        sentence: form.dragSentence.trim(),
-        answers_in_order: answers,
-        distractors: filledDistractors
-      };
-    } else if (form.questionType === 'DROP_DOWN') {
-      if (!form.dropdownSentence.trim()) { setEditError('Sentence is required.'); return; }
-      const dropdowns = extractBracketedAnswers(form.dropdownSentence);
-      if (dropdowns.length === 0) { setEditError('The sentence must contain at least one bracketed answer (e.g. [Go]).'); return; }
-      const filledDistractors = form.dragDistractors.map(d => d.trim()).filter(Boolean).slice(0, 3);
-      optionsPayload = {
-        sentence: form.dropdownSentence.trim(),
-        dropdowns: dropdowns.map(correct => ({
-          correct_answer: correct,
-          distractors: filledDistractors
-        }))
-      };
-    } else if (form.questionType === 'CATEGORIZE') {
-      const { categories, items } = categorizeGridToOptions(form.categorizeGrid);
-      if (categories.length < 2) { setEditError('Please enter at least 2 categories in the first row.'); return; }
-      if (items.length === 0) { setEditError('Please add at least one item in any cell.'); return; }
-      optionsPayload = { categories, items };
-    } else if (form.questionType === 'DISCUSSION') {
-      const sampleAnswersArr = typeof form.discussionSampleAnswers === 'string'
-        ? form.discussionSampleAnswers.split('\n').map(s => s.trim()).filter(Boolean)
-        : (Array.isArray(form.discussionSampleAnswers) ? form.discussionSampleAnswers : []);
-      optionsPayload = {
-        placeholder: form.discussionPlaceholder ? form.discussionPlaceholder.trim() : '',
-        sample_answers: sampleAnswersArr,
-        max_length: parseInt(form.discussionMaxLength, 10) || 250
-      };
-    }
-
-    setEditLoading(true);
-    const questionData = {
-      game_id: effectiveGameId,
-      text: form.questionText.trim(),
-      options: optionsPayload,
-      type: form.questionType
+  const handleSaveQuestion = async (questionData, targetQuestion) => {
+    const payload = {
+      ...questionData,
+      game_id: effectiveGameId
     };
 
-    try {
-      if (standalone) {
-        if (editingQuestion && editingQuestion !== 'new') {
-          await pb.collection('dahoot_questions').update(editingQuestion.id, questionData);
-        } else {
-          await pb.collection('dahoot_questions').create(questionData);
-        }
-        await loadQuestions();
-      } else if (onSaveQuestionProp) {
-        await onSaveQuestionProp(questionData, editingQuestion);
+    if (standalone) {
+      if (targetQuestion && targetQuestion !== 'new') {
+        await pb.collection('dahoot_questions').update(targetQuestion.id, payload);
+      } else {
+        await pb.collection('dahoot_questions').create(payload);
       }
-      closeEdit();
-    } catch (err) {
-      setEditError('Failed to save question: ' + err.message);
-    } finally {
-      setEditLoading(false);
+      await loadQuestions();
+      if (onQuestionsChanged) {
+        onQuestionsChanged();
+      }
+    } else if (onSaveQuestionProp) {
+      await onSaveQuestionProp(payload, targetQuestion);
+      if (onQuestionsChanged) {
+        onQuestionsChanged();
+      }
     }
   };
 
@@ -269,9 +118,15 @@ export function PreviewModal({
       if (standalone) {
         await pb.collection('dahoot_questions').delete(questionToDeleteId);
         await loadQuestions();
+        if (onQuestionsChanged) {
+          onQuestionsChanged();
+        }
       } else if (onDeleteQuestionProp) {
         await onDeleteQuestionProp(questionToDeleteId);
         setQuestions(prev => prev.filter(q => q.id !== questionToDeleteId));
+        if (onQuestionsChanged) {
+          onQuestionsChanged();
+        }
       }
       setDeleteConfirmOpen(false);
       setQuestionToDeleteId(null);
@@ -279,8 +134,6 @@ export function PreviewModal({
       console.error('Error deleting question:', err);
     }
   };
-
-  
 
   if (!isOpen) return null;
 
@@ -306,17 +159,43 @@ export function PreviewModal({
               </h2>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {canEdit && onEditGame && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onEditGame(game);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+                  title="Open full Dahoot Builder to edit title, description, and metadata"
+                >
+                  ✏️ Edit Game Details
+                </button>
+              )}
               {canEdit && (
-                <button onClick={startCreating} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer">
+                <button
+                  onClick={startCreating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors cursor-pointer"
+                >
                   ➕ Add Question
                 </button>
               )}
               {canEdit && onImport && (
-                <button onClick={onImport} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors cursor-pointer">
+                <button
+                  onClick={onImport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors cursor-pointer"
+                >
                   📥 Import
                 </button>
               )}
-              <button onClick={onClose} className="bg-black/[0.04] hover:bg-black/[0.08]" style={{ border: 'none', color: 'var(--text-secondary)', fontSize: '1.2rem', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <button
+                onClick={onClose}
+                className="bg-black/[0.04] hover:bg-black/[0.08]"
+                style={{
+                  border: 'none', color: 'var(--text-secondary)', fontSize: '1.2rem',
+                  cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                }}
+              >
                 ✕
               </button>
             </div>
@@ -333,9 +212,7 @@ export function PreviewModal({
               <p style={{ color: 'var(--text-secondary)' }}>Loading questions...</p>
             </div>
           ) : questions.length > 0 ? (
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {questions.map((question, qIdx) => (
                 <QuestionPreviewCard
                   key={question.id}
@@ -354,6 +231,18 @@ export function PreviewModal({
                 {canEdit && (
                   <button className="btn btn-primary" onClick={startCreating} style={{ width: 'auto' }}>➕ Add Question</button>
                 )}
+                {canEdit && onEditGame && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      onClose();
+                      onEditGame(game);
+                    }}
+                    style={{ width: 'auto' }}
+                  >
+                    ✏️ Edit Game Details
+                  </button>
+                )}
                 <button className="btn btn-secondary" onClick={onClose} style={{ width: 'auto' }}>Close</button>
               </div>
             </div>
@@ -361,129 +250,28 @@ export function PreviewModal({
         </div>
       </div>
 
-      {editingQuestion && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(9, 10, 15, 0.7)', backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)', zIndex: 1100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px'
-        }}>
-          <div className="panel panel-large animate-join-focus p-4 sm:p-7" style={{
-            width: '100%', maxWidth: '750px', maxHeight: '94vh', overflowY: 'auto',
-            textAlign: 'left', border: '1px solid var(--panel-border-focus)', position: 'relative'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px' }}>
-              <div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Question Editor</span>
-                <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>
-                  {editingQuestion === 'new' ? 'Add New Question' : 'Edit Question'}
-                </h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{game?.title || 'Preview Quiz'}</p>
-              </div>
-              <button type="button" onClick={closeEdit} style={{ background: 'rgba(93,107,130,0.08)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '1rem' }}>✕</button>
-            </div>
-
-            {editError && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ff4b60', padding: '12px 16px', borderRadius: '8px', marginBottom: 20 }}>
-                {editError}
-              </div>
-            )}
-
-            <QuestionFormFields
-              questionType={form.questionType}
-              setQuestionType={(v) => updateForm({ questionType: v })}
-              questionText={form.questionText}
-              setQuestionText={(v) => updateForm({ questionText: v })}
-              mcCorrectAnswer={form.mcCorrectAnswer}
-              setMcCorrectAnswer={(v) => updateForm({ mcCorrectAnswer: v })}
-              mcDistractors={form.mcDistractors}
-              updateMcDistractor={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ mcDistractors: idx });
-                } else {
-                  const next = [...form.mcDistractors];
-                  next[idx] = val;
-                  updateForm({ mcDistractors: next });
-                }
-              }}
-              sortingItems={form.sortingItems}
-              updateSortingItem={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ sortingItems: idx });
-                } else {
-                  const next = [...form.sortingItems];
-                  next[idx] = val;
-                  updateForm({ sortingItems: next });
-                }
-              }}
-              addSortingItem={() => updateForm({ sortingItems: [...form.sortingItems, ''] })}
-              removeSortingItem={(idx) => {
-                if (form.sortingItems.length <= 2) return;
-                updateForm({ sortingItems: form.sortingItems.filter((_, i) => i !== idx) });
-              }}
-              dragSentence={form.dragSentence}
-              setDragSentence={(v) => updateForm({ dragSentence: v })}
-              dragDistractors={form.dragDistractors}
-              updateDragDistractor={(idx, val) => {
-                if (Array.isArray(idx)) {
-                  updateForm({ dragDistractors: idx });
-                } else {
-                  const next = [...form.dragDistractors];
-                  next[idx] = val;
-                  updateForm({ dragDistractors: next });
-                }
-              }}
-              addDragDistractor={() => updateForm({ dragDistractors: [...form.dragDistractors, ''] })}
-              removeDragDistractor={(idx) => updateForm({ dragDistractors: form.dragDistractors.filter((_, i) => i !== idx) })}
-              dropdownSentence={form.dropdownSentence}
-              setDropdownSentence={(v) => updateForm({ dropdownSentence: v })}
-              categorizeGrid={form.categorizeGrid}
-              setCategorizeGrid={(arg) => {
-                const next = typeof arg === 'function' ? arg(form.categorizeGrid) : arg;
-                updateForm({ categorizeGrid: next });
-              }}
-              discussionPlaceholder={form.discussionPlaceholder}
-              setDiscussionPlaceholder={(v) => updateForm({ discussionPlaceholder: v })}
-              discussionSampleAnswers={form.discussionSampleAnswers}
-              setDiscussionSampleAnswers={(v) => updateForm({ discussionSampleAnswers: v })}
-              discussionMaxLength={form.discussionMaxLength}
-              setDiscussionMaxLength={(v) => updateForm({ discussionMaxLength: v })}
-              disabled={editLoading}
-            />
-
-            <div style={{ display: 'flex', gap: 12, marginTop: '24px', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
-              <button type="button" className="btn btn-secondary" onClick={closeEdit} style={{ width: 'auto', minWidth: '100px' }} disabled={editLoading}>Cancel</button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={saveQuestion}
-                style={{ width: 'auto', minWidth: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                disabled={editLoading}
-              >
-                {editLoading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-slate-200 border-l-rose-300 rounded-full animate-spin inline-block mr-1"></span>
-                    Saving...
-                  </>
-                ) : (
-                  editingQuestion === 'new' ? '✓ Add Question' : '✓ Save Changes'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuestionEditModal
+        isOpen={Boolean(editingQuestion)}
+        editingQuestion={editingQuestion}
+        gameTitle={game?.title}
+        canEdit={canEdit}
+        onClose={() => setEditingQuestion(null)}
+        onSave={handleSaveQuestion}
+      />
 
       <ConfirmModal
         isOpen={deleteConfirmOpen}
-        onClose={() => { setDeleteConfirmOpen(false); setQuestionToDeleteId(null); }}
-        onConfirm={handleConfirmDelete}
-        title="Delete this question?"
-        message="This action cannot be undone and will delete the question permanently from the database."
+        title="Delete Question?"
+        message="Are you sure you want to delete this question? This action cannot be undone."
         confirmText="Delete Question"
-        cancelText="Keep Question"
+        cancelText="Cancel"
         variant="danger"
         icon="🗑️"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setQuestionToDeleteId(null);
+        }}
       />
     </>
   );

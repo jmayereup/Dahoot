@@ -4,6 +4,7 @@ import { SchoolFooter } from './SchoolFooter';
 import { GameSettings } from './GameSettings';
 import { GameModeButtons } from './GameModeButtons';
 import { PreviewModal } from './PreviewModal';
+import { canEditGame } from '../utils/permissions';
 
 export function HostGameView({
   selectedGameId,
@@ -31,6 +32,8 @@ export function HostGameView({
   copied, handleCopyShareLink, handleOpenPreview,
   isPreviewModalOpen, closePreview,
   settingsRef,
+  onEditGame,
+  reloadQuestions,
 }) {
   useEffect(() => {
     if (selectedGameId && selectedGameId !== setup?.activeGameId) {
@@ -128,6 +131,8 @@ export function HostGameView({
           copied={copied}
           handleCopyShareLink={() => handleCopyShareLink(selectedGameId)}
           handleOpenPreview={handleOpenPreview}
+          onEditGame={onEditGame ? () => onEditGame(game) : null}
+          canEdit={canEditGame(game, currentUser, userInfo, userInfo?.role)}
         />
 
         <GameModeButtons
@@ -152,9 +157,11 @@ export function HostGameView({
         onClose={closePreview}
         game={game}
         gameId={selectedGameId}
-        canEdit={!!currentUser && (userInfo?.role === 'TEACHER' || userInfo?.role === 'ADMIN')}
+        canEdit={canEditGame(game, currentUser, userInfo, userInfo?.role)}
         currentUser={currentUser}
         userInfo={userInfo}
+        onEditGame={onEditGame ? () => onEditGame(game) : null}
+        onQuestionsChanged={reloadQuestions}
         standalone
       />
     </div>

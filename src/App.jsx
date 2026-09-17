@@ -22,7 +22,12 @@ const PracticeView = lazy(() => import('./components/PracticeView').then(m => ({
 const MarathonView = lazy(() => import('./components/MarathonView').then(m => ({ default: m.MarathonView })));
 const MarathonHostView = lazy(() => import('./components/MarathonHostView').then(m => ({ default: m.MarathonHostView })));
 const MarathonPlayerView = lazy(() => import('./components/MarathonPlayerView').then(m => ({ default: m.MarathonPlayerView })));
-const CookieConsent = lazy(() => import('./components/CookieConsent').then(m => ({ default: m.CookieConsent })));
+const PrivacyNotice = lazy(() =>
+  import('./components/PrivacyNotice')
+    .then(m => ({ default: m.PrivacyNotice || m.default }))
+    .catch(() => ({ default: () => null }))
+);
+const CookieConsent = PrivacyNotice;
 
 function ViewLoader({ message = "Loading view..." }) {
   return (
@@ -133,6 +138,25 @@ function App() {
   const marathonGame = useMarathonGame(view, setView);
   const marathonHost = useMarathonHost(view, setView);
   const marathonPlayer = useMarathonPlayer(view, setView);
+
+  const [editingReturnView, setEditingReturnView] = useState(null);
+
+  const handleEditGameFromHost = async (gameToEdit) => {
+    if (!gameToEdit) return;
+    setEditingReturnView('hostGame');
+    await teacherDashboard.startEditingGame(gameToEdit);
+    setView('teacher');
+  };
+
+  const handleFinishEditingGame = () => {
+    if (editingReturnView) {
+      const returnTo = editingReturnView;
+      setEditingReturnView(null);
+      hostGame.refreshGames();
+      hostGameSetup.reloadQuestions();
+      setView(returnTo);
+    }
+  };
 
   // Sync room state between standard host and marathon host when view transitions
   useEffect(() => {
@@ -350,6 +374,8 @@ function App() {
           isPreviewModalOpen={hostGameSetup.isPreviewModalOpen}
           closePreview={hostGameSetup.closePreview}
           settingsRef={hostGameSetup.settingsRef}
+          onEditGame={handleEditGameFromHost}
+          reloadQuestions={hostGameSetup.reloadQuestions}
         />
         <Suspense fallback={null}>
           <CookieConsent />
@@ -421,7 +447,11 @@ function App() {
         <Suspense fallback={<ViewLoader message="Loading Authentication..." />}>
           <AuthView 
             onSuccess={() => setView('teacher')}
-            onCancel={() => setView('selection')}
+            onCancel={() => {
+              const ret = editingReturnView || 'selection';
+              setEditingReturnView(null);
+              setView(ret);
+            }}
             pocketbaseStatus={pocketbaseStatus}
           />
           <Suspense fallback={null}>
@@ -513,6 +543,7 @@ function App() {
             setSelectedGameId(gameId);
             setView('hostGame');
           }}
+          onFinishEditing={handleFinishEditingGame}
         />
         <Suspense fallback={null}>
           <CookieConsent />

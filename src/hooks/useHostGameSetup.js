@@ -35,28 +35,24 @@ export function useHostGameSetup() {
     setActiveGameId(gameId || '');
   }, []);
 
-  useEffect(() => {
+  const reloadQuestions = useCallback(() => {
     if (!activeGameId) {
       setGameQuestions([]);
       return;
     }
-
-    let isMounted = true;
     pb.collection('dahoot_questions').getFullList({
       filter: pb.filter("game_id = {:gameId}", { gameId: activeGameId })
     })
-    .then(res => {
-      if (isMounted) setGameQuestions(res);
-    })
+    .then(res => setGameQuestions(res))
     .catch(err => {
       console.error("Error fetching questions:", err);
-      if (isMounted) setGameQuestions([]);
+      setGameQuestions([]);
     });
-
-    return () => {
-      isMounted = false;
-    };
   }, [activeGameId]);
+
+  useEffect(() => {
+    reloadQuestions();
+  }, [reloadQuestions]);
 
   const setup = getSetup(activeGameId);
 
@@ -148,6 +144,7 @@ export function useHostGameSetup() {
     handleCopyShareLink,
     handleOpenPreview,
     settingsRef,
+    reloadQuestions,
     reset,
   };
 }
