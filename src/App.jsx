@@ -137,7 +137,9 @@ function App() {
   const practiceGame = usePracticeGame(view, setView);
   const marathonGame = useMarathonGame(view, setView);
   const marathonHost = useMarathonHost(view, setView);
-  const marathonPlayer = useMarathonPlayer(view, setView);
+  const marathonPlayer = useMarathonPlayer(view, setView, (roomId, playerId) => {
+    playerGame.attemptReconnect(playerId, roomId);
+  });
 
   const [editingReturnView, setEditingReturnView] = useState(null);
 

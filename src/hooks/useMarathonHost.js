@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { pb } from '../pb';
 import { shuffleArray } from '../utils/shuffle';
+import { generateUniquePin } from '../utils/roomPin';
 
 export function useMarathonHost(view, setView) {
   const [hostRoom, setHostRoom] = useState(null);
@@ -65,27 +66,6 @@ export function useMarathonHost(view, setView) {
 
     return { totalAnswered, accuracy, bestStreak: bestStreakVal, activeStudents, bestStreakPlayer, mostCorrectPlayer, mostCorrectCount: mostCorrectVal };
   }, [hostPlayers]);
-
-  const generateUniquePin = async () => {
-    let pin = '';
-    let isUnique = false;
-    let attempts = 0;
-    while (!isUnique && attempts < 15) {
-      pin = Math.floor(1000 + Math.random() * 9000).toString();
-      try {
-        await pb.collection('dahoot_rooms').getFirstListItem(
-          pb.filter("code = {:code} && status != 'FINISHED'", { code: pin })
-        );
-        attempts++;
-      } catch (err) {
-        isUnique = true;
-      }
-    }
-    if (!isUnique) {
-      pin = Math.floor(100000 + Math.random() * 900000).toString();
-    }
-    return pin;
-  };
 
   const startMarathonHosting = async (gameId, options = {}) => {
     setError('');
@@ -406,7 +386,10 @@ export function useMarathonHost(view, setView) {
       const newLap = currentLap + 1;
       const newIds = reshuffleQuestionIds();
       setCurrentLap(newLap);
+      const reordered = newIds.map(id => questions.find(q => q.id === id)).filter(Boolean);
+      setQuestions(reordered);
       updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
+        status: 'QUESTION',
         question_ids: newIds,
         current_question_index: 0,
         current_question_start_time: new Date().toISOString()
@@ -526,11 +509,14 @@ export function useMarathonHost(view, setView) {
     const threshold = Math.ceil(poolSize * 0.8);
 
     const allMastered = hostPlayers.every(p => {
+      const correctIds = new Set(
+        Object.entries(p.answers || {})
+          .filter(([, val]) => val === true)
+          .map(([qId]) => qId)
+      );
       const history = p.marathon_stats?.question_history || [];
-      const uniqueCorrect = new Set(
-        history.filter(h => h.is_correct).map(h => h.question_id)
-      ).size;
-      return uniqueCorrect >= threshold;
+      history.filter(h => h.is_correct).forEach(h => correctIds.add(h.question_id));
+      return correctIds.size >= threshold;
     });
 
     if (allMastered) {

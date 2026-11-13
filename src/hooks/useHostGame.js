@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../pb';
 import { DEFAULT_QUESTIONS, SAMPLE_GAMES } from '../constants';
+import { generateUniquePin } from '../utils/roomPin';
 
 export function useHostGame(view, setView, hasPinFromUrl = false) {
   const [gamesList, setGamesList] = useState([]);
@@ -206,24 +207,8 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
       
       setQuestions(activeQuestions);
 
-      // Generate a unique PIN (ensure no active room is using it)
-      let pin = '';
-      let isUnique = false;
-      let attempts = 0;
-      while (!isUnique && attempts < 15) {
-        pin = Math.floor(1000 + Math.random() * 9000).toString();
-        try {
-          await pb.collection('dahoot_rooms').getFirstListItem(
-            pb.filter("code = {:code} && status != 'FINISHED'", { code: pin })
-          );
-          attempts++;
-        } catch (err) {
-          isUnique = true;
-        }
-      }
-      if (!isUnique) {
-        pin = Math.floor(100000 + Math.random() * 900000).toString();
-      }
+      // Generate a unique 4-digit PIN across all rooms
+      const pin = await generateUniquePin();
 
       const questionIds = activeQuestions.map(q => q.id);
 
@@ -413,7 +398,7 @@ export function useHostGame(view, setView, hasPinFromUrl = false) {
   };
 
   const hostShowLeaderboard = async () => {
-    if (!hostRoom) return;
+    if (!hostRoom || hostRoom.status !== 'QUESTION') return;
     try {
       const updated = await pb.collection('dahoot_rooms').update(hostRoom.id, {
         status: 'LEADERBOARD'

@@ -28,3 +28,31 @@ onRecordCreateRequest((e) => {
     e.record.set("invite_code", "");
     return e.next();
 }, "dahoot_user_info");
+
+// Hook to prevent non-admins from escalating their own role on dahoot_user_info update
+onRecordUpdateRequest((e) => {
+    const isSuperuser = e.auth && e.auth.isSuperuser();
+    if (!isSuperuser) {
+        let isAdmin = false;
+        const authInfoId = e.auth ? e.auth.get("dahoot_info") : "";
+        if (authInfoId) {
+            try {
+                const authInfo = $app.findRecordById("dahoot_user_info", authInfoId);
+                isAdmin = authInfo && authInfo.get("role") === "ADMIN";
+            } catch (err) {
+                isAdmin = false;
+            }
+        }
+
+        if (!isAdmin) {
+            const originalRole = e.record.original().get("role");
+            const nextRole = e.record.get("role");
+            if (originalRole !== nextRole) {
+                throw new Error("Only administrators can change user roles.");
+            }
+        }
+    }
+
+    e.record.set("invite_code", "");
+    return e.next();
+}, "dahoot_user_info");

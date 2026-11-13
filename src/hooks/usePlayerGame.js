@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { pb } from '../pb';
 import { isAnswerCorrect } from '../utils/questionSchema';
 
@@ -7,6 +7,10 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
   const [playerName, setPlayerName] = useState('');
   
   const [playerRoom, setPlayerRoom] = useState(null);
+  const playerRoomRef = useRef(playerRoom);
+  useEffect(() => {
+    playerRoomRef.current = playerRoom;
+  }, [playerRoom]);
   const [playerRecord, setPlayerRecord] = useState(null);
   const [playerQuestions, setPlayerQuestions] = useState([]);
   const [playerTimeLeft, setPlayerTimeLeft] = useState(20);
@@ -125,10 +129,11 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         }
 
         // Reset player choice on new question, index change, or lobby transition
+        const prevRoom = playerRoomRef.current;
         if (
           updatedRoom.status === 'LOBBY' || 
-          (updatedRoom.status === 'QUESTION' && playerRoom.status !== 'QUESTION') ||
-          (updatedRoom.status === 'QUESTION' && updatedRoom.current_question_index !== playerRoom.current_question_index)
+          (updatedRoom.status === 'QUESTION' && prevRoom?.status !== 'QUESTION') ||
+          (updatedRoom.status === 'QUESTION' && updatedRoom.current_question_index !== prevRoom?.current_question_index)
         ) {
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
@@ -251,8 +256,9 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
         throw new Error('Game already finished.');
       }
 
+      const normalizedName = playerName.trim().substring(0, 15);
       const existing = await pb.collection('dahoot_players').getList(1, 1, {
-        filter: pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName.trim() })
+        filter: pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: normalizedName })
       });
       
       let player;
@@ -261,7 +267,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       } else {
         player = await pb.collection('dahoot_players').create({
           room_id: room.id,
-          name: playerName.trim().substring(0, 15),
+          name: normalizedName,
           score: 0,
           last_answered_index: -1,
           answers: {}
@@ -307,11 +313,12 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       return;
     }
 
-    setPlayerSelectedIdx(userAnswer);
     const qIndex = playerRoom.current_question_index;
     const activeQuestion = playerQuestions[qIndex];
     
     if (!activeQuestion) return;
+
+    setPlayerSelectedIdx(userAnswer);
 
     const isDiscussion = activeQuestion && activeQuestion.type === 'DISCUSSION';
     const isCorrect = isAnswerCorrect(activeQuestion, userAnswer);
@@ -394,6 +401,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
     error,
     setError,
     joinGame,
+    attemptReconnect,
     submitAnswer,
     disconnectSession,
     exitGame,

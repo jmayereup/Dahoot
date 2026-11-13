@@ -219,7 +219,7 @@ export function QuestionInteraction({
             {playerChoice ? (
               <span>{playerChoice} {isDropCorrect ? '✓' : `(Correct: ${correctChoice})`}</span>
             ) : (
-              <span>_____ (Correct: ${correctChoice})</span>
+              <span>_____ (Correct: {correctChoice})</span>
             )}
           </span>
         );
@@ -613,7 +613,12 @@ export function QuestionInteraction({
                           key={idx}
                           type="button"
                           className={`btn ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          onClick={() => !disabled && handleCategorizeChoice(shuffledCategorizeItems[effectiveCategorizeIdx].name, cat)}
+                          onClick={() => {
+                            const currentItem = shuffledCategorizeItems[effectiveCategorizeIdx];
+                            if (!disabled && currentItem) {
+                              handleCategorizeChoice(currentItem.name, cat);
+                            }
+                          }}
                           disabled={disabled}
                           style={{
                             background: colorSet.background,

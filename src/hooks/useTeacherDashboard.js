@@ -590,18 +590,54 @@ export function useTeacherDashboard(view, currentUser) {
         throw new Error(`Question ${i + 1} has invalid type "${q.type}". Must be one of: ${validTypes.join(', ')}`);
       }
 
-      // Drop extra distractors for future requests (if it doesn't follow the directions)
-      if (q.type === 'MULTIPLE_CHOICE' && q.options && Array.isArray(q.options.distractors)) {
+      if (!q.options || typeof q.options !== 'object' || Array.isArray(q.options)) {
+        if (q.type !== 'DISCUSSION') {
+          throw new Error(`Question ${i + 1} (${q.type}) is missing an "options" object.`);
+        }
+      }
+
+      if (q.type === 'MULTIPLE_CHOICE') {
+        if (!q.options.correct_answer || typeof q.options.correct_answer !== 'string') {
+          throw new Error(`Question ${i + 1} (MULTIPLE_CHOICE) is missing "options.correct_answer".`);
+        }
+        if (!Array.isArray(q.options.distractors) || q.options.distractors.length === 0) {
+          throw new Error(`Question ${i + 1} (MULTIPLE_CHOICE) must have at least 1 distractor.`);
+        }
         q.options.distractors = q.options.distractors.slice(0, 3);
-      } else if (q.type === 'DRAG_DROP' && q.options && Array.isArray(q.options.distractors)) {
-        q.options.distractors = q.options.distractors.slice(0, 3);
-      } else if (q.type === 'DROP_DOWN' && q.options && Array.isArray(q.options.dropdowns)) {
+      } else if (q.type === 'SORTING') {
+        if (!Array.isArray(q.options.correct_sequence) || q.options.correct_sequence.length < 2) {
+          throw new Error(`Question ${i + 1} (SORTING) must have at least 2 items in "options.correct_sequence".`);
+        }
+      } else if (q.type === 'DRAG_DROP') {
+        if (!q.options.sentence || typeof q.options.sentence !== 'string') {
+          throw new Error(`Question ${i + 1} (DRAG_DROP) is missing "options.sentence".`);
+        }
+        if (!Array.isArray(q.options.answers_in_order) || q.options.answers_in_order.length === 0) {
+          throw new Error(`Question ${i + 1} (DRAG_DROP) must have "options.answers_in_order".`);
+        }
+        if (Array.isArray(q.options.distractors)) {
+          q.options.distractors = q.options.distractors.slice(0, 3);
+        }
+      } else if (q.type === 'DROP_DOWN') {
+        if (!q.options.sentence || typeof q.options.sentence !== 'string') {
+          throw new Error(`Question ${i + 1} (DROP_DOWN) is missing "options.sentence".`);
+        }
+        if (!Array.isArray(q.options.dropdowns) || q.options.dropdowns.length === 0) {
+          throw new Error(`Question ${i + 1} (DROP_DOWN) must have at least 1 entry in "options.dropdowns".`);
+        }
         q.options.dropdowns = q.options.dropdowns.map(d => {
           if (d && Array.isArray(d.distractors)) {
             return { ...d, distractors: d.distractors.slice(0, 3) };
           }
           return d;
         });
+      } else if (q.type === 'CATEGORIZE') {
+        if (!Array.isArray(q.options.categories) || q.options.categories.length < 2) {
+          throw new Error(`Question ${i + 1} (CATEGORIZE) must have at least 2 categories.`);
+        }
+        if (!Array.isArray(q.options.items) || q.options.items.length === 0) {
+          throw new Error(`Question ${i + 1} (CATEGORIZE) must have at least 1 item.`);
+        }
       }
     }
     return parsed;

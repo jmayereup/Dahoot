@@ -309,7 +309,7 @@ export function isAnswerCorrect(question, userAnswer) {
 
   if (type === 'CATEGORIZE') {
     const correctItems = n.options?.items || [];
-    return typeof userAnswer === 'object' && userAnswer !== null &&
+    return correctItems.length > 0 && typeof userAnswer === 'object' && userAnswer !== null &&
       correctItems.every(item => userAnswer[item.name] === item.category);
   }
 
@@ -409,15 +409,24 @@ export function categorizeGridToOptions(grid) {
   if (!Array.isArray(grid) || grid.length === 0) {
     return { categories: [], items: [] };
   }
-  const categories = (grid[0] || []).map(c => (c || '').trim()).filter(Boolean);
+  const rawHeaders = grid[0] || [];
+  const categories = [];
+  const validCols = [];
+  for (let c = 0; c < rawHeaders.length; c++) {
+    const trimmed = (rawHeaders[c] || '').trim();
+    if (trimmed) {
+      categories.push(trimmed);
+      validCols.push({ colIdx: c, category: trimmed });
+    }
+  }
   const items = [];
   for (let r = 1; r < grid.length; r++) {
     const row = grid[r] || [];
-    for (let c = 0; c < categories.length; c++) {
-      const cell = row[c] || '';
+    for (const { colIdx, category } of validCols) {
+      const cell = row[colIdx] || '';
       const lines = cell.split('\n').map(s => s.trim()).filter(Boolean);
       for (const name of lines) {
-        items.push({ name, category: categories[c] });
+        items.push({ name, category });
       }
     }
   }

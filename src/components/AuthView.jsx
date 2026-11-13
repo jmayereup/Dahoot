@@ -111,7 +111,9 @@ export function AuthView({ onSuccess, onCancel, pocketbaseStatus }) {
         // Check if the user already exists in the system (e.g. from another app)
         let existingUser = null;
         try {
-          existingUser = await pb.collection('users').getFirstListItem(`email = "${email.trim()}"`);
+          existingUser = await pb.collection('users').getFirstListItem(
+            pb.filter("email = {:email}", { email: email.trim() })
+          );
         } catch (e) {
           // User does not exist, which is normal for standard sign-up
         }

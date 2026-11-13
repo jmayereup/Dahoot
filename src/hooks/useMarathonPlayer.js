@@ -1,11 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { pb } from '../pb';
 import { shuffleArray } from '../utils/shuffle';
 import { isAnswerCorrect } from '../utils/questionSchema';
 
-export function useMarathonPlayer(view, setView) {
+export function useMarathonPlayer(view, setView, onStandardRoom) {
   const [playerRoom, setPlayerRoom] = useState(null);
   const [playerRecord, setPlayerRecord] = useState(null);
+  const playerRoomRef = useRef(playerRoom);
+  const playerRecordRef = useRef(playerRecord);
+  useEffect(() => {
+    playerRoomRef.current = playerRoom;
+  }, [playerRoom]);
+  useEffect(() => {
+    playerRecordRef.current = playerRecord;
+  }, [playerRecord]);
   const [allQuestions, setAllQuestions] = useState([]);
   const [playerSelectedIdx, setPlayerSelectedIdx] = useState(null);
   const [playerFeedback, setPlayerFeedback] = useState(null);
@@ -66,7 +74,8 @@ export function useMarathonPlayer(view, setView) {
         throw new Error('This marathon has already ended.');
       }
 
-      const playerFilter = pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: playerName });
+      const normalizedName = playerName.trim().substring(0, 15);
+      const playerFilter = pb.filter("room_id = {:roomId} && name = {:name}", { roomId: room.id, name: normalizedName });
       let existingPlayer = null;
       try {
         existingPlayer = await pb.collection('dahoot_players').getFirstListItem(playerFilter);
@@ -84,7 +93,7 @@ export function useMarathonPlayer(view, setView) {
 
         player = await pb.collection('dahoot_players').create({
           room_id: room.id,
-          name: playerName,
+          name: normalizedName,
           score: 0,
           last_answered_index: -1,
           answers: {},
@@ -132,9 +141,10 @@ export function useMarathonPlayer(view, setView) {
       const question = currentLapQuestions[playerQuestionIndex];
       if (!question) return;
 
+      const isDiscussion = question.type === 'DISCUSSION';
       const isCorrect = isAnswerCorrect(question, userAnswer);
 
-      const points = isCorrect ? 1000 : 0;
+      const points = isDiscussion ? 0 : (isCorrect ? 1000 : 0);
       const currentStats = playerRecord.marathon_stats || {};
       const newStreak = isCorrect ? (currentStats.current_streak || 0) + 1 : 0;
       const bestStreak = Math.max(currentStats.best_streak || 0, newStreak);
@@ -169,19 +179,27 @@ export function useMarathonPlayer(view, setView) {
 
       const newIndex = playerQuestionIndex;
 
+      const answerVal = isDiscussion
+        ? { text: typeof userAnswer === 'string' ? userAnswer : (userAnswer?.text || ''), isDiscussion: true }
+        : isCorrect;
+
       const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
         score: (parseFloat(playerRecord.score) || 0) + points,
         last_answered_index: newIndex,
         answers: {
           ...playerRecord.answers,
-          [question.id]: isCorrect
+          [question.id]: answerVal
         },
         marathon_stats: updatedStats,
         last_answer_time: new Date().toISOString()
       });
 
       setPlayerRecord(updatedPlayer);
-      setPlayerFeedback({ correct: isCorrect, points });
+      setPlayerFeedback(
+        isDiscussion
+          ? { correct: true, isDiscussion: true, points: 0, responseText: answerVal.text }
+          : { correct: isCorrect, points }
+      );
     } catch (err) {
       console.error('Error submitting answer:', err.message);
       setPlayerSelectedIdx(null);
@@ -191,27 +209,33 @@ export function useMarathonPlayer(view, setView) {
 
   const advanceToNextQuestion = async () => {
     if (!playerRoom || playerRoom.status === 'LOBBY' || playerRoom.status === 'FINISHED') return;
-    if (isStudentPaced && playerQuestionIndex >= currentLapQuestions.length) {
-      const newIds = shuffleArray(currentLapQuestions.map(q => q.id));
-      const newLap = (playerRecord.marathon_stats?.lap || 0) + 1;
+    if (isStudentPaced && currentLapQuestions.length > 0 && playerQuestionIndex >= currentLapQuestions.length) {
+      try {
+        const newIds = shuffleArray(currentLapQuestions.map(q => q.id));
+        const newLap = (playerRecord.marathon_stats?.lap || 0) + 1;
 
-      const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
-        lap_question_ids: newIds,
-        last_answered_index: -1,
-        marathon_stats: {
-          ...playerRecord.marathon_stats,
-          lap: newLap
-        }
-      });
+        const updatedPlayer = await pb.collection('dahoot_players').update(playerRecord.id, {
+          lap_question_ids: newIds,
+          last_answered_index: -1,
+          marathon_stats: {
+            ...playerRecord.marathon_stats,
+            lap: newLap
+          }
+        });
 
-      const filter = newIds.map(id => pb.filter("id = {:id}", { id })).join(' || ');
-      const questions = await pb.collection('dahoot_questions').getFullList({ filter });
-      const ordered = newIds.map(id => questions.find(q => q.id === id)).filter(Boolean);
+        const filter = newIds.map(id => pb.filter("id = {:id}", { id })).join(' || ');
+        const questions = await pb.collection('dahoot_questions').getFullList({ filter });
+        const ordered = newIds.map(id => questions.find(q => q.id === id)).filter(Boolean);
 
-      setPlayerRecord(updatedPlayer);
-      setCurrentLapQuestions(ordered);
-      setPlayerSelectedIdx(null);
-      setPlayerFeedback(null);
+        setPlayerRecord(updatedPlayer);
+        setAllQuestions(ordered);
+        setCurrentLapQuestions(ordered);
+        setPlayerSelectedIdx(null);
+        setPlayerFeedback(null);
+      } catch (err) {
+        console.error('Error advancing to next lap:', err);
+        setError('Failed to load next lap. Please try again.');
+      }
     } else {
       setPlayerSelectedIdx(null);
       setPlayerFeedback(null);
@@ -241,28 +265,41 @@ export function useMarathonPlayer(view, setView) {
     if (view !== 'marathonPlayer' || !playerRoom || !playerRecord) return;
 
     const roomId = playerRoom.id;
-
+    const playerId = playerRecord.id;
+    let isMounted = true;
     let roomUnsub = null;
     let playerUnsub = null;
 
     pb.collection('dahoot_rooms').subscribe(roomId, async (e) => {
+      if (!isMounted) return;
       if (e.action === 'update') {
         const updatedRoom = e.record;
+        const prevRoom = playerRoomRef.current;
 
         if (!updatedRoom.marathon_mode) {
-          // Transition back to standard player view
           setPlayerRoom(null);
           setPlayerRecord(null);
           setAllQuestions([]);
           setCurrentLapQuestions([]);
           setPlayerSelectedIdx(null);
           setPlayerFeedback(null);
-          setView('player');
+          if (onStandardRoom) {
+            onStandardRoom(updatedRoom.id, playerId);
+          } else {
+            setView('player');
+          }
           return;
         }
 
-        if (updatedRoom.question_ids && JSON.stringify(updatedRoom.question_ids) !== JSON.stringify(playerRoom.question_ids)) {
-          const lapIds = playerRecord.lap_question_ids || updatedRoom.question_ids;
+        if (updatedRoom.status === 'LOBBY') {
+          setPlayerSelectedIdx(null);
+          setPlayerFeedback(null);
+        }
+
+        if (updatedRoom.question_ids && JSON.stringify(updatedRoom.question_ids) !== JSON.stringify(prevRoom?.question_ids)) {
+          const lapIds = updatedRoom.status === 'LOBBY'
+            ? updatedRoom.question_ids
+            : (playerRecordRef.current?.lap_question_ids || updatedRoom.question_ids);
           await loadAllQuestions(lapIds);
         }
 
@@ -270,17 +307,31 @@ export function useMarathonPlayer(view, setView) {
       } else if (e.action === 'delete') {
         setRemovedReason('closed');
       }
-    }).then(unsub => { roomUnsub = unsub; });
+    }).then(unsub => {
+      if (!isMounted) {
+        if (typeof unsub === 'function') unsub();
+      } else {
+        roomUnsub = unsub;
+      }
+    });
 
-    pb.collection('dahoot_players').subscribe(playerRecord.id, (e) => {
+    pb.collection('dahoot_players').subscribe(playerId, (e) => {
+      if (!isMounted) return;
       if (e.action === 'update') {
         setPlayerRecord(e.record);
       } else if (e.action === 'delete') {
         setRemovedReason('removed');
       }
-    }).then(unsub => { playerUnsub = unsub; });
+    }).then(unsub => {
+      if (!isMounted) {
+        if (typeof unsub === 'function') unsub();
+      } else {
+        playerUnsub = unsub;
+      }
+    });
 
     return () => {
+      isMounted = false;
       if (typeof roomUnsub === 'function') roomUnsub();
       if (typeof playerUnsub === 'function') playerUnsub();
     };
