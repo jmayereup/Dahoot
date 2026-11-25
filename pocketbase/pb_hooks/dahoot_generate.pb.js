@@ -1,6 +1,9 @@
 // pocketbase/pb_hooks/dahoot_generate.pb.js
 
 routerAdd("POST", "/api/dahoot/generate-questions", (e) => {
+    // Autogenerate is disabled in favor of importing from the Gemini Skill
+    return e.json(403, { error: "Autogenerate is disabled. Please use Import from Gemini instead." });
+
     // 1. Check if auth record is present
     const authRecord = e.auth;
     if (!authRecord) {

@@ -17,12 +17,12 @@ export function BulkImportBuilder({
           </p>
           <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <a
-              href="https://gemini.google.com/gem/7c73c716f677"
+              href="https://gemini.google.com/customize/skills/d/18ZESHdzKuk0XOKvr8MkQ-WxJn-u8B1RP?usp=sharing"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: 'var(--accent-light)', textDecoration: 'underline', fontWeight: '600' }}
             >
-              💎 Open Dahoot Quiz Generator Gem
+              💎 Open Dahoot Quiz Generator Skill
             </a>
             <span style={{ color: 'var(--text-muted)' }}>•</span>
             <a
@@ -33,6 +33,9 @@ export function BulkImportBuilder({
             >
               📖 View JSON format guide & prompt template
             </a>
+          </p>
+          <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            💡 <strong>Tip:</strong> After adding the skill for the first time, open a new Gemini chat and invoke it with <code>@dahoot-quiz-generator</code>.
           </p>
         </div>
 

@@ -12,6 +12,8 @@ import { CopySuggestionModal } from './CopySuggestionModal';
 import { QuestionEditModal } from './QuestionEditModal';
 import { canEditGame as canEditGameUtil, canDeleteGame as canDeleteGameUtil } from '../utils/permissions';
 
+const AUTOGENERATE_ENABLED = false;
+
 export function TeacherDashboard({
   gamesList = [],
   selectedGame,
@@ -278,6 +280,9 @@ export function TeacherDashboard({
   };
 
   const handleGenerateQuestions = async (params) => {
+    if (!AUTOGENERATE_ENABLED) {
+      throw new Error('Autogenerate is disabled. Please use Import from Gemini instead.');
+    }
     const { prompt, counts, language, cefrLevel, subject } = params;
     const systemPrompt = `You are an expert curriculum designer and language/subject assessment expert.
 Generate educational questions. You MUST respond with a single, valid JSON object matching the JSON schema and examples below.
@@ -553,7 +558,7 @@ Important rules:
           onAddQuestion={() => requireFieldsOrWarn(openPreviewAddQuestion)}
           onEditQuestion={(q) => openPreviewEditQuestion(q)}
           onDeleteQuestion={(id) => deletePreviewQuestion(id)}
-          onGenerate={() => requireFieldsOrWarn(() => setIsGenModalOpen(true))}
+          onGenerate={AUTOGENERATE_ENABLED ? () => requireFieldsOrWarn(() => setIsGenModalOpen(true)) : null}
           onImport={() => requireFieldsOrWarn(() => { setSelectedGame(selectedGameForEdit || previewGame); startImporting(); })}
         />
         <QuestionEditModal
@@ -564,14 +569,16 @@ Important rules:
           onClose={closePreviewEditQuestion}
           onSave={handleSavePreviewQuestion}
         />
-        <GenerateModal
-          isOpen={isGenModalOpen}
-          onClose={() => setIsGenModalOpen(false)}
-          language={gameLanguage}
-          cefrLevel={gameCefrLevel}
-          subject={gameSubject}
-          onGenerate={handleGenerateQuestions}
-        />
+        {AUTOGENERATE_ENABLED && (
+          <GenerateModal
+            isOpen={isGenModalOpen}
+            onClose={() => setIsGenModalOpen(false)}
+            language={gameLanguage}
+            cefrLevel={gameCefrLevel}
+            subject={gameSubject}
+            onGenerate={handleGenerateQuestions}
+          />
+        )}
         {ConfirmDialog}
       </div>
     );
