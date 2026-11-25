@@ -475,3 +475,38 @@ export function denormalizeForSave(question) {
   }
   return out;
 }
+
+/**
+ * Helpers for reading stored entries in `dahoot_players.answers[questionId]`.
+ *
+ * Historically, non-DISCUSSION answers were stored as plain booleans
+ * (`true` / `false`). New teacher-paced answers store `{ correct: boolean, choice: any }`
+ * so the host can display per-option response breakdowns.
+ * DISCUSSION answers are stored as `{ text: string, isDiscussion: true }` (or legacy string).
+ */
+export function isStoredAnswerCorrect(val) {
+  if (val === true) return true;
+  if (val && typeof val === 'object' && !val.isDiscussion) {
+    return val.correct === true;
+  }
+  return false;
+}
+
+export function isStoredAnswerIncorrect(val) {
+  if (val === false) return true;
+  if (val && typeof val === 'object' && !val.isDiscussion) {
+    return val.correct === false;
+  }
+  return false;
+}
+
+export function hasStoredAnswer(val) {
+  return val !== undefined && val !== null;
+}
+
+export function getStoredAnswerChoice(val) {
+  if (val && typeof val === 'object' && 'choice' in val) {
+    return val.choice;
+  }
+  return null;
+}

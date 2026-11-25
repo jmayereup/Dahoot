@@ -1,3 +1,5 @@
+import { isStoredAnswerCorrect, isStoredAnswerIncorrect } from './questionSchema';
+
 /**
  * Safely escape strings for CSV output.
  */
@@ -36,7 +38,7 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
   let totalCorrect = 0;
   hostPlayers.forEach(p => {
     gradedQuestions.forEach(q => {
-      if (p.answers && p.answers[q.id] === true) {
+      if (p.answers && isStoredAnswerCorrect(p.answers[q.id])) {
         totalCorrect++;
       }
     });
@@ -59,7 +61,7 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
     const playerAnswers = player.answers || {};
     let correctCount = 0;
     gradedQuestions.forEach(q => {
-      if (playerAnswers[q.id] === true) correctCount++;
+      if (isStoredAnswerCorrect(playerAnswers[q.id])) correctCount++;
     });
     const accuracy = totalGraded > 0 ? Math.round((correctCount / totalGraded) * 100) : 100;
     
@@ -82,9 +84,9 @@ export function exportResultsCsv({ gameTitle, roomCode, isMarathon, hostPlayers,
           row.push('[No response]');
         }
       } else {
-        if (status === true) {
+        if (isStoredAnswerCorrect(status)) {
           row.push('Correct');
-        } else if (status === false) {
+        } else if (isStoredAnswerIncorrect(status)) {
           row.push('Incorrect');
         } else {
           row.push('Unanswered');

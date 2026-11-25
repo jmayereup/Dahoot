@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { pb } from '../pb';
 import { GameSettings } from './GameSettings';
-import { BUCKET_COLORS } from '../constants';
-import { splitCurlyTokens, getCurlyIndex, getCurlyInner, splitBracketTokens, getBracketInner } from '../utils/blankParsing';
-import { getMcOptions, getMcCorrectAnswer, getDragDropCorrect, getDropDownCorrect, getSortingCorrect, normalizeQuestion } from '../utils/questionSchema';
+import { isStoredAnswerCorrect, isStoredAnswerIncorrect } from '../utils/questionSchema';
 import { RotateCcw, Shuffle, Home, Download, List } from 'lucide-react';
 import { exportResultsCsv } from '../utils/exportCsv';
 import { ScoreboardModal } from './ScoreboardModal';
+import { QuestionResponseBreakdown } from './QuestionResponseBreakdown';
 
 export function HostFinished({ 
   hostPlayers = [], 
@@ -251,9 +250,9 @@ export function HostFinished({
 
       hostPlayers.forEach((player) => {
         const playerAnswers = player.answers || {};
-        if (playerAnswers[q.id] === true) {
+        if (isStoredAnswerCorrect(playerAnswers[q.id])) {
           correctCount++;
-        } else if (playerAnswers[q.id] === false) {
+        } else if (isStoredAnswerIncorrect(playerAnswers[q.id])) {
           wrongCount++;
         } else {
           unansweredCount++;
@@ -283,130 +282,6 @@ export function HostFinished({
   const renderCorrectAnswer = (q) => {
     const type = q.type || 'MULTIPLE_CHOICE';
 
-    if (type === 'MULTIPLE_CHOICE') {
-      const correctText = getMcCorrectAnswer(q);
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Option:</div>
-          <div className="flex items-center gap-2 bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-slate-700 font-semibold text-sm max-w-md">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold">✓</span>
-            {correctText}
-          </div>
-        </div>
-      );
-    }
-
-    if (type === 'SORTING') {
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Sequence:</div>
-          <div className="flex flex-col gap-1.5 max-w-md">
-            {getSortingCorrect(q).map((opt, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-emerald-50/30 border border-emerald-100/50 rounded-lg p-2 text-slate-700 font-semibold text-xs">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-[9px] font-bold">
-                  {idx + 1}
-                </span>
-                {opt}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (type === 'DRAG_DROP') {
-      const sentence = q.options.sentence || '';
-      const correctAnswers = getDragDropCorrect(q);
-      const parts = splitBracketTokens(sentence);
-      let sequential = 0;
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
-          <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
-            {parts.map((part, idx) => {
-              const numericIdx = part && part.match(/\[blank(\d+)\]/i);
-              const inner = getBracketInner(part);
-              if (numericIdx || inner) {
-                const valIdx = numericIdx ? parseInt(numericIdx[1], 10) : sequential++;
-                return (
-                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {correctAnswers[valIdx] || inner || '???'}
-                  </strong>
-                );
-              }
-              return <span key={idx}>{part}</span>;
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (type === 'DROP_DOWN') {
-      const sentence = q.options.sentence || '';
-      const dropdowns = normalizeQuestion(q)?.options?.dropdowns || [];
-      const partsDropdown = splitCurlyTokens(sentence);
-      let sequential = 0;
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Statement:</div>
-          <div className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-3 text-slate-700 leading-relaxed max-w-xl text-xs font-semibold">
-            {partsDropdown.map((part, idx) => {
-              const valIdx = getCurlyIndex(part);
-              const inner = getCurlyInner(part);
-              if (valIdx !== null || inner) {
-                const idxToUse = valIdx !== null ? valIdx : sequential++;
-                const cfg = dropdowns[idxToUse];
-                const correctVal = getDropDownCorrect(q, idxToUse) || (cfg ? (cfg.correct_answer || cfg.correct || inner) : inner);
-                return (
-                  <strong key={idx} className="text-emerald-600 underline decoration-2 underline-offset-2 decoration-emerald-350 px-0.5">
-                    {correctVal || '???'}
-                  </strong>
-                );
-              }
-              return <span key={idx}>{part}</span>;
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (type === 'CATEGORIZE') {
-      const categories = q.options.categories || [];
-      const items = q.options.items || [];
-      const map = {};
-      categories.forEach(cat => {
-        map[cat] = items.filter(item => item.category === cat);
-      });
-
-      return (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Correct Classifications:</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-w-xl">
-            {categories.map((cat, idx) => {
-              const colorSet = BUCKET_COLORS[idx % BUCKET_COLORS.length];
-              return (
-                <div key={idx} className="border border-slate-100 rounded-lg p-2.5 bg-white shadow-xs">
-                  <div className="font-extrabold text-[10px] mb-1.5 pb-0.5 border-b border-slate-50 uppercase tracking-wider" style={{ color: colorSet.color || '#334155' }}>
-                    {cat}
-                  </div>
-                  <div className="space-y-0.5">
-                    {map[cat]?.map((item, iIdx) => (
-                      <div key={iIdx} className="text-[11px] text-slate-600 font-semibold">
-                        • {item.name}
-                      </div>
-                    ))}
-                    {(!map[cat] || map[cat].length === 0) && (
-                      <div className="text-[10px] text-slate-450 italic">No items</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
     if (type === 'DISCUSSION') {
       const sampleAnswers = q.options?.sample_answers || [];
       return (
@@ -432,7 +307,14 @@ export function HostFinished({
       );
     }
 
-    return null;
+    return (
+      <QuestionResponseBreakdown
+        question={q}
+        players={hostPlayers}
+        roomCode={roomCode}
+        compact
+      />
+    );
   };
 
   return (

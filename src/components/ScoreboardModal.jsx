@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, Search } from 'lucide-react';
 import { exportResultsCsv } from '../utils/exportCsv';
+import { isStoredAnswerCorrect } from '../utils/questionSchema';
 
 export function ScoreboardModal({
   isOpen,
@@ -134,7 +135,7 @@ export function ScoreboardModal({
                 const totalGraded = gradedQuestions.length;
                 let correctCount = 0;
                 gradedQuestions.forEach(q => {
-                  if (playerAnswers[q.id] === true) correctCount++;
+                  if (isStoredAnswerCorrect(playerAnswers[q.id])) correctCount++;
                 });
                 const accuracy = totalGraded > 0 ? Math.round((correctCount / totalGraded) * 100) : 100;
 

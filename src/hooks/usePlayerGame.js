@@ -339,7 +339,7 @@ export function usePlayerGame(view, setView, onMarathonRoom) {
       const currentAnswers = playerRecord.answers || {};
       const answerVal = isDiscussion
         ? { text: typeof userAnswer === 'string' ? userAnswer : (userAnswer?.text || ''), isDiscussion: true }
-        : isCorrect;
+        : { correct: isCorrect, choice: userAnswer };
 
       const newAnswers = {
         ...currentAnswers,

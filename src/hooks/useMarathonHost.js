@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { pb } from '../pb';
 import { shuffleArray } from '../utils/shuffle';
+import { isStoredAnswerCorrect } from '../utils/questionSchema';
 import { generateUniquePin } from '../utils/roomPin';
 
 export function useMarathonHost(view, setView) {
@@ -511,7 +512,7 @@ export function useMarathonHost(view, setView) {
     const allMastered = hostPlayers.every(p => {
       const correctIds = new Set(
         Object.entries(p.answers || {})
-          .filter(([, val]) => val === true)
+          .filter(([, val]) => isStoredAnswerCorrect(val))
           .map(([qId]) => qId)
       );
       const history = p.marathon_stats?.question_history || [];
